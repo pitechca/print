@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom';
 import App from './App';
 import './index.css';
 import { CartProvider } from './components/ProductEditor';
+import reportWebVitals from './reportWebVitals';
+
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <CartProvider>
@@ -15,7 +17,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 // import ReactDOM from 'react-dom/client';
 // import './index.css';
 // import App from './App';
-// import reportWebVitals from './reportWebVitals';
 
 // const root = ReactDOM.createRoot(document.getElementById('root'));
 // root.render(
