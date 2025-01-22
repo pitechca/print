@@ -1,16 +1,77 @@
-import React from "react";
-import ProductEditor from "./components/ProductEditor";
+// src/App.js
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import ProductEditor from './components/ProductEditor';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Cart from './pages/Cart';
+import AdminDashboard from './pages/AdminDashboard';
+import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
+import './styles/main.css';
 
 function App() {
-    return (
-        <div>
-            <h1>Custom Packaging Store</h1>
-            <ProductEditor />
-        </div>
-    );
+  return (
+    <AuthProvider>
+      <CartProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50">
+            <Navbar />
+            <main className="container mx-auto px-4 py-8">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/customize/:productId" element={<ProductEditor />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+              </Routes>
+            </main>
+          </div>
+        </Router>
+      </CartProvider>
+    </AuthProvider>
+  );
 }
 
 export default App;
+
+
+
+
+
+
+// import React from "react";
+// import ProductEditor from "./components/ProductEditor";
+
+// function App() {
+//     return (
+//         <div>
+//             <h1>Custom Packaging Store</h1>
+//             <ProductEditor />
+//         </div>
+//     );
+// }
+
+// export default App;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // import logo from './logo.svg';
 // import './App.css';
