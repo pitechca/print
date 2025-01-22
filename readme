@@ -1,0 +1,4 @@
+buildcommand: 
+cd frontend && npm install && npm run build && cd .. && cd backend && npm install
+Start Command:
+node backend/server.js
