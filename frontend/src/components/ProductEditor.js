@@ -247,7 +247,7 @@ const CheckoutForm = ({ cart }) => {
 
       
       <button
-        onClick={handleAddToCart}
+        onClick={handleAddToCart()}
         className="w-full bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600"
         >
         Add to Cart
