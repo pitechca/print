@@ -29,8 +29,8 @@ const Cart = () => {
                   className="w-24 h-24 object-cover rounded"
                 /> */}
                             <img
-              src={product.templates[0].data}
-              alt={product.name}
+              src={item.product.templates[0].data}
+              alt={item.product.name}
               className="w-full h-48 object-cover mb-4 rounded"
             />
                 <div className="ml-4 flex-grow">
