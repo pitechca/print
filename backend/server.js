@@ -19,7 +19,7 @@ app.use(cors());
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  phone: { type: Number, required: true },
+  phone: { type: String, required: true },
   isAdmin: { type: Boolean, default: false }
 });
 
@@ -318,33 +318,72 @@ app.get('/api/cart', auth, async (req, res) => {
 // Add these routes to server.js
 
 // Profile routes
+// app.put("/api/users/profile", auth, async (req, res) => {
+//   try {
+//     const { email, phone, currentPassword, newPassword } = req.body;
+//     const user = await User.findById(req.user._id);
+
+//     if (currentPassword && newPassword) {
+//       const isMatch = await bcrypt.compare(currentPassword, user.password);
+//       if (!isMatch) {
+//         return res.status(400).send({ error: "Current password is incorrect" });
+//       }
+//       user.password = await bcrypt.hash(newPassword, 10);
+//     }
+
+//     user.email = email || user.email;
+//     user.phone = phone || user.phone;
+//     await user.save();
+
+//     const token = jwt.sign(
+//       { userId: user._id, isAdmin: user.isAdmin },
+//       process.env.JWT_SECRET
+//     );
+
+//     res.send({ user, token });
+//   } catch (error) {
+//     res.status(400).send(error);
+//   }
+// });
+// Add to server.js
 app.put("/api/users/profile", auth, async (req, res) => {
   try {
-    const { email, phone, currentPassword, newPassword } = req.body;
-    const user = await User.findById(req.user._id);
-
-    if (currentPassword && newPassword) {
-      const isMatch = await bcrypt.compare(currentPassword, user.password);
-      if (!isMatch) {
-        return res.status(400).send({ error: "Current password is incorrect" });
-      }
-      user.password = await bcrypt.hash(newPassword, 10);
+    const { email, phone } = req.body;
+    
+    if (!email || !phone) {
+      return res.status(400).send({ error: 'Email and phone are required' });
     }
 
-    user.email = email || user.email;
-    user.phone = phone || user.phone;
-    await user.save();
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { email, phone },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).send({ error: 'User not found' });
+    }
 
     const token = jwt.sign(
       { userId: user._id, isAdmin: user.isAdmin },
       process.env.JWT_SECRET
     );
 
-    res.send({ user, token });
+    res.json({
+      user: {
+        _id: user._id,
+        email: user.email,
+        phone: user.phone,
+        isAdmin: user.isAdmin
+      },
+      token
+    });
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).send({ error: error.message });
   }
 });
+
+
 
 // Order routes
 app.get("/api/orders", auth, async (req, res) => {
