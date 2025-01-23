@@ -61,45 +61,76 @@ const ProductEditor = () => {
     }
   }, [productId, canvas]);
 
-  const handleTextAdd = () => {
-    if (!customText || !canvas) return;
+//   const handleTextAdd = () => {
+//     if (!customText || !canvas) return;
+//     const text = new fabric.Text(customText, {
+//       left: 100,
+//       top: 100,
+//       fontSize: 20,
+//       fontFamily: 'Arial',
+//       fill: '#000000'
+//     });
+//     canvas.add(text);
+//     canvas.setActiveObject(text);
+//     canvas.renderAll();
+//   };
+
+//   const handleImageUpload = (e) => {
+//     if (!canvas) return;
+//     const file = e.target.files[0];
+//     if (!file) return;
+
+//     const reader = new FileReader();
+//     reader.onload = (event) => {
+//       fabric.Image.fromURL(event.target.result, (img) => {
+//         const maxSize = 200;
+//         const scale = Math.min(maxSize / img.width, maxSize / img.height);
+//         img.scale(scale);
+        
+//         img.set({
+//           left: (canvas.width - img.width * scale) / 2,
+//           top: (canvas.height - img.height * scale) / 2
+//         });
+        
+//         canvas.add(img);
+//         canvas.setActiveObject(img);
+//         canvas.renderAll();
+//       });
+//     };
+//     reader.readAsDataURL(file);
+//   };
+
+
+
+const handleTextAdd = () => {
+    if (!customText) return;
     const text = new fabric.Text(customText, {
-      left: 100,
-      top: 100,
-      fontSize: 20,
-      fontFamily: 'Arial',
-      fill: '#000000'
+        left: 100,
+        top: 100,
+        fontSize: 20,
     });
     canvas.add(text);
-    canvas.setActiveObject(text);
     canvas.renderAll();
-  };
+    };
 
-  const handleImageUpload = (e) => {
-    if (!canvas) return;
+    const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      fabric.Image.fromURL(event.target.result, (img) => {
-        const maxSize = 200;
-        const scale = Math.min(maxSize / img.width, maxSize / img.height);
-        img.scale(scale);
-        
-        img.set({
-          left: (canvas.width - img.width * scale) / 2,
-          top: (canvas.height - img.height * scale) / 2
-        });
-        
+        fabric.Image.fromURL(event.target.result, (img) => {
+        img.scaleToWidth(200);
         canvas.add(img);
-        canvas.setActiveObject(img);
         canvas.renderAll();
-      });
+        });
     };
     reader.readAsDataURL(file);
-  };
+    };
 
+
+
+    
   const handleAddToCart = async () => {
     if (!selectedProduct || !canvas) return;
     
