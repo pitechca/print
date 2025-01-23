@@ -342,13 +342,6 @@ const ProductEditor = () => {
         <div>
           <canvas ref={canvasRef} />
           <div className="mt-4">
-          {product.templates[0] && (
-            <img
-              src={product.templates[0].data}
-              alt={product.name}
-              className="w-full h-48 object-cover mb-4"
-            />
-          )}
             <input
               type="text"
               value={customText}
