@@ -1,4 +1,3 @@
-// src/components/ProductEditor.js
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from 'react-router-dom';
 import { fabric } from "fabric";
@@ -18,11 +17,16 @@ const ProductEditor = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
 
+  // Initialize canvas
   useEffect(() => {
+    if (!canvasRef.current) return;
+
     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
       width: 500,
       height: 500,
+      backgroundColor: '#ffffff'
     });
+
     setCanvas(fabricCanvas);
 
     return () => {
@@ -30,25 +34,39 @@ const ProductEditor = () => {
     };
   }, []);
 
+  // Load product and template
   useEffect(() => {
     const fetchProduct = async () => {
+      if (!canvas) return;
+
       try {
         const { data } = await axios.get(`/api/products/${productId}`);
         setSelectedProduct(data);
-        if (data.templates && data.templates.length > 0 && canvas) {
+
+        if (data.templates && data.templates.length > 0) {
+          // Create image object from template
           fabric.Image.fromURL(data.templates[0].data, (img) => {
+            // Calculate scale to fit canvas while maintaining aspect ratio
             const scale = Math.min(
-              canvas.width / img.width,
-              canvas.height / img.height
+              (canvas.width * 0.8) / img.width,
+              (canvas.height * 0.8) / img.height
             );
-            img.scale(scale);
-            
-            img.set({
-              left: (canvas.width - img.width * scale) / 2,
-              top: (canvas.height - img.height * scale) / 2
-            });
-            
+
+            img.scaleX = scale;
+            img.scaleY = scale;
+
+            // Center the image
+            img.left = (canvas.width - img.width * scale) / 2;
+            img.top = (canvas.height - img.height * scale) / 2;
+
+            // Make template non-selectable and non-movable
+            img.selectable = false;
+            img.evented = false;
+
+            // Set as background
             canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+          }, {
+            crossOrigin: 'anonymous'
           });
         }
       } catch (error) {
@@ -63,16 +81,33 @@ const ProductEditor = () => {
 
   const handleTextAdd = () => {
     if (!customText || !canvas) return;
+
+    // Create text object
     const text = new fabric.Text(customText, {
-      left: 100,
-      top: 100,
-      fontSize: 20,
+      left: canvas.width / 2,
+      top: canvas.height / 2,
+      fontSize: 30,
       fontFamily: 'Arial',
-      fill: '#000000'
+      fill: '#000000',
+      originX: 'center',
+      originY: 'center'
     });
+
+    // Make text interactive
+    text.set({
+      selectable: true,
+      evented: true,
+      hasControls: true,
+      hasBorders: true
+    });
+
+    // Add to canvas
     canvas.add(text);
     canvas.setActiveObject(text);
     canvas.renderAll();
+
+    // Clear input
+    setCustomText("");
   };
 
   const handleImageUpload = (e) => {
@@ -83,15 +118,27 @@ const ProductEditor = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       fabric.Image.fromURL(event.target.result, (img) => {
-        const maxSize = 200;
+        // Scale image to reasonable size
+        const maxSize = Math.min(canvas.width * 0.5, canvas.height * 0.5);
         const scale = Math.min(maxSize / img.width, maxSize / img.height);
-        img.scale(scale);
-        
+
+        img.scaleX = scale;
+        img.scaleY = scale;
+
+        // Center the uploaded image
+        img.left = canvas.width / 2;
+        img.top = canvas.height / 2;
+        img.originX = 'center';
+        img.originY = 'center';
+
+        // Make image interactive
         img.set({
-          left: (canvas.width - img.width * scale) / 2,
-          top: (canvas.height - img.height * scale) / 2
+          selectable: true,
+          evented: true,
+          hasControls: true,
+          hasBorders: true
         });
-        
+
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.renderAll();
@@ -100,18 +147,22 @@ const ProductEditor = () => {
     reader.readAsDataURL(file);
   };
 
-
-
   const handleAddToCart = async () => {
     if (!selectedProduct || !canvas) return;
     
     try {
-      const preview = canvas.toDataURL();
+      // Get canvas data URL
+      const preview = canvas.toDataURL({
+        format: 'png',
+        quality: 1
+      });
       
+      // Upload preview image
       const response = await axios.post("/api/upload", { 
         image: preview 
       });
 
+      // Add to cart
       addToCart({
         product: selectedProduct,
         preview: response.data.url,
