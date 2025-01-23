@@ -19,6 +19,7 @@ app.use(cors());
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  phone: { type: Number, required: true },
   isAdmin: { type: Boolean, default: false }
 });
 
@@ -100,11 +101,11 @@ const upload = multer({
 // API Routes
 app.post("/api/register", async (req, res) => {
   try {
-    const { email, password, adminCode } = req.body;
+    const { email, password, phone, adminCode } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
     const isAdmin = adminCode === process.env.ADMIN_CODE;
 
-    const user = new User({ email, password: hashedPassword, isAdmin });
+    const user = new User({ email, password: hashedPassword, phone, isAdmin });
     await user.save();
 
     const token = jwt.sign(
