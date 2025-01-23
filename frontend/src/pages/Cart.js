@@ -23,11 +23,16 @@ const Cart = () => {
           <div className="space-y-4 mb-8">
             {cart.map((item, index) => (
               <div key={index} className="bg-white rounded-lg shadow-md p-4 flex items-center">
-                <img
+                {/* <img
                   src={item.preview}
                   alt="Product preview"
                   className="w-24 h-24 object-cover rounded"
-                />
+                /> */}
+                            <img
+              src={product.templates[0].data}
+              alt={product.name}
+              className="w-full h-48 object-cover mb-4 rounded"
+            />
                 <div className="ml-4 flex-grow">
                   <h3 className="font-bold">{item.product.name}</h3>
                   <p className="text-gray-600">${item.product.basePrice}</p>
