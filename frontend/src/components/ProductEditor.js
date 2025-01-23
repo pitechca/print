@@ -245,19 +245,6 @@ const CheckoutForm = ({ cart }) => {
         {processing ? 'Processing...' : 'Pay Now'}
       </button>
 
-      
-      <button
-        onClick={handleAddToCart()}
-        className="w-full bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600"
-        >
-        Add to Cart
-      </button>
-
-
-
-
-
-
 
     </form>
   );
