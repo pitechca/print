@@ -315,7 +315,109 @@ app.get('/api/cart', auth, async (req, res) => {
     }
   });
 
+// Add these routes to server.js
 
+// Profile routes
+app.put("/api/users/profile", auth, async (req, res) => {
+  try {
+    const { email, phone, currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (currentPassword && newPassword) {
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(400).send({ error: "Current password is incorrect" });
+      }
+      user.password = await bcrypt.hash(newPassword, 10);
+    }
+
+    user.email = email || user.email;
+    user.phone = phone || user.phone;
+    await user.save();
+
+    const token = jwt.sign(
+      { userId: user._id, isAdmin: user.isAdmin },
+      process.env.JWT_SECRET
+    );
+
+    res.send({ user, token });
+  } catch (error) {
+    res.status(400).send(error);
+  }
+});
+
+// Order routes
+app.get("/api/orders", auth, async (req, res) => {
+  try {
+    let orders;
+    if (req.user.isAdmin) {
+      orders = await Order.find()
+        .populate('user')
+        .populate('products.product')
+        .sort({ createdAt: -1 });
+    } else {
+      orders = await Order.find({ user: req.user._id })
+        .populate('products.product')
+        .sort({ createdAt: -1 });
+    }
+    res.send(orders);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+app.get("/api/orders/:id/download", auth, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user')
+      .populate('products.product');
+
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' });
+    }
+
+    if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).send({ error: 'Not authorized' });
+    }
+
+    // Generate PDF report
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument();
+    
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=order-${order._id}.pdf`);
+
+    doc.pipe(res);
+
+    // Add content to PDF
+    doc.fontSize(20).text('Order Details', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(12).text(`Order ID: ${order._id}`);
+    doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`);
+    doc.text(`Customer: ${order.user.email}`);
+    doc.text(`Total Amount: $${order.totalAmount.toFixed(2)}`);
+    
+    doc.moveDown();
+    doc.text('Products:', { underline: true });
+    
+    order.products.forEach(item => {
+      doc.moveDown();
+      doc.text(`Product: ${item.product.name}`);
+      doc.text(`Quantity: ${item.quantity}`);
+      if (item.customization?.customText) {
+        doc.text(`Custom Text: ${item.customization.customText}`);
+      }
+      if (item.customization?.description) {
+        doc.text(`Description: ${item.customization.description}`);
+      }
+    });
+
+    doc.end();
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
 
 
 

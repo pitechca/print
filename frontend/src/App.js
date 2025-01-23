@@ -10,6 +10,8 @@ import Cart from './pages/Cart';
 import AdminDashboard from './pages/AdminDashboard';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import Profile from './pages/Profile';
+import Orders from './pages/Orders';
 import './styles/main.css';
 
 function App() {
@@ -27,8 +29,8 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/admin" element={<AdminDashboard />} />
-                {/* <Route path="/customize/:productId" element={<ProductEditor />} /> */}
-              </Routes>
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/orders" element={<Orders />} />              </Routes>
             </main>
           </div>
         </Router>

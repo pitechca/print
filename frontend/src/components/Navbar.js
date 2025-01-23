@@ -24,6 +24,9 @@ const Navbar = () => {
             <Link to="/cart" className="hover:text-blue-600">
               Cart ({cart.length})
             </Link>
+            <Link to="/orders">Orders</Link>
+            {user?.isAdmin && (
+            <Link to="/profile">Profile</Link>)}            
             {user ? (
               <button
                 onClick={logout}

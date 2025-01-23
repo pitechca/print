@@ -9,6 +9,8 @@ const ProductEditor = () => {
   const [canvas, setCanvas] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [customText, setCustomText] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [orderDescription, setOrderDescription] = useState("");
   const canvasRef = useRef(null);
   const { productId } = useParams();
   const navigate = useNavigate();
@@ -110,7 +112,8 @@ const ProductEditor = () => {
     const customization = {
       customText: '',
       customImage: null,
-      preview
+      preview,
+      description: orderDescription
     };
 
     canvas.getObjects().forEach(obj => {
@@ -123,7 +126,7 @@ const ProductEditor = () => {
 
     await addToCart({
       product: selectedProduct,
-      quantity: 1,
+      quantity: parseInt(quantity),
       customization
     });
 
@@ -159,6 +162,27 @@ const ProductEditor = () => {
                 className="w-full"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Quantity</label>
+              <input
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Order Description</label>
+              <textarea
+                value={orderDescription}
+                onChange={(e) => setOrderDescription(e.target.value)}
+                rows="3"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Add any special instructions or notes for your order..."
+              />
+            </div>
             <button
               onClick={handleAddToCart}
               className="w-full bg-green-500 text-white px-4 py-2 rounded"
@@ -189,7 +213,199 @@ export default ProductEditor;
 
 
 
-// //working proper;y
+// // working but doens't have the quanity and desc
+// // src/components/ProductEditor.js
+// import React, { useEffect, useRef, useState } from "react";
+// import { fabric } from "fabric";
+// import axios from "axios";
+// import { useParams, useNavigate } from 'react-router-dom';
+// import { useCart } from '../context/CartContext';
+
+// const ProductEditor = () => {
+//   const [canvas, setCanvas] = useState(null);
+//   const [selectedProduct, setSelectedProduct] = useState(null);
+//   const [customText, setCustomText] = useState("");
+//   const canvasRef = useRef(null);
+//   const { productId } = useParams();
+//   const navigate = useNavigate();
+//   const { addToCart } = useCart();
+
+//   useEffect(() => {
+//     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
+//       width: 500,
+//       height: 500,
+//       backgroundColor: '#ffffff'
+//     });
+//     setCanvas(fabricCanvas);
+//     return () => fabricCanvas.dispose();
+//   }, []);
+
+//   useEffect(() => {
+//     const fetchProduct = async () => {
+//       try {
+//         const { data } = await axios.get(`/api/products/${productId}`);
+//         setSelectedProduct(data);
+//         if (data.templates && data.templates.length > 0 && canvas) {
+//           fabric.Image.fromURL(data.templates[0].data, (img) => {
+//             const scale = Math.min(
+//               canvas.width / img.width,
+//               canvas.height / img.height
+//             ) * 0.9;
+
+//             img.set({
+//               scaleX: scale,
+//               scaleY: scale,
+//               left: (canvas.width - img.width * scale) / 2,
+//               top: (canvas.height - img.height * scale) / 2,
+//               selectable: false,
+//               evented: false
+//             });
+
+//             canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+//           });
+//         }
+//       } catch (error) {
+//         console.error('Error fetching product:', error);
+//       }
+//     };
+
+//     if (productId && canvas) {
+//       fetchProduct();
+//     }
+//   }, [productId, canvas]);
+
+//   const handleTextAdd = () => {
+//     if (!customText || !canvas) return;
+//     const text = new fabric.Text(customText, {
+//       left: canvas.width / 2,
+//       top: canvas.height / 2,
+//       fontSize: 30,
+//       originX: 'center',
+//       originY: 'center'
+//     });
+//     canvas.add(text);
+//     canvas.setActiveObject(text);
+//     canvas.renderAll();
+//     setCustomText("");
+//   };
+
+//   const handleImageUpload = (e) => {
+//     const file = e.target.files[0];
+//     if (!file || !canvas) return;
+
+//     const reader = new FileReader();
+//     reader.onload = (event) => {
+//       fabric.Image.fromURL(event.target.result, (img) => {
+//         const scale = Math.min(
+//           200 / img.width,
+//           200 / img.height
+//         );
+//         img.scale(scale);
+//         img.set({
+//           left: canvas.width / 2,
+//           top: canvas.height / 2,
+//           originX: 'center',
+//           originY: 'center'
+//         });
+//         canvas.add(img);
+//         canvas.setActiveObject(img);
+//         canvas.renderAll();
+//       });
+//     };
+//     reader.readAsDataURL(file);
+//   };
+
+//   const handleAddToCart = async () => {
+//     if (!selectedProduct || !canvas) return;
+
+//     const preview = canvas.toDataURL({
+//       format: 'png',
+//       quality: 1
+//     });
+
+//     const customization = {
+//       customText: '',
+//       customImage: null,
+//       preview
+//     };
+
+//     canvas.getObjects().forEach(obj => {
+//       if (obj.type === 'text') {
+//         customization.customText = obj.text;
+//       } else if (obj.type === 'image' && obj !== canvas.backgroundImage) {
+//         customization.customImage = obj.toDataURL();
+//       }
+//     });
+
+//     await addToCart({
+//       product: selectedProduct,
+//       quantity: 1,
+//       customization
+//     });
+
+//     navigate('/cart');
+//   };
+
+//   return (
+//     <div className="container mx-auto p-4">
+//       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+//         <div className="bg-white p-6 rounded-lg shadow-md">
+//           <canvas ref={canvasRef} className="border rounded-lg" />
+//           <div className="mt-4 space-y-4">
+//             <div>
+//               <input
+//                 type="text"
+//                 value={customText}
+//                 onChange={(e) => setCustomText(e.target.value)}
+//                 className="w-full px-4 py-2 border rounded"
+//                 placeholder="Enter custom text"
+//               />
+//               <button
+//                 onClick={handleTextAdd}
+//                 className="mt-2 w-full bg-blue-500 text-white px-4 py-2 rounded"
+//               >
+//                 Add Text
+//               </button>
+//             </div>
+//             <div>
+//               <input
+//                 type="file"
+//                 onChange={handleImageUpload}
+//                 accept="image/*"
+//                 className="w-full"
+//               />
+//             </div>
+//             <button
+//               onClick={handleAddToCart}
+//               className="w-full bg-green-500 text-white px-4 py-2 rounded"
+//             >
+//               Add to Cart
+//             </button>
+//           </div>
+//         </div>
+//         <div className="bg-white p-6 rounded-lg shadow-md">
+//           <h2 className="text-2xl font-bold mb-4">
+//             {selectedProduct?.name || 'Loading...'}
+//           </h2>
+//           <p className="text-gray-600 mb-4">
+//             {selectedProduct?.description}
+//           </p>
+//           <p className="text-xl font-bold mb-4">
+//             ${selectedProduct?.basePrice || 0}
+//           </p>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default ProductEditor;
+
+
+
+
+
+// //working proper;y but doesn't have the add to cart button
 // import React, { useEffect, useRef, useState } from "react";
 // import { fabric } from "fabric";
 // import axios from "axios";
