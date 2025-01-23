@@ -57,6 +57,22 @@ const OrderSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+
+const CartSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    items: [{
+      product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+      quantity: Number,
+      customization: {
+        customText: String,
+        customImage: String,
+        preview: String
+      }
+    }]
+});
+  
+
+const Cart = mongoose.model('Cart', CartSchema);
 const User = mongoose.model("User", UserSchema);
 const Image = mongoose.model("Image", ImageSchema);
 const Product = mongoose.model("Product", ProductSchema);
@@ -241,6 +257,67 @@ app.get("/api/products/:id", async (req, res) => {
       res.status(500).send(error);
     }
   });
+
+
+
+
+// Cart routes
+app.get('/api/cart', auth, async (req, res) => {
+    try {
+      let cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
+      if (!cart) {
+        cart = new Cart({ user: req.user._id, items: [] });
+        await cart.save();
+      }
+      res.send(cart);
+    } catch (error) {
+      res.status(500).send(error);
+    }
+  });
+  
+  app.post('/api/cart/add', auth, async (req, res) => {
+    try {
+      const { product, quantity, customization } = req.body;
+      let cart = await Cart.findOne({ user: req.user._id });
+      
+      if (!cart) {
+        cart = new Cart({ user: req.user._id, items: [] });
+      }
+      
+      cart.items.push({ product, quantity, customization });
+      await cart.save();
+      res.send(cart);
+    } catch (error) {
+      res.status(400).send(error);
+    }
+  });
+  
+  app.delete('/api/cart/:index', auth, async (req, res) => {
+    try {
+      const cart = await Cart.findOne({ user: req.user._id });
+      cart.items.splice(req.params.index, 1);
+      await cart.save();
+      res.send(cart);
+    } catch (error) {
+      res.status(400).send(error);
+    }
+  });
+  
+  app.delete('/api/cart', auth, async (req, res) => {
+    try {
+      const cart = await Cart.findOne({ user: req.user._id });
+      cart.items = [];
+      await cart.save();
+      res.send(cart);
+    } catch (error) {
+      res.status(400).send(error);
+    }
+  });
+
+
+
+
+
 
 
 
