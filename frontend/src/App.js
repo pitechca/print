@@ -27,7 +27,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/customize/:productId" element={<ProductEditor />} />
+                {/* <Route path="/customize/:productId" element={<ProductEditor />} /> */}
               </Routes>
             </main>
           </div>
