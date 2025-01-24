@@ -7,9 +7,19 @@ const CartContext = createContext(null);
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
 
+  // useEffect(() => {
+  //   fetchCart();
+  // }, []);
+
   useEffect(() => {
-    fetchCart();
-  }, []);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setCart([]);
+    } else {
+      fetchCart();
+    }
+  }, [localStorage.getItem('token')]);
+
 
   const fetchCart = async () => {
     try {
@@ -22,6 +32,7 @@ export const CartProvider = ({ children }) => {
       setCart(data.items);
     } catch (error) {
       console.error('Error fetching cart:', error);
+      setCart([]);
     }
   };
 

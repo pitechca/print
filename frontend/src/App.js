@@ -45,37 +45,6 @@ export default App;
 
 
 
-
-// import React from "react";
-// import ProductEditor from "./components/ProductEditor";
-
-// function App() {
-//     return (
-//         <div>
-//             <h1>Custom Packaging Store</h1>
-//             <ProductEditor />
-//         </div>
-//     );
-// }
-
-// export default App;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // import logo from './logo.svg';
 // import './App.css';
 

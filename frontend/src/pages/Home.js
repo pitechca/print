@@ -51,7 +51,7 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center">
             <h1 className="text-4xl font-serif font-bold text-gray-900 mb-6">
-              Custom Packaging Solutions
+              BAG & BOX
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
               Professional custom packaging for your business needs. Quality materials, elegant designs, reliable service.

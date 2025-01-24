@@ -20,12 +20,14 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
+    window.location.href = '/';  // Redirect to home page
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    window.location.href = '/';  // Redirect to home page
   };
 
   return (
