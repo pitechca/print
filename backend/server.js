@@ -30,7 +30,8 @@ const ImageSchema = new mongoose.Schema({
 
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  category: { type: String, required: true },
+  category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+  //  category: { type: String, required: true },
   basePrice: { type: Number, required: true },
   templates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }],
   description: String,
@@ -58,7 +59,6 @@ const OrderSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-
 const CartSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     items: [{
@@ -71,8 +71,24 @@ const CartSchema = new mongoose.Schema({
       }
     }]
 });
-  
 
+const CategorySchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  description: String,
+  image: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const TemplateSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  category: { type: String, required: true },
+  elements: { type: Object, required: true },
+  preview: { type: String, required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+});
+
+const Category = mongoose.model('Category', CategorySchema);
+const Template = mongoose.model('Template', TemplateSchema);
 const Cart = mongoose.model('Cart', CartSchema);
 const User = mongoose.model("User", UserSchema);
 const Image = mongoose.model("Image", ImageSchema);
@@ -182,25 +198,53 @@ const base64ToBuffer = (base64) => {
 
 app.get("/api/products", async (req, res) => {
   try {
-    const products = await Product.find().populate('templates');
-    // Convert Buffer to base64 for sending to client
+    const products = await Product.find()
+      .populate('templates')
+      .populate('category');
+
     const productsWithImages = products.map(product => {
-      const templates = product.templates.map(template => {
-        return {
-          _id: template._id,
-          data: `data:${template.contentType};base64,${template.data.toString('base64')}`
-        };
-      });
+      const templates = product.templates.map(template => ({
+        _id: template._id,
+        data: `data:${template.contentType};base64,${template.data.toString('base64')}`
+      }));
+
       return {
         ...product.toObject(),
-        templates
+        templates,
+        category: product.category ? {
+          _id: product.category._id,
+          name: product.category.name,
+          description: product.category.description
+        } : null
       };
     });
+
     res.send(productsWithImages);
   } catch (error) {
     res.status(500).send(error);
   }
 });
+// app.get("/api/products", async (req, res) => {
+//   try {
+//     const products = await Product.find().populate('templates');
+//     // Convert Buffer to base64 for sending to client
+//     const productsWithImages = products.map(product => {
+//       const templates = product.templates.map(template => {
+//         return {
+//           _id: template._id,
+//           data: `data:${template.contentType};base64,${template.data.toString('base64')}`
+//         };
+//       });
+//       return {
+//         ...product.toObject(),
+//         templates
+//       };
+//     });
+//     res.send(productsWithImages);
+//   } catch (error) {
+//     res.status(500).send(error);
+//   }
+// });
 
 // Order routes
 app.post("/api/orders", auth, async (req, res) => {
@@ -458,7 +502,178 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
   }
 });
 
+// Category routes
+app.post("/api/categories", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can create categories" });
+    }
 
+    const { name, description, image } = req.body;
+    let imageId;
+
+    if (image) {
+      const { buffer, contentType } = base64ToBuffer(image);
+      const newImage = new Image({ data: buffer, contentType });
+      await newImage.save();
+      imageId = newImage._id;
+    }
+
+    const category = new Category({
+      name,
+      description,
+      image: imageId
+    });
+
+    await category.save();
+    res.status(201).send(category);
+  } catch (error) {
+    res.status(400).send(error);
+  }
+});
+
+app.get("/api/categories", async (req, res) => {
+  try {
+    const categories = await Category.find().populate('image');
+    const categoriesWithImages = categories.map(category => {
+      if (category.image) {
+        return {
+          ...category.toObject(),
+          image: {
+            _id: category.image._id,
+            data: `data:${category.image.contentType};base64,${category.image.data.toString('base64')}`
+          }
+        };
+      }
+      return category.toObject();
+    });
+    res.send(categoriesWithImages);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+app.put("/api/categories/:id", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can update categories" });
+    }
+
+    const { name, description, image } = req.body;
+    const updateData = { name, description };
+
+    if (image) {
+      const { buffer, contentType } = base64ToBuffer(image);
+      const newImage = new Image({ data: buffer, contentType });
+      await newImage.save();
+      updateData.image = newImage._id;
+    }
+
+    const category = await Category.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    ).populate('image');
+
+    if (!category) {
+      return res.status(404).send({ error: 'Category not found' });
+    }
+
+    res.send(category);
+  } catch (error) {
+    res.status(400).send(error);
+  }
+});
+
+app.delete("/api/categories/:id", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can delete categories" });
+    }
+
+    const category = await Category.findById(req.params.id);
+    if (!category) {
+      return res.status(404).send({ error: 'Category not found' });
+    }
+
+    // Delete associated image if exists
+    if (category.image) {
+      await Image.findByIdAndDelete(category.image);
+    }
+
+    await category.delete();
+    res.send({ message: 'Category deleted successfully' });
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+app.post('/api/templates', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: 'Only admins can create templates' });
+    }
+
+    const template = new Template({
+      ...req.body,
+      createdBy: req.user._id
+    });
+    
+    await template.save();
+    res.status(201).send(template);
+  } catch (error) {
+    res.status(400).send(error);
+  }
+});
+
+app.get('/api/templates', async (req, res) => {
+  try {
+    const templates = await Template.find().populate('createdBy', 'email');
+    res.send(templates);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+app.put('/api/templates/:id', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: 'Only admins can update templates' });
+    }
+
+    const template = await Template.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    
+    if (!template) {
+      return res.status(404).send();
+    }
+    
+    res.send(template);
+  } catch (error) {
+    res.status(400).send(error);
+  }
+});
+
+app.delete('/api/templates/:id', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: 'Only admins can delete templates' });
+    }
+
+    const template = await Template.findByIdAndDelete(req.params.id);
+    
+    if (!template) {
+      return res.status(404).send();
+    }
+    
+    res.send(template);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
 
 
 
