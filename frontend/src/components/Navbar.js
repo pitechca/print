@@ -25,8 +25,8 @@ const Navbar = () => {
               Cart ({cart.length})
             </Link>
             <Link to="/orders">Orders</Link>
-            {user?.isAdmin==false && (
-            <Link to="/profile">Profile</Link>)}            
+            {/* {user?.isAdmin==false && (
+            <Link to="/profile">Profile</Link>)}             */}
             {user ? (
               <button
                 onClick={logout}

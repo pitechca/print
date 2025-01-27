@@ -69,8 +69,6 @@ const Cart = () => {
 export default Cart;
 
 
-
-
 // // working properly
 // // src/pages/Cart.js
 // import React from 'react';

@@ -49,33 +49,146 @@ const AdminDashboard = () => {
     }
   };
 
+
   const handleSubmit = async (type) => {
     const token = localStorage.getItem('token');
     const headers = { Authorization: `Bearer ${token}` };
-    const data = formData[type];
-
+    const data = { ...formData[type] };
+    
     try {
-      if (selectedItem) {
-        await axios.put(`/api/${type}s/${selectedItem._id}`, data, { headers });
-      } else {
-        await axios.post(`/api/${type}s`, data, { headers });
+      let response;
+      
+      // Handle Categories
+      if (type === 'category') {
+        // Prepare category data
+        const categoryData = {
+          name: data.name,
+          description: data.description,
+          image: data.image
+        };
+  
+        if (selectedItem) {
+          // For edit, only include image if it was changed
+          if (data.image && data.image !== selectedItem.image?.data) {
+            categoryData.image = data.image;
+          }
+          response = await axios.put(
+            `/api/categories/${selectedItem._id}`,
+            categoryData,
+            { headers }
+          );
+        } else {
+          response = await axios.post('/api/categories', categoryData, { headers });
+        }
       }
       
-      fetchData();
+      // Handle Products
+      else if (type === 'product') {
+        if (selectedItem) {
+          response = await axios.put(`/api/products/${selectedItem._id}`, data, { headers });
+        } else {
+          response = await axios.post('/api/products', data, { headers });
+        }
+      }
+      
+      // Handle Templates
+      else if (type === 'template') {
+        // Validate required fields
+        if (!formData.template.name || !formData.template.category) {
+          console.error('Missing required fields');
+          return;
+        }
+  
+        const templateData = {
+          name: formData.template.name,
+          category: formData.template.category,
+          elements: formData.template.elements || {},
+          preview: formData.template.preview
+        };
+  
+        if (selectedItem) {
+          response = await axios.put(
+            `/api/templates/${selectedItem._id}`,
+            templateData,
+            { headers }
+          );
+        } else {
+          response = await axios.post('/api/templates', templateData, { headers });
+        }
+      }      
+  
+      await fetchData();
       setFormData(prev => ({
         ...prev,
-        [type]: { ...prev[type], name: '', description: '', image: null }
+        [type]: { 
+          name: '', 
+          description: '', 
+          image: null,
+          category: '',
+          basePrice: '',
+          templates: [],
+          elements: {},
+          preview: ''
+        }
       }));
       setSelectedItem(null);
     } catch (error) {
       console.error(`Error ${selectedItem ? 'updating' : 'creating'} ${type}:`, error);
+      // Add more detailed error logging
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+      }
     }
   };
 
   const handleEdit = (item, type) => {
+    // Create a clean copy of the item for editing
+    const editableItem = {
+      ...item,
+      image: item.image?.data || item.image // Handle both direct image data and image object
+    };
+    
+    // Special handling for products
+    if (type === 'product') {
+      editableItem.category = item.category?._id || ''; // Ensure category is the ID
+      editableItem.templates = item.templates.map(template => template.data);
+    }
+    
     setSelectedItem(item);
-    setFormData(prev => ({ ...prev, [type]: item }));
+    setFormData(prev => ({ ...prev, [type]: editableItem }));
     setActiveMenu(`edit${type.charAt(0).toUpperCase() + type.slice(1)}`);
+  };
+
+  const handleDelete = async (type, id) => {
+    if (!window.confirm(`Are you sure you want to delete this ${type.slice(0, -1)}?`)) {
+      return;
+    }
+  
+    const token = localStorage.getItem('token');
+    const headers = { Authorization: `Bearer ${token}` };
+  
+    try {
+      const response = await axios.delete(`/api/${type}/${id}`, { headers });
+      console.log('Delete response:', response.data); // Debug log
+      await fetchData();
+    } catch (error) {
+      console.error(`Error deleting ${type}:`, error);
+      
+      // Extract the error message from the response
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          `Failed to delete ${type}`;
+      
+      // Show error message to user
+      alert(errorMessage);
+      
+      // Log detailed error for debugging
+      if (error.response) {
+        console.log('Error Response Data:', error.response.data);
+        console.log('Error Response Status:', error.response.status);
+        console.log('Error Response Headers:', error.response.headers);
+      }
+    }
   };
 
   const renderSidebar = () => (
@@ -115,6 +228,7 @@ const AdminDashboard = () => {
           onSubmit={() => handleSubmit('category')}
           categories={categories}
           onEdit={item => handleEdit(item, 'category')}
+          onDelete={handleDelete} 
           isEdit={activeMenu === 'editCategory'}
         />;
 
@@ -127,22 +241,87 @@ const AdminDashboard = () => {
           categories={categories}
           products={products}
           onEdit={item => handleEdit(item, 'product')}
+          onDelete={handleDelete}  
           isEdit={activeMenu === 'editProduct'}
         />;
 
       case 'createTemplate':
-      case 'editTemplate':
-        return <TemplateDesigner 
-          onSave={template => {
-            setFormData(prev => ({ ...prev, template }));
-            handleSubmit('template');
-          }}
-          initialTemplate={selectedItem}
-          categories={categories}
-        />;
+        return (
+          <TemplateDesigner 
+            onSave={template => {
+              setFormData(prev => ({ ...prev, template }));
+              handleSubmit('template');
+            }}
+            categories={categories}
+          />
+        );
+      // case 'editTemplate':
+      //   return <TemplateDesigner 
+      //     onSave={template => {
+      //       setFormData(prev => ({ ...prev, template }));
+      //       handleSubmit('template');
+      //     }}
+      //     initialTemplate={selectedItem}
+      //     categories={categories}
+      //   />;
 
+      // default:
+      //   return null;
+      case 'editTemplate':
+        return (
+          <div>
+            <h3 className="text-2xl font-bold mb-6">Existing Templates</h3>
+            <div className="mb-6 grid grid-cols-1 gap-4">
+              {templates.map(template => (
+                <div key={template._id} className="flex justify-between items-center p-4 bg-white rounded-lg shadow">
+                  <div>
+                    <h4 className="font-bold">{template.name}</h4>
+                    <p className="text-gray-600">Category: {template.category?.name}</p>
+                    {template.preview && (
+                      <img 
+                        src={template.preview} 
+                        alt={template.name}
+                        className="mt-2 h-32 object-contain"
+                      />
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(template, 'template')}
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete('templates', template._id)}
+                      className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {selectedItem && (
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h4 className="text-xl font-bold mb-4">Edit Template</h4>
+                <TemplateDesigner 
+                  onSave={template => {
+                    setFormData(prev => ({ ...prev, template }));
+                    handleSubmit('template');
+                  }}
+                  initialTemplate={selectedItem}
+                  categories={categories}
+                />
+              </div>
+            )}
+          </div>
+        );
+  
       default:
         return null;
+    
     }
   };
 
@@ -160,7 +339,7 @@ const AdminDashboard = () => {
   );
 };
 
-const CategoryForm = ({ formData, setFormData, onSubmit, categories, onEdit, isEdit }) => {
+const CategoryForm = ({ formData, setFormData, onSubmit, categories, onEdit, onDelete, isEdit }) => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -184,12 +363,20 @@ const CategoryForm = ({ formData, setFormData, onSubmit, categories, onEdit, isE
                 <h4 className="font-bold">{category.name}</h4>
                 <p className="text-gray-600">{category.description}</p>
               </div>
-              <button
-                onClick={() => onEdit(category)}
-                className="bg-blue-500 text-white px-4 py-2 rounded"
-              >
-                Edit
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onEdit(category)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => onDelete('categories', category._id)}
+                  className="bg-red-500 text-white px-4 py-2 rounded"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -200,7 +387,7 @@ const CategoryForm = ({ formData, setFormData, onSubmit, categories, onEdit, isE
           <label className="block text-gray-700 mb-2">Name</label>
           <input
             type="text"
-            value={formData.name}
+            value={formData.name || ''}
             onChange={e => setFormData({ ...formData, name: e.target.value })}
             className="w-full px-3 py-2 border rounded"
             required
@@ -209,7 +396,7 @@ const CategoryForm = ({ formData, setFormData, onSubmit, categories, onEdit, isE
         <div>
           <label className="block text-gray-700 mb-2">Description</label>
           <textarea
-            value={formData.description}
+            value={formData.description || ''}
             onChange={e => setFormData({ ...formData, description: e.target.value })}
             className="w-full px-3 py-2 border rounded"
             rows="3"
@@ -223,6 +410,13 @@ const CategoryForm = ({ formData, setFormData, onSubmit, categories, onEdit, isE
             accept="image/*"
             className="w-full"
           />
+          {formData.image && (
+            <img 
+              src={typeof formData.image === 'string' ? formData.image : formData.image.data} 
+              alt="Preview" 
+              className="mt-2 h-32 object-contain"
+            />
+          )}
         </div>
         <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
           {isEdit ? 'Update' : 'Add'} Category
@@ -232,7 +426,7 @@ const CategoryForm = ({ formData, setFormData, onSubmit, categories, onEdit, isE
   );
 };
 
-const ProductForm = ({ formData, setFormData, onSubmit, categories, products, onEdit, isEdit }) => {
+const ProductForm = ({ formData, setFormData, onSubmit, categories, products, onEdit, onDelete, isEdit }) => {
   const handleTemplatesChange = (e) => {
     const files = Array.from(e.target.files);
     Promise.all(
@@ -265,9 +459,15 @@ const ProductForm = ({ formData, setFormData, onSubmit, categories, products, on
               <button
                 onClick={() => onEdit(product)}
                 className="bg-blue-500 text-white px-4 py-2 rounded"
-              >
+                >
                 Edit
               </button>
+              <button
+                  onClick={() => onDelete('products', product._id)}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                >
+                  Delete
+                </button>
             </div>
           ))}
         </div>
@@ -320,7 +520,7 @@ const ProductForm = ({ formData, setFormData, onSubmit, categories, products, on
           />
         </div>
         <div>
-          <label className="block text-gray-700 mb-2">Templates</label>
+          <label className="block text-gray-700 mb-2">Image</label>
           <input
             type="file"
             onChange={handleTemplatesChange}
@@ -340,6 +540,11 @@ const ProductForm = ({ formData, setFormData, onSubmit, categories, products, on
 export default AdminDashboard;
 
 
+
+
+
+
+//working properly but without category & template
 // import React, { useState, useEffect } from 'react';
 // import { useAuth } from '../context/AuthContext';
 // import { useNavigate } from 'react-router-dom';

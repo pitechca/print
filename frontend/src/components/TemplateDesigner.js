@@ -12,7 +12,8 @@ const TemplateDesigner = ({ onSave, initialTemplate, categories }) => {
     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
       width: 500,
       height: 500,
-      backgroundColor: '#ffffff'
+    //  backgroundColor: '#ffffff'
+      backgroundColor: null
     });
     setCanvas(fabricCanvas);
     
@@ -115,17 +116,36 @@ const TemplateDesigner = ({ onSave, initialTemplate, categories }) => {
     canvas.setActiveObject(group);
   };
 
-  const handleSave = () => {
-    if (!canvas || !templateName || !category) return;
+  // const handleSave = () => {
+  //   if (!canvas || !templateName || !category) return;
     
-    const template = {
+  //   const template = {
+  //     name: templateName,
+  //     category,
+  //     elements: canvas.toJSON(),
+  //     preview: canvas.toDataURL()
+  //   };
+
+  //   onSave(template);
+  // };
+  // When saving a template in TemplateDesigner
+  const handleSave = () => {
+    if (!canvas) return;
+    
+    const templateData = {
       name: templateName,
       category,
-      elements: canvas.toJSON(),
-      preview: canvas.toDataURL()
+      elements: {
+        version: canvas.version,
+        objects: canvas.getObjects().map(obj => obj.toObject()),
+      },
+      preview: canvas.toDataURL({
+        format: 'png',
+        backgroundColor: null // Ensures transparent background
+      })
     };
-
-    onSave(template);
+    
+    onSave(templateData);
   };
 
   const handleDelete = () => {
