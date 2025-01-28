@@ -14,6 +14,8 @@ import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import './styles/main.css';
 import Footer from './components/Footer';
+import AboutUs from './pages/AboutUs';
+
 
 function App() {
   return (
@@ -31,7 +33,9 @@ function App() {
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/orders" element={<Orders />} />              </Routes>
+                <Route path="/orders" element={<Orders />} />  
+                <Route path="/aboutUs" element={<AboutUs />} />  
+              </Routes>
             </main>
             <Footer />
           </div>

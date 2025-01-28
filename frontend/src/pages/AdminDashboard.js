@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import TemplateDesigner from '../components/TemplateDesigner';
-import { HomeIcon, CategoryIcon, ProductIcon, TemplateIcon, CouponIcon, UserIcon} from 'lucide-react'; 
+import { HomeIcon, FolderPlusIcon, FolderPenIcon, PackageOpenIcon, PackagePlusIcon, FilePlus2Icon, FilePenLineIcon, TicketPercentIcon, ShoppingBagIcon} from 'lucide-react'; 
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -224,33 +224,42 @@ const AdminDashboard = () => {
   };
 
   const renderSidebar = () => (
-    <div className="w-64 bg-white shadow-md h-screen" style={{minHeight: 100+"%"}}>
+    <div className="w-64 bg-white shadow-md h-screen" >
       <div className="p-4">
         <h2 className="text-xl font-bold">Admin Dashboard</h2>
       </div>
       <nav className="space-y-2">
         <SidebarItem label="Overview" menu="overview" icon={<HomeIcon className="mr-2"/>} />
-        <SidebarItem label="Add Category" menu="addCategory" />
-        <SidebarItem label="Edit Categories" menu="editCategory" />
-        <SidebarItem label="Add Product" menu="addProduct"   />
-        <SidebarItem label="Edit Products" menu="editProduct" />
-        <SidebarItem label="Create Template" menu="createTemplate" />
-        <SidebarItem label="Edit Templates" menu="editTemplate" />
-        <SidebarItem label="Coupons" menu="couponManagement" />
-        <SidebarItem label="Orders" menu="orders" />
+        <SidebarItem label="Add Category" menu="addCategory" icon={<FolderPlusIcon className="mr-2"/>}
+        //  icon={
+        //   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        //     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        //   </svg>
+        // }
+        />
+        <SidebarItem label="Edit Categories" menu="editCategory" icon={<FolderPenIcon className="mr-2 h-5 w-5"/>} />
+        <SidebarItem label="Add Product" menu="addProduct" icon={<PackagePlusIcon className="mr-2 h-5 w-5"/>} />
+        <SidebarItem label="Edit Products" menu="editProduct" icon={<PackageOpenIcon className="mr-2 h-5 w-5"/>}/>
+        <SidebarItem label="Create Template" menu="createTemplate" icon={<FilePlus2Icon className="mr-2 h-5 w-5"/>} />
+        <SidebarItem label="Edit Templates" menu="editTemplate" icon={<FilePenLineIcon className="mr-2 h-5 w-5"/>} />
+        <SidebarItem label="Coupons" menu="couponManagement" icon={<TicketPercentIcon className="mr-2 h-5 w-5"/>} />
+        <SidebarItem label="Orders" menu="orders" icon={<ShoppingBagIcon className="mr-2 h-5 w-5"/>} />
 
       </nav>
     </div>
   );
 
-  const SidebarItem = ({ label, menu }) => (
+  const SidebarItem = ({ label, menu, icon}) => (
     <button
       onClick={() => setActiveMenu(menu)}
-      className={`w-full text-left px-4 py-2 ${
+      className={`w-full flex items-center justify-start text-left px-4 py-2 space-x-2 ${
         activeMenu === menu ? 'bg-blue-50 text-blue-600' : 'text-gray-600'
       }`}
     >
-      {label}
+      {icon && React.cloneElement(icon, {
+            className: `h-5 w-5 ${activeMenu === menu ? 'text-blue-600' : 'text-gray-500'}`
+      })}
+      <span>{label}</span>
     </button>
   );
 

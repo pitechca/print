@@ -3,6 +3,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { ShoppingCartIcon} from 'lucide-react'; 
+
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -21,9 +23,7 @@ const Navbar = () => {
                 Admin Dashboard
               </Link>
             )}
-            <Link to="/cart" className="hover:text-blue-600">
-              Cart ({cart.length})
-            </Link>
+         
             <Link to="/orders">Orders</Link>
             {/* {user?.isAdmin==false && (
             <Link to="/profile">Profile</Link>)}             */}
@@ -44,6 +44,12 @@ const Navbar = () => {
                 </Link>
               </>
             )}
+            <span style={{lineHeight:5+"px"}}>
+            <Link to="/cart" className="hover:text-blue-600">
+              &nbsp; {cart.length} 
+              {<ShoppingCartIcon className="mr-2"/>}
+            </Link>
+            </span>
           </div>
         </div>
       </div>
