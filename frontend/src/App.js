@@ -13,6 +13,7 @@ import { CartProvider } from './context/CartContext';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import './styles/main.css';
+import Footer from './components/Footer';
 
 function App() {
   return (
@@ -21,7 +22,7 @@ function App() {
         <Router>
           <div className="min-h-screen bg-gray-50">
             <Navbar />
-            <main className="container mx-auto px-4 py-8">
+            <main className="container mx-auto px-4 py-8" style={{minWidth:100 + "%", padding: 0}}>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/customize/:productId" element={<ProductEditor />} />
@@ -32,6 +33,7 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/orders" element={<Orders />} />              </Routes>
             </main>
+            <Footer />
           </div>
         </Router>
       </CartProvider>

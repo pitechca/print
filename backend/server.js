@@ -88,6 +88,20 @@ const TemplateSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+const CouponSchema = new mongoose.Schema({
+  code: { type: String, required: true, unique: true },
+  discountType: { type: String, enum: ['percentage', 'fixed'], required: true },
+  discountValue: { type: Number, required: true },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+  maxUses: { type: Number, default: 0 },
+  currentUses: { type: Number, default: 0 },
+  assignedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  isActive: { type: Boolean, default: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
 const Category = mongoose.model('Category', CategorySchema);
 const Template = mongoose.model('Template', TemplateSchema);
 const Cart = mongoose.model('Cart', CartSchema);
@@ -95,6 +109,7 @@ const User = mongoose.model("User", UserSchema);
 const Image = mongoose.model("Image", ImageSchema);
 const Product = mongoose.model("Product", ProductSchema);
 const Order = mongoose.model("Order", OrderSchema);
+const Coupon = mongoose.model('Coupon', CouponSchema);
 
 // Middleware for authentication
 const auth = async (req, res, next) => {
@@ -732,7 +747,210 @@ app.get('/api/cart', auth, async (req, res) => {
     }
   });
 
-// Add these routes to server.js
+// Coupon routs
+app.post("/api/coupons", auth, async (req, res) => {
+  try {
+    // Only admin can create coupons
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can create coupons" });
+    }
+
+    const { code, discountType, discountValue, startDate, endDate, maxUses, assignedUsers } = req.body;
+
+    // Validate input
+    if (!code || !discountType || !discountValue || !startDate || !endDate) {
+      return res.status(400).send({ error: "Missing required coupon details" });
+    }
+
+    // Check if coupon code already exists
+    const existingCoupon = await Coupon.findOne({ code });
+    if (existingCoupon) {
+      return res.status(400).send({ error: "Coupon code already exists" });
+    }
+
+    // Create new coupon
+    const newCoupon = new Coupon({
+      code,
+      discountType,
+      discountValue,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      maxUses: maxUses || 0,
+      assignedUsers: assignedUsers || [],
+      createdBy: req.user._id
+    });
+
+    await newCoupon.save();
+    res.status(201).send(newCoupon);
+  } catch (error) {
+    console.error('Coupon creation error:', error);
+    res.status(500).send({ error: "Error creating coupon" });
+  }
+});
+
+// Get all coupons
+app.get("/api/coupons", auth, async (req, res) => {
+  try {
+    // If admin, return all coupons
+    if (req.user.isAdmin) {
+      const coupons = await Coupon.find()
+        .populate('createdBy', 'email')
+        .populate('assignedUsers', 'email');
+      return res.send(coupons);
+    }
+
+    // For regular users, return applicable coupons
+    const now = new Date();
+    const userCoupons = await Coupon.find({
+      $or: [
+        { assignedUsers: req.user._id },
+        { assignedUsers: { $size: 0 } } // Coupons with no specific user assignment
+      ],
+      isActive: true,
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+      $or: [
+        { maxUses: 0 }, // Unlimited use coupons
+        { currentUses: { $lt: '$maxUses' } } // Coupons not yet fully used
+      ]
+    });
+
+    res.send(userCoupons);
+  } catch (error) {
+    console.error('Error fetching coupons:', error);
+    res.status(500).send({ error: "Error retrieving coupons" });
+  }
+});
+
+// Update a coupon
+app.put("/api/coupons/:id", auth, async (req, res) => {
+  try {
+    // Only admin can update coupons
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can update coupons" });
+    }
+
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Prevent changing certain fields
+    delete updateData._id;
+    delete updateData.createdBy;
+    delete updateData.createdAt;
+
+    const updatedCoupon = await Coupon.findByIdAndUpdate(
+      id, 
+      updateData, 
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedCoupon) {
+      return res.status(404).send({ error: "Coupon not found" });
+    }
+
+    res.send(updatedCoupon);
+  } catch (error) {
+    console.error('Coupon update error:', error);
+    res.status(500).send({ error: "Error updating coupon" });
+  }
+});
+
+// Delete a coupon
+app.delete("/api/coupons/:id", auth, async (req, res) => {
+  try {
+    // Only admin can delete coupons
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can delete coupons" });
+    }
+
+    const { id } = req.params;
+
+    const deletedCoupon = await Coupon.findByIdAndDelete(id);
+
+    if (!deletedCoupon) {
+      return res.status(404).send({ error: "Coupon not found" });
+    }
+
+    res.send({ 
+      message: "Coupon deleted successfully",
+      deletedCoupon 
+    });
+  } catch (error) {
+    console.error('Coupon deletion error:', error);
+    res.status(500).send({ error: "Error deleting coupon" });
+  }
+});
+
+// Validate coupon for an order
+app.post("/api/coupons/validate", auth, async (req, res) => {
+  try {
+    const { couponCode, orderTotal } = req.body;
+
+    // Find the coupon
+    const coupon = await Coupon.findOne({ 
+      code: couponCode,
+      isActive: true,
+      startDate: { $lte: new Date() },
+      endDate: { $gte: new Date() }
+    });
+
+    // Check coupon existence and usage
+    if (!coupon) {
+      return res.status(404).send({ error: "Invalid or expired coupon" });
+    }
+
+    // Check if coupon is assigned to specific users
+    if (coupon.assignedUsers.length > 0 && 
+        !coupon.assignedUsers.includes(req.user._id)) {
+      return res.status(403).send({ error: "Coupon not available for this user" });
+    }
+
+    // Check max uses
+    if (coupon.maxUses > 0 && coupon.currentUses >= coupon.maxUses) {
+      return res.status(400).send({ error: "Coupon has reached maximum uses" });
+    }
+
+    // Calculate discount
+    let discountAmount = 0;
+    if (coupon.discountType === 'percentage') {
+      discountAmount = orderTotal * (coupon.discountValue / 100);
+    } else {
+      discountAmount = coupon.discountValue;
+    }
+
+    // Update coupon usage
+    coupon.currentUses += 1;
+    await coupon.save();
+
+    res.send({
+      message: "Coupon applied successfully",
+      discountAmount,
+      couponDetails: coupon
+    });
+  } catch (error) {
+    console.error('Coupon validation error:', error);
+    res.status(500).send({ error: "Error validating coupon" });
+  }
+});
+
+
+//Users routs
+// Get all users (for coupon assignment)
+app.get("/api/users", auth, async (req, res) => {
+  try {
+    // Only allow admin to fetch users
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can access user list" });
+    }
+
+    // Fetch users, excluding sensitive information
+    const users = await User.find({}, 'email phone isAdmin');
+    res.send(users);
+  } catch (error) {
+    res.status(500).send({ error: "Error fetching users" });
+  }
+});
+
 
 // Profile routes
 // app.put("/api/users/profile", auth, async (req, res) => {
