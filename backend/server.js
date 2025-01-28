@@ -8,6 +8,10 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const multer = require("multer");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const nodemailer = require('nodemailer');
+const rateLimit = require('express-rate-limit');
+const { body, validationResult } = require('express-validator');
+
 
 dotenv.config();
 
@@ -15,12 +19,38 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 
+app.set('trust proxy', true);
+
 // MongoDB Models
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   phone: { type: String, required: true },
   isAdmin: { type: Boolean, default: false }
+});
+
+// Rate limiting to prevent spam
+const contactLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 1 day (24 * 60 mins)
+  max: 2, // limit each IP to 5 requests per windowMs
+  message: 'Too many contact attempts, please try again later'
+});
+
+
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // Use service instead of host/port
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+  // host: 'smtp.gmail.com', // Replace with your SMTP host
+  // port: 587,
+  // secure: false, // Use TLS
+  // auth: {
+  //   user: process.env.EMAIL_USER, // Your email
+  //   pass: process.env.EMAIL_PASS  // App password or generated credentials
+  // }
 });
 
 const ImageSchema = new mongoose.Schema({
@@ -1090,6 +1120,104 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
   }
 });
 
+// Contact form validation and submission route
+app.post('/api/contact', contactLimiter, [
+  // Validation middleware
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('email').trim().isEmail().withMessage('Invalid email address'),
+  body('message').trim().notEmpty().withMessage('Message is required'),
+  body('phone').optional({ checkFalsy: true }).isMobilePhone().withMessage('Invalid phone number'),
+], async (req, res) => {
+  // Check for validation errors
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { name, email, phone, company, message } = req.body;
+
+  try {
+    // Send email
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || 'Info@bagbox.ca', 
+      to: process.env.EMAIL_TO || 'Info@bagbox.ca',
+      replyTo: email,
+      subject: 'New Contact Form Submission - Bag&Box',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>New Contact Form Submission</h2>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Name:</strong></td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Email:</strong></td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${email}</td>
+            </tr>
+            ${phone ? `
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Phone:</strong></td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${phone}</td>
+            </tr>` : ''}
+            ${company ? `
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Company:</strong></td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${company}</td>
+            </tr>` : ''}
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Message:</strong></td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${message}</td>
+            </tr>
+          </table>
+        </div>
+      `,
+      text: `
+        New Contact Form Submission
+        
+        Name: ${name}
+        Email: ${email}
+        ${phone ? `Phone: ${phone}` : ''}
+        ${company ? `Company: ${company}` : ''}
+        
+        Message: ${message}
+      `
+    });
+
+    // Optional: Log successful submission
+    console.log(`Contact form submission from ${name} (${email})`);
+
+    // Respond with success
+    res.status(200).json({ 
+      message: 'Message sent successfully. We\'ll get back to you soon!',
+      success: true 
+    });
+  } catch (error) {
+    console.error('Email send error:', error);
+    res.status(500).json({ 
+      message: 'Failed to send message. Please try again later.',
+      success: false,
+      error: error.toString()
+    });
+  }
+});
+
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    message: 'An unexpected error occurred',
+    success: false
+  });
+});
 
 
 // Serve static files in production

@@ -15,6 +15,7 @@ import Orders from './pages/Orders';
 import './styles/main.css';
 import Footer from './components/Footer';
 import AboutUs from './pages/AboutUs';
+import Contact from './pages/Contact';
 
 
 function App() {
@@ -35,6 +36,8 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/orders" element={<Orders />} />  
                 <Route path="/aboutUs" element={<AboutUs />} />  
+                <Route path="/contactUs" element={<Contact/>} />
+
               </Routes>
             </main>
             <Footer />

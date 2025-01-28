@@ -4,7 +4,7 @@ import { InstagramIcon, FacebookIcon, PhoneIcon, MailIcon} from 'lucide-react';
 
 
 const Footer = () => {
-  const phoneNumber = "+1 604 (977-9292)";
+  const phoneNumber = "+1 (604) 834-8118";
 
   return (
     <footer className="bg-gray-900 text-white py-12">
@@ -12,6 +12,7 @@ const Footer = () => {
         <div>
           <h4 className="text-xl font-bold mb-4">Bag & Box</h4>
           <p className="text-gray-400">Professional custom packaging solutions for businesses across North America.</p>
+          {/* <img src='../images/logo.png' style={{height:150+"px"}}/> */}
         </div>
         <div>
           <h4 className="text-xl font-bold mb-4">Quick Links</h4>
@@ -19,6 +20,7 @@ const Footer = () => {
             <li><Link to="/" className="hover:text-blue-500">Home</Link></li>
             <li><Link to="/aboutUs" className="hover:text-blue-500">About Us</Link></li>
             <li><Link to="/products" className="hover:text-blue-500">Products</Link></li>
+            <li><Link to="/contactUs" className="hover:text-blue-500">Contact</Link></li>
           </ul>
         </div>
         <div>
@@ -39,7 +41,9 @@ const Footer = () => {
         </div>
       </div>
       <div className="text-center mt-8 border-t border-gray-800 pt-4">
-        <p>&copy; 2024 Bag & Box. All Rights Reserved.</p>
+        <p>&copy; 2025 Bag & Box. All Rights Reserved.<br/>
+        Design & Development By <a href='https://pitech.ca' target='new'>PiTech.ca</a>
+        </p>
       </div>
     </footer>
   );
