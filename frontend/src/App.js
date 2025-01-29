@@ -17,6 +17,7 @@ import Footer from './components/Footer';
 import AboutUs from './pages/AboutUs';
 import Contact from './pages/Contact';
 import Product from './pages/Product';
+import ScrollToTop from './components/ScrollToTop';
 
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <Router>
+          <ScrollToTop />
           <div className="min-h-screen bg-gray-50">
             <Navbar />
             <main className="container mx-auto px-4 py-8" style={{minWidth:100 + "%", padding: 0}}>

@@ -98,11 +98,11 @@ const Home = () => {
 
       {/* Hero Section */}
       <div 
-        className="relative bg-cover bg-center py-20 mb-20" 
+        className="relative bg-cover bg-center py-48 mb-20" 
         style={{
-          backgroundImage: `url('../../images/s2.jpg')`,
+          backgroundImage: `url('../images/s2.jpg')`,
           backgroundBlendMode: 'overlay',
-          backgroundColor: 'rgba(0,0,0,0.6)',
+          backgroundColor: 'rgba(0,0,0,0.5)',
         }}
       >
         <div className="container mx-auto px-4 relative z-10">
@@ -234,7 +234,13 @@ const Home = () => {
             </span>
             <div className="flex gap-3">
               <button
-                onClick={() => window.location.href = `/customize/${product._id}`}
+                onClick={() => {
+                  const token = localStorage.getItem('token');
+                  if (!token) {
+                    window.location.href = '/login';
+                    return;
+                  }                  
+                  window.location.href = `/customize/${product._id}`}}
                 className="text-gray-600 hover:text-blue-600 transition-colors"
                 title="Customize"
               >

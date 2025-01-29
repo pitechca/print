@@ -20,12 +20,12 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
-    // if (user.isAdmin === true) {
-    //   window.location.href = '/admin';  // Redirect to home page
-    // }
-    // else 
-    window.location.href = '/';  // Redirect to home page
-
+    // Redirect based on user role
+    if (userData.isAdmin) {
+      window.location.href = '/admin';
+    } else {
+      window.location.href = '/';
+    }
   };
 
   const logout = () => {

@@ -182,11 +182,20 @@ app.post("/api/register", async (req, res) => {
 
 app.post("/api/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const { identifier, password } = req.body; // identifier can be email or phone
+    
+    // Find user by email or phone
+    const user = await User.findOne({
+      $or: [
+        { email: identifier },
+        { phone: identifier }
+      ]
+    });
+
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new Error("Invalid login credentials");
     }
+
     const token = jwt.sign(
       { userId: user._id, isAdmin: user.isAdmin },
       process.env.JWT_SECRET
@@ -196,6 +205,22 @@ app.post("/api/login", async (req, res) => {
     res.status(400).send(error);
   }
 });
+// app.post("/api/login", async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+//     const user = await User.findOne({ email });
+//     if (!user || !(await bcrypt.compare(password, user.password))) {
+//       throw new Error("Invalid login credentials");
+//     }
+//     const token = jwt.sign(
+//       { userId: user._id, isAdmin: user.isAdmin },
+//       process.env.JWT_SECRET
+//     );
+//     res.send({ user, token });
+//   } catch (error) {
+//     res.status(400).send(error);
+//   }
+// });
 
 // Product routes
 app.post("/api/products", auth, async (req, res) => {
