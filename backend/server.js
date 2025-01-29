@@ -740,33 +740,33 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
   try {
     const { amount } = req.body;
     
-    // Create a PaymentIntent with the order amount and currency
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ 
+        error: 'Invalid amount provided' 
+      });
+    }
+
+    console.log('Creating payment intent for amount:', amount); // Debug log
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
       currency: 'cad',
-      // Verify your integration in this guide by including this parameter
       metadata: {
         integration_check: 'accept_a_payment',
       },
-      automatic_payment_methods: {
-        enabled: true,
-      },
-      // Optional: set up transfer group for split payments
-      transfer_group: 'ORDER_' + Math.random().toString(36).substr(2, 9),
-      // Optional: set statement descriptor
-      statement_descriptor: 'BAG&BOX STORE',
-      // Optional: set description
-      description: 'Order payment',
+      payment_method_types: ['card'],
     });
 
-    res.send({
+    console.log('Payment intent created:', paymentIntent.id); // Debug log
+    
+    res.json({
       clientSecret: paymentIntent.client_secret
     });
   } catch (error) {
-    console.error('Error creating payment intent:', error);
-    res.status(400).send({
+    console.error('Stripe error:', error); // Debug log
+    res.status(400).json({
       error: {
-        message: error.message
+        message: error.message || 'An error occurred with the payment'
       }
     });
   }

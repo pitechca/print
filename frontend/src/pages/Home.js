@@ -100,7 +100,7 @@ const Home = () => {
       <div 
         className="relative bg-cover bg-center py-48 mb-20" 
         style={{
-          backgroundImage: `url('../images/s2.jpg')`,
+          backgroundImage: `url('/images/s1.jpg')`,
           backgroundBlendMode: 'overlay',
           backgroundColor: 'rgba(0,0,0,0.5)',
         }}

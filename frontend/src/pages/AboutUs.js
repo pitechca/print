@@ -6,8 +6,8 @@ const SlideshowHeader = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const slides = [
     '/images/s1.jpg',
-    '/images/s2.jpg',
-    '/images/s3.jpg'
+    '/images/s3.jpg',
+    '/images/s4.jpg',
   ];
 
   const nextSlide = useCallback(() => {

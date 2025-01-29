@@ -28,25 +28,38 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
     setError(null);
 
     if (!stripe || !elements) {
+      setError('Stripe has not been initialized.');
+      setProcessing(false);
       return;
     }
 
     try {
+
+      const total = calculateTotal();
+      console.log('Calculated total:', total); // Debug log
+  
       const { data: { clientSecret } } = await axios.post('/api/create-payment-intent', {
-        amount: calculateTotal()
+        amount: total
       }, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
         }
       });
+
+      console.log('Received client secret'); // Debug log
 
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
+          billing_details: {
+            // Add any collected billing details here
+          }
         }
       });
 
       if (stripeError) {
+        console.error('Stripe error:', stripeError);
         setError(stripeError.message);
         setProcessing(false);
         return;
@@ -61,7 +74,7 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
 
         await axios.post('/api/orders', {
           products: selectedProducts,
-          totalAmount: calculateTotal(),
+          totalAmount: total,
           paymentMethod: 'stripe',
           paymentId: paymentIntent.id
         }, {
@@ -78,8 +91,10 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
         navigate('/orders');
       }
     } catch (error) {
-      setError('An error occurred during payment. Please try again.');
       console.error('Payment error:', error);
+      setError(error.response?.data?.error?.message || 
+        error.message || 
+        'An error occurred during payment. Please try again.');
     }
 
     setProcessing(false);
