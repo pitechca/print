@@ -739,15 +739,50 @@ app.post("/api/orders", auth, async (req, res) => {
 app.post("/api/create-payment-intent", auth, async (req, res) => {
   try {
     const { amount } = req.body;
+    
+    // Create a PaymentIntent with the order amount and currency
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
-      currency: "usd"
+      currency: 'cad',
+      // Verify your integration in this guide by including this parameter
+      metadata: {
+        integration_check: 'accept_a_payment',
+      },
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      // Optional: set up transfer group for split payments
+      transfer_group: 'ORDER_' + Math.random().toString(36).substr(2, 9),
+      // Optional: set statement descriptor
+      statement_descriptor: 'BAG&BOX STORE',
+      // Optional: set description
+      description: 'Order payment',
     });
-    res.send({ clientSecret: paymentIntent.client_secret });
+
+    res.send({
+      clientSecret: paymentIntent.client_secret
+    });
   } catch (error) {
-    res.status(400).send(error);
+    console.error('Error creating payment intent:', error);
+    res.status(400).send({
+      error: {
+        message: error.message
+      }
+    });
   }
 });
+// app.post("/api/create-payment-intent", auth, async (req, res) => {
+//   try {
+//     const { amount } = req.body;
+//     const paymentIntent = await stripe.paymentIntents.create({
+//       amount: Math.round(amount * 100), // Convert to cents
+//       currency: "cad"
+//     });
+//     res.send({ clientSecret: paymentIntent.client_secret });
+//   } catch (error) {
+//     res.status(400).send(error);
+//   }
+// });
 
 // Cart routes
 app.get('/api/cart', auth, async (req, res) => {
