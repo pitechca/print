@@ -1,11 +1,13 @@
 // src/pages/Cart.js
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; 
+import axios from 'axios';
 import { useCart } from '../context/CartContext';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import CheckoutForm from '../components/CheckoutForm';
-import { Checkbox } from "../components/ui/checkbox";  // lowercase 'checkbox'
+import { Checkbox } from "../components/ui/checkbox";  
 import { AlertCircle } from 'lucide-react';
 import {
   Select,
@@ -18,6 +20,7 @@ import {
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 
 const Cart = () => {
+  const navigate = useNavigate(); 
   const { cart, removeFromCart } = useCart();
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [paymentMethod, setPaymentMethod] = useState('stripe');

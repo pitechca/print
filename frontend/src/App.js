@@ -43,7 +43,7 @@ function App() {
                 <Route path="/products" element={<Product/>} />
               </Routes>
             </main>
-            <Footer />
+            <Footer style={{}}/>
           </div>
         </Router>
       </CartProvider>
