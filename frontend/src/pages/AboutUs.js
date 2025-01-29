@@ -5,9 +5,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 const SlideshowHeader = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const slides = [
-    '/images/slideshow-1.jpg',
-    '/images/slideshow-2.jpg',
-    '/images/slideshow-3.jpg'
+    '/images/s1.jpg',
+    '/images/s2.jpg',
+    '/images/s3.jpg'
   ];
 
   const nextSlide = useCallback(() => {
@@ -217,7 +217,7 @@ const AboutUs = () => {
         </section>
 
         {/* Why Choose Us Section */}
-        <section className="bg-white shadow-lg rounded-xl p-10 space-y-8">
+        <section className="bg-white shadow-lg rounded-xl p-16 space-y-8">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-6">
             Why Partner with Bag&Box?
           </h2>

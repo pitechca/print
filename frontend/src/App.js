@@ -16,6 +16,7 @@ import './styles/main.css';
 import Footer from './components/Footer';
 import AboutUs from './pages/AboutUs';
 import Contact from './pages/Contact';
+import Product from './pages/Product';
 
 
 function App() {
@@ -37,7 +38,7 @@ function App() {
                 <Route path="/orders" element={<Orders />} />  
                 <Route path="/aboutUs" element={<AboutUs />} />  
                 <Route path="/contactUs" element={<Contact/>} />
-
+                <Route path="/products" element={<Product/>} />
               </Routes>
             </main>
             <Footer />
