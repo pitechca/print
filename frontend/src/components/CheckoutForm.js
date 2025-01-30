@@ -66,6 +66,8 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
       }
 
       if (paymentIntent.status === 'succeeded') {
+        console.log('Payment successful, creating order...');
+
         const selectedProducts = Array.from(selectedItems).map(index => ({
           product: cart[index].product._id,
           quantity: quantities[index],
@@ -79,9 +81,13 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
           paymentId: paymentIntent.id
         }, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            // 'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
           }
         });
+
+        console.log('Order created successfully:', orderResponse.data);
 
         // Remove purchased items from cart
         for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {

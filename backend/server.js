@@ -715,75 +715,6 @@ app.delete('/api/templates/:id', auth, async (req, res) => {
   }
 });
 
-
-// Order routes
-app.post("/api/orders", auth, async (req, res) => {
-  try {
-    const { products, totalAmount, paymentMethod, customizations } = req.body;
-    
-    const order = new Order({
-      user: req.user._id,
-      products,
-      totalAmount,
-      paymentMethod
-    });
-
-    await order.save();
-    res.status(201).send(order);
-  } catch (error) {
-    res.status(400).send(error);
-  }
-});
-
-// Payment routes
-app.post("/api/create-payment-intent", auth, async (req, res) => {
-  try {
-    const { amount } = req.body;
-    
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ 
-        error: 'Invalid amount provided' 
-      });
-    }
-
-    console.log('Creating payment intent for amount:', amount); // Debug log
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents
-      currency: 'cad',
-      metadata: {
-        integration_check: 'accept_a_payment',
-      },
-      payment_method_types: ['card'],
-    });
-
-    console.log('Payment intent created:', paymentIntent.id); // Debug log
-    
-    res.json({
-      clientSecret: paymentIntent.client_secret
-    });
-  } catch (error) {
-    console.error('Stripe error:', error); // Debug log
-    res.status(400).json({
-      error: {
-        message: error.message || 'An error occurred with the payment'
-      }
-    });
-  }
-});
-// app.post("/api/create-payment-intent", auth, async (req, res) => {
-//   try {
-//     const { amount } = req.body;
-//     const paymentIntent = await stripe.paymentIntents.create({
-//       amount: Math.round(amount * 100), // Convert to cents
-//       currency: "cad"
-//     });
-//     res.send({ clientSecret: paymentIntent.client_secret });
-//   } catch (error) {
-//     res.status(400).send(error);
-//   }
-// });
-
 // Cart routes
 app.get('/api/cart', auth, async (req, res) => {
     try {
@@ -1107,7 +1038,130 @@ app.put("/api/users/profile", auth, async (req, res) => {
   }
 });
 
+// Payment routes
+app.post("/api/create-payment-intent", auth, async (req, res) => {
+  try {
+    const { amount } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ 
+        error: 'Invalid amount provided' 
+      });
+    }
+
+    console.log('Creating payment intent for amount:', amount); // Debug log
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100), // Convert to cents
+      currency: 'cad',
+      metadata: {
+        integration_check: 'accept_a_payment',
+      },
+      payment_method_types: ['card'],
+    });
+
+    console.log('Payment intent created:', paymentIntent.id); // Debug log
+    
+    res.json({
+      clientSecret: paymentIntent.client_secret
+    });
+  } catch (error) {
+    console.error('Stripe error:', error); // Debug log
+    res.status(400).json({
+      error: {
+        message: error.message || 'An error occurred with the payment'
+      }
+    });
+  }
+});
+// app.post("/api/create-payment-intent", auth, async (req, res) => {
+//   try {
+//     const { amount } = req.body;
+//     const paymentIntent = await stripe.paymentIntents.create({
+//       amount: Math.round(amount * 100), // Convert to cents
+//       currency: "cad"
+//     });
+//     res.send({ clientSecret: paymentIntent.client_secret });
+//   } catch (error) {
+//     res.status(400).send(error);
+//   }
+// });
+
 // Order routes
+app.post("/api/orders", auth, async (req, res) => {
+  try {
+    const { products, totalAmount, paymentMethod, paymentId } = req.body;
+
+    // Validate required fields
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ 
+        error: 'Invalid products data',
+        details: 'Products array is required and must not be empty'
+      });
+    }
+
+    if (!totalAmount || totalAmount <= 0) {
+      return res.status(400).json({ 
+        error: 'Invalid total amount',
+        details: 'Total amount must be greater than 0'
+      });
+    }
+
+    if (!paymentMethod) {
+      return res.status(400).json({ 
+        error: 'Payment method is required',
+        details: 'Please specify a payment method'
+      });
+    }
+
+    // Create the order
+    const order = new Order({
+      user: req.user._id,
+      products: products.map(item => ({
+        product: item.product,
+        quantity: item.quantity || 1,
+        customization: item.customization || {}
+      })),
+      totalAmount,
+      paymentMethod,
+      paymentId,
+      status: 'completed' // Set initial status
+    });
+
+    await order.save();
+
+    // Fetch the complete order with populated fields
+    const populatedOrder = await Order.findById(order._id)
+      .populate('user', 'email')
+      .populate('products.product');
+
+    res.status(201).send(populatedOrder);
+  } catch (error) {
+    console.error('Order creation error:', error);
+    res.status(400).json({
+      error: 'Failed to create order',
+      details: error.message
+    });
+  }
+});
+// app.post("/api/orders", auth, async (req, res) => {
+//   try {
+//     const { products, totalAmount, paymentMethod, customizations } = req.body;
+    
+//     const order = new Order({
+//       user: req.user._id,
+//       products,
+//       totalAmount,
+//       paymentMethod
+//     });
+
+//     await order.save();
+//     res.status(201).send(order);
+//   } catch (error) {
+//     res.status(400).send(error);
+//   }
+// });
+
 app.get("/api/orders", auth, async (req, res) => {
   try {
     let orders;

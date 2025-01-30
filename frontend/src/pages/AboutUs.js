@@ -267,7 +267,7 @@ const AboutUs = () => {
             To empower businesses by transforming packaging into a powerful marketing tool. We believe every package tells a story—let us help you tell yours with professional, eye-catching design and unmatched quality.
           </p>
           <a 
-            href="/contact" 
+            href="/contactUs" 
             className="bg-white text-[#1A4B84] hover:bg-blue-50 font-bold py-3 px-8 rounded-full transition-colors"
           >
             Start Your Project
