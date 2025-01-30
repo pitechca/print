@@ -304,127 +304,75 @@ const AdminDashboard = () => {
             categories={categories}
           />
         );
-      // case 'editTemplate':
-      //     return (
-      //       <div>
-      //         <h3 className="text-2xl font-bold mb-6">Existing Templates</h3>
-      //         <PaginatedList 
-      //           items={templates}
-      //           renderItem={(template) => (
-      //             <div key={template._id} className="flex justify-between items-center p-4 bg-white rounded-lg shadow" style={{marginBottom: 10+"px"}}>
-      //               {template.preview && (
-      //                 <img 
-      //                   src={template.preview} 
-      //                   alt={template.name}
-      //                   className="w-24 h-32 object-contain mr-4"
-      //                 />
-      //               )}
-      //               <div className="flex-grow">
-      //                 <h4 className="font-bold">{template.name}</h4>
-      //                 <p className="text-gray-600">Category: {template.category?.name}</p>
-      //               </div>
-      //               <div className="flex space-x-2">
-      //                 <button
-      //                   onClick={() => handleEdit(template, 'template')}
-      //                   className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-      //                 >
-      //                   Edit
-      //                 </button>
-      //                 <button
-      //                   onClick={() => handleDelete('templates', template._id)}
-      //                   className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-      //                 >
-      //                   Delete
-      //                 </button>
-      //               </div>
-      //             </div>
-      //           )}
-      //         />
-              
-      //         {selectedItem && (
-      //           <div className="bg-white p-6 rounded-lg shadow mt-6">
-      //             <h4 className="text-xl font-bold mb-4">Edit Template</h4>
-      //             <TemplateDesigner 
-      //               onSave={template => {
-      //                 setFormData(prev => ({ ...prev, template }));
-      //                 handleSubmit('template');
-      //               }}
-      //               initialTemplate={selectedItem}
-      //               categories={categories}
-      //             />
-      //           </div>
-      //         )}
-      //       </div>
-      //     );
       case 'editTemplate':
-  return (
-    <div>
-      <h3 className="text-2xl font-bold mb-6">Existing Templates</h3>
-      {selectedItem ? (
-        <div className="mb-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="text-xl font-bold">Edit Template</h4>
-              <button 
-                onClick={() => {
-                  setSelectedItem(null);
-                  setFormData(prev => ({
-                    ...prev,
-                    template: { name: '', category: '', elements: {}, preview: '' }
-                  }));
-                }}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-            </div>
-            <TemplateDesigner 
-              onSave={template => {
-                setFormData(prev => ({ ...prev, template }));
-                handleSubmit('template');
-                setSelectedItem(null); // Clear selection after save
-              }}
-              initialTemplate={selectedItem}
-              categories={categories}
-            />
-          </div>
-        </div>
-      ) : (
-        <PaginatedList 
-          items={templates}
-          renderItem={(template) => (
-            <div key={template._id} className="flex justify-between items-center p-4 bg-white rounded-lg shadow" style={{marginBottom: 10+"px"}}>
-              {template.preview && (
-                <img 
-                  src={template.preview} 
-                  alt={template.name}
-                  className="w-24 h-32 object-contain mr-4"
+      return (
+        <div>
+          <h3 className="text-2xl font-bold mb-6">Existing Templates</h3>
+          {selectedItem ? (
+            <div className="mb-6">
+              <div className="bg-white p-6 rounded-lg shadow">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-xl font-bold">Edit Template</h4>
+                  <button 
+                    onClick={() => {
+                      setSelectedItem(null);
+                      setFormData(prev => ({
+                        ...prev,
+                        template: { name: '', category: '', elements: {}, preview: '' }
+                      }));
+                    }}
+                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <TemplateDesigner 
+                  onSave={template => {
+                    setFormData(prev => ({ ...prev, template }));
+                    handleSubmit('template');
+                    setSelectedItem(null); // Clear selection after save
+                  }}
+                  initialTemplate={selectedItem}
+                  categories={categories}
                 />
-              )}
-              <div className="flex-grow">
-                <h4 className="font-bold">{template.name}</h4>
-                <p className="text-gray-600">Category: {template.category?.name}</p>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleEdit(template, 'template')}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete('templates', template._id)}
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                >
-                  Delete
-                </button>
               </div>
             </div>
+          ) : (
+            <PaginatedList 
+              items={templates}
+              renderItem={(template) => (
+                <div key={template._id} className="flex justify-between items-center p-4 bg-white rounded-lg shadow mb-4">
+                  {template.preview && (
+                    <img 
+                      src={template.preview} 
+                      alt={template.name}
+                      className="w-24 h-32 object-contain mr-4"
+                    />
+                  )}
+                  <div className="flex-grow">
+                    <h4 className="font-bold">{template.name}</h4>
+                    <p className="text-gray-600">Category: {template.category?.name}</p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEdit(template, 'template')}
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete('templates', template._id)}
+                      className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+            />
           )}
-        />
-      )}
-    </div>
-  );
+        </div>
+      );
       case 'orders':
         return <OrderManagement />;
       case 'couponManagement':
