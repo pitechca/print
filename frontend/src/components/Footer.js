@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { InstagramIcon, FacebookIcon, PhoneIcon, MailIcon} from 'lucide-react'; 
+import { InstagramIcon, FacebookIcon, PhoneIcon, MailIcon, LinkedinIcon} from 'lucide-react'; 
 
 
 const Footer = () => {
@@ -28,15 +28,20 @@ const Footer = () => {
           <p>Phone: {phoneNumber}
             {/* {<PhoneIcon className="mr-2 h-5 w-5"/>} */}
            </p>
-          <p>Email: support@bagbox.ca
+          <p style={{marginTop:7+'px'}}>Email: support@bagbox.ca
             {/* {<MailIcon className="mr-2 h-5 w-5"/>}  */}
              </p>
+          <p style={{marginTop:7+'px'}}>
+            Address: 102-1127 14th St W,<br/> North Vancouver, BC, V7P 1J9
+
+          </p>
         </div>
         <div>
           <h4 className="text-xl font-bold mb-4">Follow Us</h4>
           <div className="flex space-x-4">
-            <a href="#" className="text-gray-400 hover:text-white">{<InstagramIcon className="mr-2 h-5 w-5"/>}</a>
+            <a href="https://www.instagram.com/bagbox.ca" className="text-gray-400 hover:text-white">{<InstagramIcon className="mr-2 h-5 w-5"/>}</a>
             <a href="#" className="text-gray-400 hover:text-white">{<FacebookIcon className="mr-2 h-5 w-5"/>}</a>
+            <a href="#" className="text-gray-400 hover:text-white">{<LinkedinIcon className="mr-2 h-5 w-5"/>}</a>
           </div>
         </div>
       </div>

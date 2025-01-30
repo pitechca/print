@@ -133,12 +133,12 @@ const Home = () => {
       </div>
 
       {/* Categories Section */}
-      <div className="container mx-auto px-4 mb-32">
+      <div className="container mx-auto px-4 mb-32" >
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-serif font-bold text-gray-900">
             Browse Categories
           </h2>
-          <div className="relative w-64">
+          <div className="relative w-64" >
             <input
               type="text"
               placeholder="Search categories..."
@@ -161,6 +161,7 @@ const Home = () => {
           <div 
             ref={categorySliderRef}
             className="flex overflow-x-auto hide-scrollbar gap-6 px-12"
+            style={{paddingTop:15+'px'}}
           >
             {filteredCategories.map((category) => (
               <div
