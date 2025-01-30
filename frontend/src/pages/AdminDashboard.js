@@ -226,11 +226,16 @@ const AdminDashboard = () => {
   };
 
   const renderSidebar = () => (
-    <div className="w-64 bg-white shadow-md h-screen" >
-      <div className="p-4">
-        <h2 className="text-xl font-bold">Admin Dashboard</h2>
-      </div>
-      <nav className="space-y-2">
+    // <div className="w-64 bg-white shadow-md h-screen" >
+    //   <div className="p-4">
+    //     <h2 className="text-xl font-bold">Admin Dashboard</h2>
+    //   </div>
+    //   <nav className="space-y-2">
+    <div className="w-full md:w-64 bg-white shadow-md md:h-screen">
+  <div className="p-4">
+    <h2 className="text-xl font-bold">Admin Dashboard</h2>
+  </div>
+  <nav className="flex flex-wrap gap-2 p-4 md:flex-col md:space-y-2 md:space-x-0">
         <SidebarItem label="Overview" menu="overview" icon={<HomeIcon className="mr-2"/>} />
         <SidebarItem label="Add Category" menu="addCategory" icon={<FolderPlusIcon className="mr-2"/>}
         //  icon={
@@ -388,7 +393,8 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    // <div className="flex min-h-screen bg-gray-100">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">
       {renderSidebar()}
       <div className="flex-1 p-8">
 

@@ -313,8 +313,8 @@ const TemplateDesigner = ({ onSave, initialTemplate, categories }) => {
         </button>
       </div>
 
-      <div className="mb-6 border rounded p-4">
-        <canvas ref={canvasRef} />
+      <div className="mb-6 border rounded p-4" >
+        <canvas ref={canvasRef}/>
       </div>
 
       <button onClick={handleSave} className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
