@@ -784,6 +784,43 @@ app.get('/api/cart', auth, async (req, res) => {
     }
   });
   
+  app.put('/api/cart/:index', auth, async (req, res) => {
+    try {
+      const { quantity, description } = req.body;
+      const cart = await Cart.findOne({ user: req.user._id });
+      
+      if (!cart) {
+        return res.status(404).send({ error: 'Cart not found' });
+      }
+  
+      if (!cart.items[req.params.index]) {
+        return res.status(404).send({ error: 'Cart item not found' });
+      }
+  
+      // Update quantity if provided
+      if (quantity !== undefined && quantity > 0 && quantity <= 100) {
+        cart.items[req.params.index].quantity = quantity;
+      }
+  
+      // Update description if provided
+      if (description !== undefined) {
+        if (!cart.items[req.params.index].customization) {
+          cart.items[req.params.index].customization = {};
+        }
+        cart.items[req.params.index].customization.description = description;
+      }
+  
+      await cart.save();
+      
+      // Populate product details before sending response
+      await cart.populate('items.product');
+      res.send(cart);
+    } catch (error) {
+      console.error('Error updating cart:', error);
+      res.status(400).send(error);
+    }
+  });
+  
   app.delete('/api/cart/:index', auth, async (req, res) => {
     try {
       const cart = await Cart.findOne({ user: req.user._id });

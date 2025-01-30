@@ -50,6 +50,20 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  const updateCartItem = async (index, updates) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+  
+      await axios.put(`/api/cart/${index}`, updates, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await fetchCart();
+    } catch (error) {
+      console.error('Error updating cart item:', error);
+    }
+  };
+
   const removeFromCart = async (index) => {
     try {
       const token = localStorage.getItem('token');
@@ -79,47 +93,10 @@ export const CartProvider = ({ children }) => {
   };
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, updateCartItem  }}>
       {children}
     </CartContext.Provider>
   );
 };
 
 export const useCart = () => useContext(CartContext);
-
-
-
-
-
-
-
-
-// // src/context/CartContext.js
-// import React, { createContext, useState, useContext } from 'react';
-
-// const CartContext = createContext(null);
-
-// export const CartProvider = ({ children }) => {
-//   const [cart, setCart] = useState([]);
-
-//   const addToCart = (item) => {
-//     setCart([...cart, item]);
-//   };
-
-//   const removeFromCart = (index) => {
-//     const newCart = cart.filter((_, i) => i !== index);
-//     setCart(newCart);
-//   };
-
-//   const clearCart = () => {
-//     setCart([]);
-//   };
-
-//   return (
-//     <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart }}>
-//       {children}
-//     </CartContext.Provider>
-//   );
-// };
-
-// export const useCart = () => useContext(CartContext);
