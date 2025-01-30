@@ -71,21 +71,59 @@ const ProductSchema = new mongoose.Schema({
   }
 });
 
+// const OrderSchema = new mongoose.Schema({
+//   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+//   products: [{
+//     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+//     quantity: Number,
+//     customization: {
+//       template: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' },
+//       customImage: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' },
+//       customText: String,
+//       preview: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' }
+//     }
+//   }],
+//   totalAmount: Number,
+//   status: { type: String, default: 'pending' },
+//   paymentMethod: String,
+//   createdAt: { type: Date, default: Date.now }
+// });
+
+// const OrderSchema = new mongoose.Schema({
+//   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+//   products: [{
+//     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+//     quantity: { type: Number, required: true, min: 1 },
+//     customization: {
+//       template: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' },
+//       customImage: { type: String },
+//       customText: { type: String },
+//       preview: { type: String }
+//     }
+//   }],
+//   totalAmount: { type: Number, required: true },
+//   status: { type: String, default: 'pending' },
+//   paymentMethod: { type: String, required: true },
+//   paymentId: { type: String },
+//   createdAt: { type: Date, default: Date.now }
+// });
+
 const OrderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   products: [{
-    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-    quantity: Number,
+    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    quantity: { type: Number, required: true, min: 1 },
     customization: {
       template: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' },
-      customImage: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' },
-      customText: String,
-      preview: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' }
+      customImage: { type: String },    // Store base64 string directly
+      customText: { type: String },
+      preview: { type: String }         // Store base64 string directly
     }
   }],
-  totalAmount: Number,
+  totalAmount: { type: Number, required: true },
   status: { type: String, default: 'pending' },
-  paymentMethod: String,
+  paymentMethod: { type: String, required: true },
+  paymentId: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -1114,20 +1152,25 @@ app.post("/api/orders", auth, async (req, res) => {
       });
     }
 
-    // Create the order
-    const order = new Order({
+    // Create order with the data directly from the cart
+    const orderData = {
       user: req.user._id,
       products: products.map(item => ({
         product: item.product,
         quantity: item.quantity || 1,
-        customization: item.customization || {}
+        customization: {
+          customText: item.customization?.customText || '',
+          customImage: item.customization?.customImage || '',
+          preview: item.customization?.preview || ''
+        }
       })),
       totalAmount,
       paymentMethod,
       paymentId,
-      status: 'completed' // Set initial status
-    });
+      status: 'completed'
+    };
 
+    const order = new Order(orderData);
     await order.save();
 
     // Fetch the complete order with populated fields
@@ -1144,6 +1187,64 @@ app.post("/api/orders", auth, async (req, res) => {
     });
   }
 });
+// app.post("/api/orders", auth, async (req, res) => {
+//   try {
+//     const { products, totalAmount, paymentMethod, paymentId } = req.body;
+
+//     // Validate required fields
+//     if (!products || !Array.isArray(products) || products.length === 0) {
+//       return res.status(400).json({ 
+//         error: 'Invalid products data',
+//         details: 'Products array is required and must not be empty'
+//       });
+//     }
+
+//     if (!totalAmount || totalAmount <= 0) {
+//       return res.status(400).json({ 
+//         error: 'Invalid total amount',
+//         details: 'Total amount must be greater than 0'
+//       });
+//     }
+
+//     if (!paymentMethod) {
+//       return res.status(400).json({ 
+//         error: 'Payment method is required',
+//         details: 'Please specify a payment method'
+//       });
+//     }
+
+//     // Create the order
+//     const order = new Order({
+//       user: req.user._id,
+//       products: products.map(item => ({
+//         product: item.product,
+//         quantity: item.quantity || 1,
+//         customization: item.customization || {}
+//       })),
+//       totalAmount,
+//       paymentMethod,
+//       paymentId,
+//       status: 'completed' // Set initial status
+//     });
+
+//     await order.save();
+
+//     // Fetch the complete order with populated fields
+//     const populatedOrder = await Order.findById(order._id)
+//       .populate('user', 'email')
+//       .populate('products.product');
+
+//     res.status(201).send(populatedOrder);
+//   } catch (error) {
+//     console.error('Order creation error:', error);
+//     res.status(400).json({
+//       error: 'Failed to create order',
+//       details: error.message
+//     });
+//   }
+// });
+
+
 // app.post("/api/orders", auth, async (req, res) => {
 //   try {
 //     const { products, totalAmount, paymentMethod, customizations } = req.body;
