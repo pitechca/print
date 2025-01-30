@@ -566,28 +566,6 @@ app.put("/api/categories/:id", auth, async (req, res) => {
   }
 });
 
-// app.delete("/api/categories/:id", auth, async (req, res) => {
-//   try {
-//     if (!req.user.isAdmin) {
-//       return res.status(403).send({ error: "Only admins can delete categories" });
-//     }
-
-//     const category = await Category.findById(req.params.id);
-//     if (!category) {
-//       return res.status(404).send({ error: 'Category not found' });
-//     }
-
-//     // Delete associated image if exists
-//     if (category.image) {
-//       await Image.findByIdAndDelete(category.image);
-//     }
-
-//     await category.delete();
-//     res.send({ message: 'Category deleted successfully' });
-//   } catch (error) {
-//     res.status(500).send(error);
-//   }
-// });
 app.delete("/api/categories/:id", auth, async (req, res) => {
   try {
     if (!req.user.isAdmin) {
@@ -1406,7 +1384,17 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI
+  // , {
+  // useNewUrlParser: true,
+  // useUnifiedTopology: true,
+  // maxPoolSize: 10, // Limit maximum connections in the pool
+  // serverSelectionTimeoutMS: 5000, // How long to try selecting a server
+  // socketTimeoutMS: 45000, // How long to wait for responses
+  // connectTimeoutMS: 10000, // How long to wait for initial connection
+  // retryWrites: true // Enable retrying write operations
+// }
+)
   .then(() => {
     console.log("Connected to MongoDB Atlas");
     // Start the server after successful database connection

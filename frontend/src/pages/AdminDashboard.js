@@ -301,14 +301,14 @@ const AdminDashboard = () => {
 
       case 'createTemplate':
         return (
-          <TemplateDesigner 
-            onSave={template => {
-              setFormData(prev => ({ ...prev, template }));
-              handleSubmit('template');
-            }}
-            categories={categories}
-          />
-        );
+                    <TemplateDesigner 
+                      onSave={template => {
+                        setFormData(prev => ({ ...prev, template }));
+                        handleSubmit('template');
+                      }}
+                      categories={categories}
+                    />
+                  );
       case 'editTemplate':
       return (
         <div>
