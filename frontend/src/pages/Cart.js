@@ -166,7 +166,7 @@ const Cart = () => {
                   
                   <div className="w-1/3">
                     <img
-                      src={item.customization?.preview || item.product.templates[0]?.data}
+                      src={item.customization?.preview || item.product.images?.[0]?.data}
                       alt={item.product.name}
                       className="w-full h-48 object-contain rounded-lg"
                     />

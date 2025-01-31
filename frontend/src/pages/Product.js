@@ -170,8 +170,8 @@ const Product = () => {
             >
               <div className="relative pb-[75%]">
                 <img
-                  src={product.templates[0]?.data || '/api/placeholder/400/300'}
-                  alt={product.name}
+                src={product.images?.[0]?.data || '/api/placeholder/400/400'}
+                alt={product.name}
                   className="absolute inset-0 w-full h-full object-cover"
                 />
               </div>

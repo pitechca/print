@@ -18,6 +18,7 @@ const ProductEditor = () => {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [categoryTemplates, setCategoryTemplates] = useState([]);
+  const [selectedProductImage, setSelectedProductImage] = useState(0); // Track selected image index
 
   useEffect(() => {
     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
@@ -29,74 +30,78 @@ const ProductEditor = () => {
     return () => fabricCanvas.dispose();
   }, []);
 
-// In ProductEditor.js, update the template filtering logic:
-
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      // First fetch the product
-      const productRes = await axios.get(`/api/products/${productId}`);
-      setSelectedProduct(productRes.data);
-      
-      // Then fetch templates
-      const templatesRes = await axios.get('/api/templates');
-      console.log('All templates:', templatesRes.data);
-      
-      // Filter templates by category, handling both nested and direct category IDs
-      const filteredTemplates = templatesRes.data.filter(template => {
-        const templateCategoryId = template.category._id || template.category;
-        const productCategoryId = productRes.data.category._id || productRes.data.category;
-        console.log('Comparing template category:', templateCategoryId, 'with product category:', productCategoryId);
-        return templateCategoryId === productCategoryId;
-      });
-
-      console.log('Filtered templates:', filteredTemplates);
-      setCategoryTemplates(filteredTemplates);
-
-      // Set background image if canvas exists
-      if (productRes.data.templates && productRes.data.templates.length > 0 && canvas) {
-        fabric.Image.fromURL(productRes.data.templates[0].data, (img) => {
-          const scale = Math.min(
-            canvas.width / img.width,
-            canvas.height / img.height
-          ) * 0.9;
-          
-          img.set({
-            scaleX: scale,
-            scaleY: scale,
-            left: (canvas.width - img.width * scale) / 2,
-            top: (canvas.height - img.height * scale) / 2,
-            selectable: false,
-            evented: false
-          });
-          
-          canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // First fetch the product
+        const productRes = await axios.get(`/api/products/${productId}`);
+        setSelectedProduct(productRes.data);
+        
+        // Load initial image if available
+        if (productRes.data.images && productRes.data.images.length > 0 && canvas) {
+          loadProductImage(productRes.data.images[0].data);
+        }
+        
+        // Then fetch templates
+        const templatesRes = await axios.get('/api/templates');
+        console.log('All templates:', templatesRes.data);
+        
+        // Filter templates by category
+        const filteredTemplates = templatesRes.data.filter(template => {
+          const templateCategoryId = template.category._id || template.category;
+          const productCategoryId = productRes.data.category._id || productRes.data.category;
+          return templateCategoryId === productCategoryId;
         });
+
+        console.log('Filtered templates:', filteredTemplates);
+        setCategoryTemplates(filteredTemplates);
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
       }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      console.error('Error details:', error.response?.data);
+    };
+
+    if (productId && canvas) {
+      fetchData();
     }
+  }, [productId, canvas]);
+
+  const loadProductImage = (imageData) => {
+    if (!canvas) return;
+
+    fabric.Image.fromURL(imageData, (img) => {
+      // Clear existing canvas
+      canvas.clear();
+      
+      const scale = Math.min(
+        canvas.width / img.width,
+        canvas.height / img.height
+      ) * 0.9;
+      
+      img.set({
+        scaleX: scale,
+        scaleY: scale,
+        left: (canvas.width - img.width * scale) / 2,
+        top: (canvas.height - img.height * scale) / 2,
+        selectable: false,
+        evented: false
+      });
+      
+      canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+    });
   };
 
-  if (productId && canvas) {
-    fetchData();
-  }
-}, [productId, canvas]);
-  
-  // Update handleTemplateChange to better handle template loading
   const handleTemplateChange = (template) => {
     if (!canvas || !template) return;
     
-    console.log('Applying template:', template); // Debug log
     setSelectedTemplate(template);
     
-    // Clear all objects except background
+    // Preserve background image
     const bgImage = canvas.backgroundImage;
     canvas.clear();
     canvas.setBackgroundImage(bgImage, canvas.renderAll.bind(canvas));
     
-    // Parse template elements if needed
+    // Parse and load template elements
     let elementsData = template.elements;
     if (typeof template.elements === 'string') {
       try {
@@ -107,15 +112,10 @@ useEffect(() => {
       }
     }
     
-    console.log('Template elements:', elementsData); // Debug log
-    
-    // Load template elements
     if (elementsData && elementsData.objects) {
       elementsData.objects.forEach(obj => {
         fabric.util.enlivenObjects([obj], (enlivenedObjects) => {
           const enlivenedObject = enlivenedObjects[0];
-          console.log('Loading object:', enlivenedObject); // Debug log
-          
           if (enlivenedObject.data?.isPlaceholder) {
             enlivenedObject.set({
               hasControls: true,
@@ -123,7 +123,6 @@ useEffect(() => {
               lockRotation: false
             });
           }
-          
           canvas.add(enlivenedObject);
           canvas.renderAll();
         });
@@ -131,7 +130,6 @@ useEffect(() => {
     }
   };
 
-  
   const handleTextAdd = () => {
     if (!customText || !canvas) return;
     const text = new fabric.Text(customText, {
@@ -154,20 +152,18 @@ useEffect(() => {
     const reader = new FileReader();
     reader.onload = (event) => {
       fabric.Image.fromURL(event.target.result, (img) => {
-        const scale = Math.min(200 / img.width, 200 / img.height);
-        img.scale(scale);
-
         // If there's a selected placeholder, replace it with the image
         const activeObject = canvas.getActiveObject();
         if (activeObject && activeObject.data?.isPlaceholder) {
+          img.scaleToWidth(activeObject.width * activeObject.scaleX);
+          img.scaleToHeight(activeObject.height * activeObject.scaleY);
           img.set({
             left: activeObject.left,
-            top: activeObject.top,
-            width: activeObject.width,
-            height: activeObject.height
+            top: activeObject.top
           });
           canvas.remove(activeObject);
         } else {
+          img.scaleToWidth(200);
           img.set({
             left: canvas.width / 2,
             top: canvas.height / 2,
@@ -221,9 +217,62 @@ useEffect(() => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-lg shadow-md">
           <canvas ref={canvasRef} className="border rounded-lg" />
+
+       {/* Product Images */}
+          {selectedProduct?.images && selectedProduct.images.length > 0 && (
+            <div className="mb-6">
+              <div className="grid grid-cols-6 gap-2">
+                {selectedProduct.images.map((image, index) => (
+                  <div
+                    key={index}
+                    className={`cursor-pointer border-2 rounded ${
+                      selectedProductImage === index ? 'border-blue-500' : 'border-gray-200'
+                    }`}
+                    onClick={() => {
+                      setSelectedProductImage(index);
+                      loadProductImage(image.data);
+                    }}
+                  >
+                    <img
+                      src={image.data}
+                      alt={`Product view ${index + 1}`}
+                      className="w-full h-16 object-cover rounded"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="text-m mb-4">
+            Description: {selectedProduct?.description}
+          </p>
           
-          {/* Template Selection */}
-          <div className="mb-4">
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-m">
+              Price: ${selectedProduct?.basePrice || 0} + 
+              ({(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
+                <span className="text-sm font-normal text-gray-600 ml-2">
+                  {[
+                    selectedProduct.hasGST && 'GST',
+                    selectedProduct.hasPST && 'PST'
+                  ].filter(Boolean).join(' + ')}
+                </span>
+              )} )
+            </p>
+          </div>
+   
+ 
+        </div>
+
+        {/* Product Details */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold mb-4">
+            {selectedProduct?.name || 'Loading...'}
+          </h2>
+          
+                   {/* Template Selection */}
+                   <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Select Design Template
             </label>
@@ -266,10 +315,8 @@ useEffect(() => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700">
                 Upload Image
-                {selectedTemplate?.elements?.objects.some(obj => obj.data?.isPlaceholder) && 
-                  " (Select a placeholder first to replace it)"}
               </label>
               <input
                 type="file"
@@ -284,6 +331,7 @@ useEffect(() => {
               <input
                 type="number"
                 min="1"
+                max="100"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -297,30 +345,19 @@ useEffect(() => {
                 onChange={(e) => setOrderDescription(e.target.value)}
                 rows="3"
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                placeholder="Add any special instructions or notes for your order..."
+                placeholder="Add any special instructions..."
               />
             </div>
-
-            <button
-              onClick={handleAddToCart}
-              className="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-            >
-              Add to Cart
-            </button>
           </div>
-        </div>
 
-        {/* Product Details */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold mb-4">
-            {selectedProduct?.name || 'Loading...'}
-          </h2>
-          <p className="text-gray-600 mb-4">
-            {selectedProduct?.description}
-          </p>
-          <p className="text-xl font-bold mb-4">
-            ${selectedProduct?.basePrice || 0}
-          </p>
+
+          
+          <button
+            onClick={handleAddToCart}
+            className="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          >
+            Add to Cart
+          </button>
         </div>
       </div>
     </div>

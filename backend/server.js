@@ -58,55 +58,32 @@ const ImageSchema = new mongoose.Schema({
   contentType: { type: String, required: true }
 });
 
+// const ProductSchema = new mongoose.Schema({
+//   name: { type: String, required: true },
+//   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+//   //  category: { type: String, required: true },
+//   basePrice: { type: Number, required: true },
+//   templates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }],
+//   description: String,
+//   customizationOptions: {
+//     allowCustomImage: { type: Boolean, default: true },
+//     allowCustomText: { type: Boolean, default: true }
+//   }
+// });
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
-  //  category: { type: String, required: true },
   basePrice: { type: Number, required: true },
-  templates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }],
+  images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }], // Changed from templates to images
   description: String,
+  createdAt: { type: Date, default: Date.now },
+  hasGST: { type: Boolean, default: false },
+  hasPST: { type: Boolean, default: false },
   customizationOptions: {
     allowCustomImage: { type: Boolean, default: true },
     allowCustomText: { type: Boolean, default: true }
   }
 });
-
-// const OrderSchema = new mongoose.Schema({
-//   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-//   products: [{
-//     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-//     quantity: Number,
-//     customization: {
-//       template: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' },
-//       customImage: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' },
-//       customText: String,
-//       preview: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' }
-//     }
-//   }],
-//   totalAmount: Number,
-//   status: { type: String, default: 'pending' },
-//   paymentMethod: String,
-//   createdAt: { type: Date, default: Date.now }
-// });
-
-// const OrderSchema = new mongoose.Schema({
-//   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-//   products: [{
-//     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-//     quantity: { type: Number, required: true, min: 1 },
-//     customization: {
-//       template: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' },
-//       customImage: { type: String },
-//       customText: { type: String },
-//       preview: { type: String }
-//     }
-//   }],
-//   totalAmount: { type: Number, required: true },
-//   status: { type: String, default: 'pending' },
-//   paymentMethod: { type: String, required: true },
-//   paymentId: { type: String },
-//   createdAt: { type: Date, default: Date.now }
-// });
 
 const OrderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -261,21 +238,52 @@ app.post("/api/login", async (req, res) => {
 // });
 
 // Product routes
+// app.post("/api/products", auth, async (req, res) => {
+//   try {
+//     if (!req.user.isAdmin) {
+//       return res.status(403).send({ error: "Only admins can create products" });
+//     }
+
+//     const { name, category, basePrice, description, templates } = req.body;
+    
+//     // Save templates as Image documents
+//     const templateIds = [];
+//     for (const template of templates) {
+//       const { buffer, contentType } = base64ToBuffer(template);
+//       const image = new Image({ data: buffer, contentType });
+//       await image.save();
+//       templateIds.push(image._id);
+//     }
+
+//     const product = new Product({
+//       name,
+//       category,
+//       basePrice,
+//       description,
+//       templates: templateIds
+//     });
+    
+//     await product.save();
+//     res.status(201).send(product);
+//   } catch (error) {
+//     res.status(400).send(error);
+//   }
+// });
 app.post("/api/products", auth, async (req, res) => {
   try {
     if (!req.user.isAdmin) {
       return res.status(403).send({ error: "Only admins can create products" });
     }
 
-    const { name, category, basePrice, description, templates } = req.body;
+    const { name, category, basePrice, description, images, hasGST, hasPST } = req.body;
     
-    // Save templates as Image documents
-    const templateIds = [];
-    for (const template of templates) {
-      const { buffer, contentType } = base64ToBuffer(template);
-      const image = new Image({ data: buffer, contentType });
-      await image.save();
-      templateIds.push(image._id);
+    // Save images as Image documents
+    const imageIds = [];
+    for (const image of images) {
+      const { buffer, contentType } = base64ToBuffer(image);
+      const newImage = new Image({ data: buffer, contentType });
+      await newImage.save();
+      imageIds.push(newImage._id);
     }
 
     const product = new Product({
@@ -283,7 +291,10 @@ app.post("/api/products", auth, async (req, res) => {
       category,
       basePrice,
       description,
-      templates: templateIds
+      images: imageIds,
+      hasGST,
+      hasPST,
+      createdAt: new Date()
     });
     
     await product.save();
@@ -292,6 +303,8 @@ app.post("/api/products", auth, async (req, res) => {
     res.status(400).send(error);
   }
 });
+
+
 
 // Helper function to convert base64 to Buffer
 const base64ToBuffer = (base64) => {
@@ -305,61 +318,154 @@ const base64ToBuffer = (base64) => {
   };
 };
 
+// app.put("/api/products/:id", auth, async (req, res) => {
+//   try {
+//     if (!req.user.isAdmin) {
+//       return res.status(403).send({ error: "Only admins can update products" });
+//     }
+
+//     const { name, category, basePrice, description, templates } = req.body;
+//     const updateData = { name, category, basePrice, description };
+
+//     // Handle templates if provided
+//     if (templates && templates.length > 0) {
+//       const templateIds = [];
+//       for (const template of templates) {
+//         const { buffer, contentType } = base64ToBuffer(template);
+//         const image = new Image({ data: buffer, contentType });
+//         await image.save();
+//         templateIds.push(image._id);
+//       }
+//       updateData.templates = templateIds;
+//     }
+
+//     const updatedProduct = await Product.findByIdAndUpdate(
+//       req.params.id,
+//       updateData,
+//       { new: true }
+//     );
+
+//     if (!updatedProduct) {
+//       return res.status(404).send({ error: 'Product not found' });
+//     }
+
+//     // Fetch the complete product with populated references
+//     const product = await Product.findById(updatedProduct._id)
+//       .populate('templates')
+//       .populate('category');
+
+//     // Format the response
+//     const productWithImages = {
+//       ...product.toObject(),
+//       templates: product.templates ? product.templates.map(template => ({
+//         _id: template._id,
+//         data: template.data && template.contentType ? 
+//           `data:${template.contentType};base64,${template.data.toString('base64')}` : null
+//       })) : [],
+//       category: product.category ? {
+//         _id: product.category._id,
+//         name: product.category.name,
+//         description: product.category.description
+//       } : null
+//     };
+
+//     res.send(productWithImages);
+//   } catch (error) {
+//     console.error('Error updating product:', error);
+//     res.status(400).send(error);
+//   }
+// });
 app.put("/api/products/:id", auth, async (req, res) => {
   try {
     if (!req.user.isAdmin) {
       return res.status(403).send({ error: "Only admins can update products" });
     }
 
-    const { name, category, basePrice, description, templates } = req.body;
-    const updateData = { name, category, basePrice, description };
+    console.log('Update request received for product:', req.params.id);
+    console.log('Update data:', req.body);
 
-    // Handle templates if provided
-    if (templates && templates.length > 0) {
-      const templateIds = [];
-      for (const template of templates) {
-        const { buffer, contentType } = base64ToBuffer(template);
-        const image = new Image({ data: buffer, contentType });
-        await image.save();
-        templateIds.push(image._id);
-      }
-      updateData.templates = templateIds;
-    }
-
-    const updatedProduct = await Product.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    );
-
-    if (!updatedProduct) {
+    // First get existing product
+    const existingProduct = await Product.findById(req.params.id);
+    if (!existingProduct) {
       return res.status(404).send({ error: 'Product not found' });
     }
 
-    // Fetch the complete product with populated references
-    const product = await Product.findById(updatedProduct._id)
-      .populate('templates')
-      .populate('category');
+    const { name, category, basePrice, description, images, hasGST, hasPST } = req.body;
 
-    // Format the response
-    const productWithImages = {
-      ...product.toObject(),
-      templates: product.templates ? product.templates.map(template => ({
-        _id: template._id,
-        data: template.data && template.contentType ? 
-          `data:${template.contentType};base64,${template.data.toString('base64')}` : null
-      })) : [],
-      category: product.category ? {
-        _id: product.category._id,
-        name: product.category.name,
-        description: product.category.description
+    // Start with existing image IDs
+    let updatedImageIds = [...existingProduct.images];
+
+    // Handle image updates if provided
+    if (images && Array.isArray(images)) {
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i];
+        
+        if (image && image.startsWith('data:')) {
+          // This is a new or updated image
+          const { buffer, contentType } = base64ToBuffer(image);
+          
+          if (i < updatedImageIds.length) {
+            // Update existing image
+            await Image.findByIdAndUpdate(updatedImageIds[i], {
+              data: buffer,
+              contentType
+            });
+          } else {
+            // Add new image
+            const newImage = new Image({ data: buffer, contentType });
+            await newImage.save();
+            updatedImageIds.push(newImage._id);
+          }
+        }
+        // If image is not a base64 string, keep the existing image at this index
+      }
+    }
+
+    // Prepare update object
+    const updateData = {
+      name,
+      category,
+      basePrice,
+      description,
+      hasGST,
+      hasPST,
+      images: updatedImageIds
+    };
+
+    console.log('Final update data:', updateData);
+
+    // Perform update
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true }
+    ).populate('images').populate('category');
+
+    if (!updatedProduct) {
+      throw new Error('Failed to update product');
+    }
+
+    // Format response
+    const response = {
+      ...updatedProduct.toObject(),
+      images: updatedProduct.images.map(image => ({
+        _id: image._id,
+        data: `data:${image.contentType};base64,${image.data.toString('base64')}`
+      })),
+      category: updatedProduct.category ? {
+        _id: updatedProduct.category._id,
+        name: updatedProduct.category.name,
+        description: updatedProduct.category.description
       } : null
     };
 
-    res.send(productWithImages);
+    res.json(response);
   } catch (error) {
     console.error('Error updating product:', error);
-    res.status(400).send(error);
+    res.status(400).send({
+      error: 'Error updating product',
+      details: error.message
+    });
   }
 });
 
@@ -419,21 +525,50 @@ app.delete("/api/products/:id", auth, async (req, res) => {
   }
 });
 
+// app.get("/api/products", async (req, res) => {
+//   try {
+//     const products = await Product.find()
+//       .populate('templates')
+//       .populate('category');
+
+//     const productsWithImages = products.map(product => {
+//       const templates = product.templates.map(template => ({
+//         _id: template._id,
+//         data: `data:${template.contentType};base64,${template.data.toString('base64')}`
+//       }));
+
+//       return {
+//         ...product.toObject(),
+//         templates,
+//         category: product.category ? {
+//           _id: product.category._id,
+//           name: product.category.name,
+//           description: product.category.description
+//         } : null
+//       };
+//     });
+
+//     res.send(productsWithImages);
+//   } catch (error) {
+//     res.status(500).send(error);
+//   }
+// });
 app.get("/api/products", async (req, res) => {
   try {
     const products = await Product.find()
-      .populate('templates')
-      .populate('category');
+      .populate('images')
+      .populate('category')
+      .sort('-createdAt'); // Sort by creation date, newest first
 
     const productsWithImages = products.map(product => {
-      const templates = product.templates.map(template => ({
-        _id: template._id,
-        data: `data:${template.contentType};base64,${template.data.toString('base64')}`
+      const images = product.images.map(image => ({
+        _id: image._id,
+        data: `data:${image.contentType};base64,${image.data.toString('base64')}`
       }));
 
       return {
         ...product.toObject(),
-        templates,
+        images,
         category: product.category ? {
           _id: product.category._id,
           name: product.category.name,
@@ -449,22 +584,55 @@ app.get("/api/products", async (req, res) => {
 });
 
 //singele product for productEditor
+// app.get("/api/products/:id", async (req, res) => {
+//   try {
+//     const product = await Product.findById(req.params.id)
+//       .populate('templates')
+//       .populate('category');
+      
+//     if (!product) {
+//       return res.status(404).send({ error: 'Product not found' });
+//     }
+    
+//     // Format the product using the same structure as the list endpoint
+//     const productWithImages = {
+//       ...product.toObject(),
+//       templates: product.templates.map(template => ({
+//         _id: template._id,
+//         data: `data:${template.contentType};base64,${template.data.toString('base64')}`
+//       })),
+//       category: product.category ? {
+//         _id: product.category._id,
+//         name: product.category.name,
+//         description: product.category.description
+//       } : null
+//     };
+
+//     res.send(productWithImages);
+//   } catch (error) {
+//     console.error('Error fetching product:', error);
+//     if (error.name === 'CastError') {
+//       return res.status(400).send({ error: 'Invalid product ID format' });
+//     }
+//     res.status(500).send({ error: 'Error fetching product' });
+//   }
+// });
 app.get("/api/products/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
-      .populate('templates')
+      .populate('images')
       .populate('category');
       
     if (!product) {
       return res.status(404).send({ error: 'Product not found' });
     }
     
-    // Format the product using the same structure as the list endpoint
+    // Format the product data
     const productWithImages = {
       ...product.toObject(),
-      templates: product.templates.map(template => ({
-        _id: template._id,
-        data: `data:${template.contentType};base64,${template.data.toString('base64')}`
+      images: product.images.map(image => ({
+        _id: image._id,
+        data: `data:${image.contentType};base64,${image.data.toString('base64')}`
       })),
       category: product.category ? {
         _id: product.category._id,
@@ -1392,7 +1560,6 @@ mongoose.connect(process.env.MONGO_URI
   // serverSelectionTimeoutMS: 5000, // How long to try selecting a server
   // socketTimeoutMS: 45000, // How long to wait for responses
   // connectTimeoutMS: 10000, // How long to wait for initial connection
-  // retryWrites: true // Enable retrying write operations
 // }
 )
   .then(() => {
