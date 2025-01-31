@@ -40,28 +40,6 @@ const Home = () => {
     }
   };
 
-  // const handleAddToCart = async (product) => {
-  //   try {
-  //     const token = localStorage.getItem('token');
-  //     if (!token) {
-  //       window.location.href = '/login';
-  //       return;
-  //     }
-  //     await addToCart({ 
-  //       product, 
-  //       quantity: 1,
-  //       customization: {
-  //         preview: product.templates[0]?.data || ''
-  //       } 
-  //     });
-      
-  //     // Show notification
-  //     setShowCartNotification(true);
-  //     setTimeout(() => setShowCartNotification(false), 2000);
-  //   } catch (error) {
-  //     console.error('Error adding to cart:', error);
-  //   }
-  // };
   const handleAddToCart = async (product) => {
     try {
       const token = localStorage.getItem('token');
@@ -87,7 +65,7 @@ const Home = () => {
     }
   };
 
-  
+
    // Filter and limit products
    const filteredProducts = products
    .filter(product => 
@@ -96,209 +74,209 @@ const Home = () => {
    )
    .slice(0, 6);
 
- // Filter categories
- const filteredCategories = categories.filter(category =>
-   category.name.toLowerCase().includes(categorySearchTerm.toLowerCase())
- );
+  // Filter categories
+  const filteredCategories = categories.filter(category =>
+    category.name.toLowerCase().includes(categorySearchTerm.toLowerCase())
+  );
 
- if (loading) {
-   return (
-     <div className="flex justify-center items-center h-screen">
-       <div className="text-2xl text-gray-600">Loading...</div>
-     </div>
-   );
- }
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-2xl text-gray-600">Loading...</div>
+      </div>
+    );
+  }
 
- return (
-   <div className="flex flex-col min-h-screen">
-     {/* Cart Notification */}
-     {showCartNotification && (
-        <div className="fixed top-24 right-4 z-50 animate-slide-in">
-          <div className="bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2">
-            <ShoppingCart className="h-4 w-4" />
-            <p>Item added to cart successfully!</p>
+  return (
+    <div className="flex flex-col min-h-screen">
+      {/* Cart Notification */}
+      {showCartNotification && (
+          <div className="fixed top-24 right-4 z-50 animate-slide-in">
+            <div className="bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2">
+              <ShoppingCart className="h-4 w-4" />
+              <p>Item added to cart successfully!</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Hero Section */}
-      <div 
-        className="relative bg-cover bg-center py-48 mb-20" 
-        style={{
-          backgroundImage: `url('/images/s1.jpg')`,
-          backgroundBlendMode: 'overlay',
-          backgroundColor: 'rgba(0,0,0,0.5)',
-        }}
-      >
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="text-center text-white">
-            <h1 className="text-5xl font-serif font-bold mb-12">
-              Professional Custom Packaging Solutions
-            </h1>
-            <p className="text-xl mb-8 max-w-2xl mx-auto">
-              Elevate your brand with premium quality custom bags and boxes. 
-              Perfect for businesses of all sizes.
-            </p>
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={() => window.location.href = '/products'}
-                className="bg-yellow-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-yellow-700 transition-colors"
-              >
-                Explore Products
-              </button>
-              <a
-                href={`tel:${phoneNumber}`}
-                className="bg-red-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-red-700 transition-colors"
-              >
-                Call to Order
-              </a>
+        {/* Hero Section */}
+        <div 
+          className="relative bg-cover bg-center py-48 mb-20" 
+          style={{
+            backgroundImage: `url('/images/s1.jpg')`,
+            backgroundBlendMode: 'overlay',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+          }}
+        >
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="text-center text-white">
+              <h1 className="text-5xl font-serif font-bold mb-12">
+                Professional Custom Packaging Solutions
+              </h1>
+              <p className="text-xl mb-8 max-w-2xl mx-auto">
+                Elevate your brand with premium quality custom bags and boxes. 
+                Perfect for businesses of all sizes.
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => window.location.href = '/products'}
+                  className="bg-yellow-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-yellow-700 transition-colors"
+                >
+                  Explore Products
+                </button>
+                <a
+                  href={`tel:${phoneNumber}`}
+                  className="bg-red-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-red-700 transition-colors"
+                >
+                  Call to Order
+                </a>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Categories Section */}
-      <div className="container mx-auto px-4 mb-32" >
+        {/* Categories Section */}
+        <div className="container mx-auto px-4 mb-32" >
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-serif font-bold text-gray-900">
+              Browse Categories
+            </h2>
+            <div className="relative w-64" >
+              <input
+                type="text"
+                placeholder="Search categories..."
+                value={categorySearchTerm}
+                onChange={(e) => setCategorySearchTerm(e.target.value)}
+                className="w-full px-4 py-2 pl-10 rounded-full border-2 border-gray-300 focus:outline-none focus:border-blue-500"
+              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            </div>
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => scroll('left')}
+              className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            
+            <div 
+              ref={categorySliderRef}
+              className="flex overflow-x-auto hide-scrollbar gap-6 px-12"
+              style={{paddingTop:15+'px'}}
+            >
+              {filteredCategories.map((category) => (
+                <div
+                  key={category._id}
+                  onClick={() => window.location.href = `/products?category=${category._id}`}
+                  className="flex-none cursor-pointer transition-transform hover:scale-105"
+                >
+                  <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-blue-500 mb-3">
+                    <img
+                      src={category.image?.data || '/api/placeholder/160/160'}
+                      alt={category.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <p className="text-center font-medium text-gray-800">{category.name}</p>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => scroll('right')}
+              className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
+            >
+              <ChevronRight size={24} />
+            </button>
+          </div>
+        </div>
+
+        {/* Featured Products Section */}
+      {/* Featured Products Section */}
+      <div className="container mx-auto px-4 mb-32">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-serif font-bold text-gray-900">
-            Browse Categories
+            Featured Products
           </h2>
-          <div className="relative w-64" >
+          <div className="relative w-64">
             <input
               type="text"
-              placeholder="Search categories..."
-              value={categorySearchTerm}
-              onChange={(e) => setCategorySearchTerm(e.target.value)}
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 pl-10 rounded-full border-2 border-gray-300 focus:outline-none focus:border-blue-500"
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
           </div>
         </div>
 
-        <div className="relative">
-          <button
-            onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          
-          <div 
-            ref={categorySliderRef}
-            className="flex overflow-x-auto hide-scrollbar gap-6 px-12"
-            style={{paddingTop:15+'px'}}
-          >
-            {filteredCategories.map((category) => (
-              <div
-                key={category._id}
-                onClick={() => window.location.href = `/products?category=${category._id}`}
-                className="flex-none cursor-pointer transition-transform hover:scale-105"
-              >
-                <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-blue-500 mb-3">
-                  <img
-                    src={category.image?.data || '/api/placeholder/160/160'}
-                    alt={category.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <p className="text-center font-medium text-gray-800">{category.name}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {filteredProducts.slice(0, 5).map((product) => (
+            <div 
+              key={product._id}
+              className="bg-white rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105"
+            >
+              <div className="relative pb-[100%]">
+                <img
+                  src={product.images?.[0]?.data || '/api/placeholder/400/400'}
+                  alt={product.name}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
               </div>
-            ))}
-          </div>
-
-          <button
-            onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
-          >
-            <ChevronRight size={24} />
-          </button>
-        </div>
-      </div>
-
-      {/* Featured Products Section */}
-    {/* Featured Products Section */}
-    <div className="container mx-auto px-4 mb-32">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-serif font-bold text-gray-900">
-          Featured Products
-        </h2>
-        <div className="relative w-64">
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 pl-10 rounded-full border-2 border-gray-300 focus:outline-none focus:border-blue-500"
-          />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-        {filteredProducts.slice(0, 5).map((product) => (
-          <div 
-            key={product._id}
-            className="bg-white rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105"
-          >
-            <div className="relative pb-[100%]">
-              <img
-                src={product.images?.[0]?.data || '/api/placeholder/400/400'}
-                alt={product.name}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            </div>
-            <div className="p-4">
-              <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">
-                {product.name}
-              </h3>
-              <p className="text-gray-600 mb-4 text-sm line-clamp-2">
-                {product.description}
-              </p>
-              <div className="flex justify-between items-center">
-                <span className="text-xl font-bold text-blue-600">
-                  ${product.basePrice.toFixed(2)}
-                </span>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      const token = localStorage.getItem('token');
-                      if (!token) {
-                        window.location.href = '/login';
-                        return;
-                      }                  
-                      window.location.href = `/customize/${product._id}`}}
-                    className="text-gray-600 hover:text-blue-600 transition-colors"
-                    title="Customize"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleAddToCart(product)}
-                    className="text-gray-600 hover:text-green-600 transition-colors"
-                    title="Add to Cart"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </button>
+              <div className="p-4">
+                <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">
+                  {product.name}
+                </h3>
+                <p className="text-gray-600 mb-4 text-sm line-clamp-2">
+                  {product.description}
+                </p>
+                <div className="flex justify-between items-center">
+                  <span className="text-xl font-bold text-blue-600">
+                    ${product.basePrice.toFixed(2)}
+                  </span>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        const token = localStorage.getItem('token');
+                        if (!token) {
+                          window.location.href = '/login';
+                          return;
+                        }                  
+                        window.location.href = `/customize/${product._id}`}}
+                      className="text-gray-600 hover:text-blue-600 transition-colors"
+                      title="Customize"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleAddToCart(product)}
+                      className="text-gray-600 hover:text-green-600 transition-colors"
+                      title="Add to Cart"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className="text-center mt-8">
-        <button
-          onClick={() => window.location.href = '/products'}
-          className="bg-[#033568] text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-amber-900 transition-colors"
-        >
-          View All Products
-        </button>
+        <div className="text-center mt-8">
+          <button
+            onClick={() => window.location.href = '/products'}
+            className="bg-[#033568] text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-amber-900 transition-colors"
+          >
+            View All Products
+          </button>
+        </div>
       </div>
-    </div>
 
 
       

@@ -269,6 +269,81 @@ app.post("/api/login", async (req, res) => {
 //     res.status(400).send(error);
 //   }
 // });
+
+
+
+// Lightweight product data without images
+app.get("/api/products/basic", async (req, res) => {
+  try {
+    const products = await Product.find()
+      .select('_id name description basePrice category')
+      .populate('category', 'name')
+      .sort('-createdAt');
+
+    res.send(products);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+// Get single product image
+app.get("/api/products/:id/image", async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id)
+      .populate('images')
+      .select('images');
+    
+    if (!product || !product.images || !product.images[0]) {
+      return res.status(404).send({ error: 'Image not found' });
+    }
+
+    const image = product.images[0];
+    res.send({
+      _id: image._id,
+      data: `data:${image.contentType};base64,${image.data.toString('base64')}`
+    });
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+// Lightweight category data without images
+app.get("/api/categories/basic", async (req, res) => {
+  try {
+    const categories = await Category.find()
+      .select('_id name description')
+      .sort('-createdAt');
+    
+    res.send(categories);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+// Get single category image
+app.get("/api/categories/:id/image", async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.id)
+      .populate('image')
+      .select('image');
+    
+    if (!category || !category.image) {
+      return res.status(404).send({ error: 'Image not found' });
+    }
+
+    res.send({
+      _id: category.image._id,
+      data: `data:${category.image.contentType};base64,${category.image.data.toString('base64')}`
+    });
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+
+
+
+
 app.post("/api/products", auth, async (req, res) => {
   try {
     if (!req.user.isAdmin) {
@@ -318,63 +393,6 @@ const base64ToBuffer = (base64) => {
   };
 };
 
-// app.put("/api/products/:id", auth, async (req, res) => {
-//   try {
-//     if (!req.user.isAdmin) {
-//       return res.status(403).send({ error: "Only admins can update products" });
-//     }
-
-//     const { name, category, basePrice, description, templates } = req.body;
-//     const updateData = { name, category, basePrice, description };
-
-//     // Handle templates if provided
-//     if (templates && templates.length > 0) {
-//       const templateIds = [];
-//       for (const template of templates) {
-//         const { buffer, contentType } = base64ToBuffer(template);
-//         const image = new Image({ data: buffer, contentType });
-//         await image.save();
-//         templateIds.push(image._id);
-//       }
-//       updateData.templates = templateIds;
-//     }
-
-//     const updatedProduct = await Product.findByIdAndUpdate(
-//       req.params.id,
-//       updateData,
-//       { new: true }
-//     );
-
-//     if (!updatedProduct) {
-//       return res.status(404).send({ error: 'Product not found' });
-//     }
-
-//     // Fetch the complete product with populated references
-//     const product = await Product.findById(updatedProduct._id)
-//       .populate('templates')
-//       .populate('category');
-
-//     // Format the response
-//     const productWithImages = {
-//       ...product.toObject(),
-//       templates: product.templates ? product.templates.map(template => ({
-//         _id: template._id,
-//         data: template.data && template.contentType ? 
-//           `data:${template.contentType};base64,${template.data.toString('base64')}` : null
-//       })) : [],
-//       category: product.category ? {
-//         _id: product.category._id,
-//         name: product.category.name,
-//         description: product.category.description
-//       } : null
-//     };
-
-//     res.send(productWithImages);
-//   } catch (error) {
-//     console.error('Error updating product:', error);
-//     res.status(400).send(error);
-//   }
-// });
 app.put("/api/products/:id", auth, async (req, res) => {
   try {
     if (!req.user.isAdmin) {
@@ -525,34 +543,6 @@ app.delete("/api/products/:id", auth, async (req, res) => {
   }
 });
 
-// app.get("/api/products", async (req, res) => {
-//   try {
-//     const products = await Product.find()
-//       .populate('templates')
-//       .populate('category');
-
-//     const productsWithImages = products.map(product => {
-//       const templates = product.templates.map(template => ({
-//         _id: template._id,
-//         data: `data:${template.contentType};base64,${template.data.toString('base64')}`
-//       }));
-
-//       return {
-//         ...product.toObject(),
-//         templates,
-//         category: product.category ? {
-//           _id: product.category._id,
-//           name: product.category.name,
-//           description: product.category.description
-//         } : null
-//       };
-//     });
-
-//     res.send(productsWithImages);
-//   } catch (error) {
-//     res.status(500).send(error);
-//   }
-// });
 app.get("/api/products", async (req, res) => {
   try {
     const products = await Product.find()
@@ -583,40 +573,6 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
-//singele product for productEditor
-// app.get("/api/products/:id", async (req, res) => {
-//   try {
-//     const product = await Product.findById(req.params.id)
-//       .populate('templates')
-//       .populate('category');
-      
-//     if (!product) {
-//       return res.status(404).send({ error: 'Product not found' });
-//     }
-    
-//     // Format the product using the same structure as the list endpoint
-//     const productWithImages = {
-//       ...product.toObject(),
-//       templates: product.templates.map(template => ({
-//         _id: template._id,
-//         data: `data:${template.contentType};base64,${template.data.toString('base64')}`
-//       })),
-//       category: product.category ? {
-//         _id: product.category._id,
-//         name: product.category.name,
-//         description: product.category.description
-//       } : null
-//     };
-
-//     res.send(productWithImages);
-//   } catch (error) {
-//     console.error('Error fetching product:', error);
-//     if (error.name === 'CastError') {
-//       return res.status(400).send({ error: 'Invalid product ID format' });
-//     }
-//     res.status(500).send({ error: 'Error fetching product' });
-//   }
-// });
 app.get("/api/products/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
