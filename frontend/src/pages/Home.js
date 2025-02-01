@@ -319,8 +319,6 @@ const Home = () => {
           </button>
         </div>
       </div>
-
-
       
       {/* Statistics Section */}
       <div className="bg-[#033568] py-20 mb-32">
@@ -478,8 +476,8 @@ const Home = () => {
         </div>
       </div>
 
-{/* About Section */}
-<div className="bg-gray-50 py-16" style={{marginBottom:50+'px'}}>
+      {/* About Section */}
+      <div className="bg-gray-50 py-16" style={{marginBottom:50+'px'}}>
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-serif font-bold text-gray-900 mb-6 text-center">

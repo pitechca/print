@@ -27,17 +27,6 @@ const CategoryManagement = ({
     }
   };
 
-//   const handleImageChange = (e) => {
-//     const file = e.target.files[0];
-//     if (file) {
-//       const reader = new FileReader();
-//       reader.onloadend = () => {
-//         setFormData({ ...formData, image: reader.result });
-//       };
-//       reader.readAsDataURL(file);
-//     }
-//   };
-
 const compressImage = async (file, maxWidth = 800, maxHeight = 800) => {
     return new Promise((resolve) => {
       const reader = new FileReader();

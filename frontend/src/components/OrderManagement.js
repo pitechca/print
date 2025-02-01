@@ -67,7 +67,7 @@ const OrderManagement = () => {
       </div>
 
       <div className="space-y-6">
-        {order.products.map((item, index) => (
+        {/* {order.products.map((item, index) => (
           <div key={index} className="border rounded-lg p-4">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -142,7 +142,91 @@ const OrderManagement = () => {
               </div>
             )}
           </div>
+        ))} */}
+        {order.products.map((item, index) => (
+  <div key={index} className="border rounded-lg p-4">
+    <div className="flex justify-between items-start mb-4">
+      <div>
+        <h4 className="font-bold text-lg">{item.product.name}</h4>
+        <p className="text-gray-600">Quantity: {item.quantity}</p>
+        
+        {/* Template Information */}
+        {item.customization?.template && (
+          <p className="text-gray-600">
+            Template: {item.customization.template.name}
+          </p>
+        )}
+      </div>
+      <p className="font-semibold">
+        ${(item.product.basePrice * item.quantity).toFixed(2)}
+      </p>
+    </div>
+
+    {item.customization && (
+      <div className="space-y-4">
+        {/* Required Fields */}
+        {item.customization.requiredFields?.map((field, fieldIndex) => (
+          <div key={fieldIndex}>
+            <h5 className="font-semibold mb-2">{field.type}:</h5>
+            {field.type === 'text' ? (
+              <p className="bg-gray-50 p-3 rounded">{field.value}</p>
+            ) : (
+              <div className="relative group">
+                <img
+                  src={field.value}
+                  alt={`${field.type} upload`}
+                  className="w-full h-48 object-contain border rounded"
+                />
+                <button
+                  onClick={() => downloadFile(
+                    field.value,
+                    `order-${order._id}-${field.type}-${fieldIndex}.png`
+                  )}
+                  className="absolute top-2 right-2 bg-white p-2 rounded-full shadow
+                    opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
         ))}
+
+        {/* Custom Fields */}
+        {item.customization.customFields?.map((field, fieldIndex) => (
+          <div key={fieldIndex}>
+            <h5 className="font-semibold mb-2">Custom {field.type}:</h5>
+            {field.type === 'text' ? (
+              <p className="bg-gray-50 p-3 rounded">{field.content}</p>
+            ) : (
+              <div className="relative group">
+                <img
+                  src={field.content}
+                  alt="Custom upload"
+                  className="w-full h-48 object-contain border rounded"
+                />
+                <button
+                  onClick={() => downloadFile(
+                    field.content,
+                    `order-${order._id}-custom-${fieldIndex}.png`
+                  )}
+                  className="absolute top-2 right-2 bg-white p-2 rounded-full shadow
+                    opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+))}
       </div>
     </div>
   );

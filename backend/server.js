@@ -58,18 +58,6 @@ const ImageSchema = new mongoose.Schema({
   contentType: { type: String, required: true }
 });
 
-// const ProductSchema = new mongoose.Schema({
-//   name: { type: String, required: true },
-//   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
-//   //  category: { type: String, required: true },
-//   basePrice: { type: Number, required: true },
-//   templates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }],
-//   description: String,
-//   customizationOptions: {
-//     allowCustomImage: { type: Boolean, default: true },
-//     allowCustomText: { type: Boolean, default: true }
-//   }
-// });
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
@@ -85,36 +73,138 @@ const ProductSchema = new mongoose.Schema({
   }
 });
 
-const OrderSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  products: [{
-    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    quantity: { type: Number, required: true, min: 1 },
-    customization: {
-      template: { type: mongoose.Schema.Types.ObjectId, ref: 'Image' },
-      customImage: { type: String },    // Store base64 string directly
-      customText: { type: String },
-      preview: { type: String }         // Store base64 string directly
+const customFieldSchema = new mongoose.Schema({
+  fieldId: { type: String, required: true },
+  type: { type: String, required: true },
+  content: { type: String, required: true },
+  properties: {
+    fontSize: { type: Number, default: null },
+    fontFamily: { type: String, default: null },
+    fill: { type: String, default: null },
+    position: {
+      x: { type: Number, default: 0 },
+      y: { type: Number, default: 0 }
+    },
+    scale: {
+      x: { type: Number, default: 1 },
+      y: { type: Number, default: 1 }
     }
-  }],
-  totalAmount: { type: Number, required: true },
-  status: { type: String, default: 'pending' },
-  paymentMethod: { type: String, required: true },
-  paymentId: { type: String },
-  createdAt: { type: Date, default: Date.now }
+  }
+}, { _id: false });
+
+const requiredFieldSchema = new mongoose.Schema({
+  fieldId: { type: String, required: true },
+  type: { type: String, required: true },
+  value: { type: String, required: true }
+}, { _id: false });
+
+const cartItemSchema = new mongoose.Schema({
+  product: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: true
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    default: 1,
+    min: 1
+  },
+  customization: {
+    template: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Template',
+      default: null
+    },
+    preview: { type: String, default: null },
+    description: { type: String, default: '' },
+    customFields: [customFieldSchema],
+    requiredFields: [requiredFieldSchema]
+  }
 });
 
-const CartSchema = new mongoose.Schema({
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    items: [{
-      product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-      quantity: Number,
-      customization: {
-        customText: String,
-        customImage: String,
-        preview: String
-      }
-    }]
+const cartSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  items: [cartItemSchema]
+}, { timestamps: true });
+
+// Add indexes for better performance
+// cartSchema.index({ user: 1 });
+// cartSchema.index({ 'items.product': 1 });
+
+const OrderSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  products: [{
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+      required: true
+    },
+    quantity: {
+      type: Number,
+      required: true
+    },
+    customization: {
+      template: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Template'
+      },
+      preview: String,
+      description: String,
+      customFields: [{
+        fieldId: String,
+        type: String,
+        content: String,
+        properties: {
+          fontSize: Number,
+          fontFamily: String,
+          fill: String,
+          position: {
+            x: Number,
+            y: Number
+          },
+          scale: {
+            x: Number,
+            y: Number
+          }
+        }
+      }],
+      requiredFields: [{
+        fieldId: String,
+        type: String,
+        value: String
+      }]
+    }
+  }],
+  totalAmount: {
+    type: Number,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'processing', 'completed', 'cancelled'],
+    default: 'pending'
+  },
+  paymentMethod: {
+    type: String,
+    required: true
+  },
+  paymentId: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
 const CategorySchema = new mongoose.Schema({
@@ -147,9 +237,61 @@ const CouponSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+const CustomizationSchema = new mongoose.Schema({
+  fieldId: String,
+  type: String,
+  content: mongoose.Schema.Types.Mixed, // Can store text content or image data
+  properties: {
+    fontSize: Number,
+    fontFamily: String,
+    color: String,
+    position: {
+      x: Number,
+      y: Number
+    },
+    scale: {
+      x: Number,
+      y: Number
+    }
+  }
+});
+
+const OrderItemSchema = new mongoose.Schema({
+  product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  quantity: { type: Number, required: true, min: 1 },
+  customization: {
+    template: { type: mongoose.Schema.Types.ObjectId, ref: 'Template' },
+    preview: String,
+    customFields: [{
+      fieldId: String,
+      type: String,
+      content: String,
+      properties: {
+        fontSize: Number,
+        fontFamily: String,
+        fill: String,
+        position: {
+          x: Number,
+          y: Number
+        },
+        scale: {
+          x: Number,
+          y: Number
+        }
+      }
+    }],
+    requiredFields: [{
+      fieldId: String,
+      type: String,
+      value: String
+    }],
+    description: String
+  }
+});
+
 const Category = mongoose.model('Category', CategorySchema);
 const Template = mongoose.model('Template', TemplateSchema);
-const Cart = mongoose.model('Cart', CartSchema);
+const Cart = mongoose.model('Cart', cartSchema);
 const User = mongoose.model("User", UserSchema);
 const Image = mongoose.model("Image", ImageSchema);
 const Product = mongoose.model("Product", ProductSchema);
@@ -220,57 +362,6 @@ app.post("/api/login", async (req, res) => {
     res.status(400).send(error);
   }
 });
-// app.post("/api/login", async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-//     const user = await User.findOne({ email });
-//     if (!user || !(await bcrypt.compare(password, user.password))) {
-//       throw new Error("Invalid login credentials");
-//     }
-//     const token = jwt.sign(
-//       { userId: user._id, isAdmin: user.isAdmin },
-//       process.env.JWT_SECRET
-//     );
-//     res.send({ user, token });
-//   } catch (error) {
-//     res.status(400).send(error);
-//   }
-// });
-
-// Product routes
-// app.post("/api/products", auth, async (req, res) => {
-//   try {
-//     if (!req.user.isAdmin) {
-//       return res.status(403).send({ error: "Only admins can create products" });
-//     }
-
-//     const { name, category, basePrice, description, templates } = req.body;
-    
-//     // Save templates as Image documents
-//     const templateIds = [];
-//     for (const template of templates) {
-//       const { buffer, contentType } = base64ToBuffer(template);
-//       const image = new Image({ data: buffer, contentType });
-//       await image.save();
-//       templateIds.push(image._id);
-//     }
-
-//     const product = new Product({
-//       name,
-//       category,
-//       basePrice,
-//       description,
-//       templates: templateIds
-//     });
-    
-//     await product.save();
-//     res.status(201).send(product);
-//   } catch (error) {
-//     res.status(400).send(error);
-//   }
-// });
-
-
 
 // Lightweight product data without images
 app.get("/api/products/basic", async (req, res) => {
@@ -306,43 +397,6 @@ app.get("/api/products/:id/image", async (req, res) => {
     res.status(500).send(error);
   }
 });
-
-// Lightweight category data without images
-app.get("/api/categories/basic", async (req, res) => {
-  try {
-    const categories = await Category.find()
-      .select('_id name description')
-      .sort('-createdAt');
-    
-    res.send(categories);
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
-
-// Get single category image
-app.get("/api/categories/:id/image", async (req, res) => {
-  try {
-    const category = await Category.findById(req.params.id)
-      .populate('image')
-      .select('image');
-    
-    if (!category || !category.image) {
-      return res.status(404).send({ error: 'Image not found' });
-    }
-
-    res.send({
-      _id: category.image._id,
-      data: `data:${category.image.contentType};base64,${category.image.data.toString('base64')}`
-    });
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
-
-
-
-
 
 app.post("/api/products", auth, async (req, res) => {
   try {
@@ -608,6 +662,40 @@ app.get("/api/products/:id", async (req, res) => {
 });
 
 // Category routes
+
+// Lightweight category data without images
+app.get("/api/categories/basic", async (req, res) => {
+  try {
+    const categories = await Category.find()
+      .select('_id name description')
+      .sort('-createdAt');
+    
+    res.send(categories);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+// Get single category image
+app.get("/api/categories/:id/image", async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.id)
+      .populate('image')
+      .select('image');
+    
+    if (!category || !category.image) {
+      return res.status(404).send({ error: 'Image not found' });
+    }
+
+    res.send({
+      _id: category.image._id,
+      data: `data:${category.image.contentType};base64,${category.image.data.toString('base64')}`
+    });
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
 app.post("/api/categories", auth, async (req, res) => {
   try {
     if (!req.user.isAdmin) {
@@ -868,27 +956,59 @@ app.get('/api/cart', auth, async (req, res) => {
       res.status(500).send(error);
     }
   });
-  
+
   app.post('/api/cart/add', auth, async (req, res) => {
     try {
       const { product, quantity, customization } = req.body;
-      let cart = await Cart.findOne({ user: req.user._id });
-      
-      if (!cart) {
-        cart = new Cart({ user: req.user._id, items: [] });
+  
+      if (!product || !product._id) {
+        return res.status(400).json({ error: 'Invalid product data' });
       }
-      
-      cart.items.push({ product, quantity, customization });
+  
+      const cartItem = {
+        product: product._id,
+        quantity: quantity || 1,
+        customization: {
+          template: customization.template,
+          preview: customization.preview,
+          description: customization.description,
+          customFields: customization.customFields,
+          requiredFields: customization.requiredFields
+        }
+      };
+  
+      let cart = await Cart.findOne({ user: req.user._id });
+      if (!cart) {
+        cart = new Cart({
+          user: req.user._id,
+          items: [cartItem]
+        });
+      } else {
+        cart.items.push(cartItem);
+      }
+  
       await cart.save();
-      res.send(cart);
+      
+      // Populate the cart before sending response
+      await cart.populate('items.product');
+      
+      res.status(200).json({
+        message: 'Item added to cart successfully',
+        cart: cart
+      });
     } catch (error) {
-      res.status(400).send(error);
+      console.error('Server error in cart addition:', error);
+      res.status(500).json({
+        error: 'Error adding item to cart',
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
-  
+    
   app.put('/api/cart/:index', auth, async (req, res) => {
     try {
-      const { quantity, description } = req.body;
+      const { quantity, customization } = req.body;
       const cart = await Cart.findOne({ user: req.user._id });
       
       if (!cart) {
@@ -900,29 +1020,39 @@ app.get('/api/cart', auth, async (req, res) => {
       }
   
       // Update quantity if provided
-      if (quantity !== undefined && quantity > 0 && quantity <= 100) {
+      if (quantity !== undefined) {
         cart.items[req.params.index].quantity = quantity;
       }
   
-      // Update description if provided
-      if (description !== undefined) {
-        if (!cart.items[req.params.index].customization) {
-          cart.items[req.params.index].customization = {};
-        }
-        cart.items[req.params.index].customization.description = description;
+      // Update customization if provided
+      if (customization) {
+        cart.items[req.params.index].customization = {
+          template: customization.template,
+          preview: customization.preview,
+          customFields: customization.customFields.map(field => ({
+            fieldId: field.fieldId,
+            type: field.type,
+            content: field.content,
+            properties: field.properties
+          })),
+          requiredFields: customization.requiredFields.map(field => ({
+            fieldId: field.fieldId,
+            type: field.type,
+            value: field.value
+          })),
+          description: customization.description
+        };
       }
   
       await cart.save();
-      
-      // Populate product details before sending response
       await cart.populate('items.product');
-      res.send(cart);
+      res.json(cart);
     } catch (error) {
       console.error('Error updating cart:', error);
-      res.status(400).send(error);
+      res.status(400).send({ error: 'Error updating cart item' });
     }
   });
-  
+
   app.delete('/api/cart/:index', auth, async (req, res) => {
     try {
       const cart = await Cart.findOne({ user: req.user._id });
@@ -1149,35 +1279,6 @@ app.get("/api/users", auth, async (req, res) => {
   }
 });
 
-
-// Profile routes
-// app.put("/api/users/profile", auth, async (req, res) => {
-//   try {
-//     const { email, phone, currentPassword, newPassword } = req.body;
-//     const user = await User.findById(req.user._id);
-
-//     if (currentPassword && newPassword) {
-//       const isMatch = await bcrypt.compare(currentPassword, user.password);
-//       if (!isMatch) {
-//         return res.status(400).send({ error: "Current password is incorrect" });
-//       }
-//       user.password = await bcrypt.hash(newPassword, 10);
-//     }
-
-//     user.email = email || user.email;
-//     user.phone = phone || user.phone;
-//     await user.save();
-
-//     const token = jwt.sign(
-//       { userId: user._id, isAdmin: user.isAdmin },
-//       process.env.JWT_SECRET
-//     );
-
-//     res.send({ user, token });
-//   } catch (error) {
-//     res.status(400).send(error);
-//   }
-// });
 app.put("/api/users/profile", auth, async (req, res) => {
   try {
     const { email, phone } = req.body;
@@ -1251,18 +1352,6 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
     });
   }
 });
-// app.post("/api/create-payment-intent", auth, async (req, res) => {
-//   try {
-//     const { amount } = req.body;
-//     const paymentIntent = await stripe.paymentIntents.create({
-//       amount: Math.round(amount * 100), // Convert to cents
-//       currency: "cad"
-//     });
-//     res.send({ clientSecret: paymentIntent.client_secret });
-//   } catch (error) {
-//     res.status(400).send(error);
-//   }
-// });
 
 // Order routes
 app.post("/api/orders", auth, async (req, res) => {
@@ -1398,6 +1487,230 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
     res.status(500).send(error);
   }
 });
+
+
+app.get('/api/orders/:orderId/customization/:fieldId', auth, async (req, res) => {
+  try {
+    const { orderId, fieldId } = req.params;
+    
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' });
+    }
+
+    if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).send({ error: 'Not authorized' });
+    }
+
+    // Find the field in all items
+    let foundField = null;
+    order.items.forEach(item => {
+      const customField = item.customization?.customFields?.find(f => f.fieldId === fieldId);
+      const requiredField = item.customization?.requiredFields?.find(f => f.fieldId === fieldId);
+      if (customField || requiredField) {
+        foundField = customField || requiredField;
+      }
+    });
+
+    if (!foundField) {
+      return res.status(404).send({ error: 'Customization field not found' });
+    }
+
+    // Return the field content based on type
+    if (foundField.type === 'image' || foundField.type === 'logo') {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.png`);
+      const imageData = foundField.content || foundField.value;
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      res.send(buffer);
+    } else {
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
+      res.send(foundField.content || foundField.value);
+    }
+  } catch (error) {
+    console.error('Error downloading customization file:', error);
+    res.status(500).send({ error: 'Error downloading customization file' });
+  }
+});
+
+
+
+
+
+
+
+
+// Add these new endpoints after your existing routes:
+
+// Get template fields
+app.get('/api/templates/:id/fields', async (req, res) => {
+  try {
+    const template = await Template.findById(req.params.id);
+    if (!template) {
+      return res.status(404).send({ error: 'Template not found' });
+    }
+    
+    const fields = template.requiredFields || [];
+    res.json(fields);
+  } catch (error) {
+    console.error('Error fetching template fields:', error);
+    res.status(500).send({ error: 'Error fetching template fields' });
+  }
+});
+
+// Save customization preview
+app.post('/api/customizations/preview', auth, async (req, res) => {
+  try {
+    const { preview, customFields, templateId } = req.body;
+    
+    // Store preview temporarily (you might want to use a separate collection or temporary storage)
+    const previewId = new mongoose.Types.ObjectId();
+    
+    // You could store this in a temporary collection or use a caching solution
+    // For now, we'll just return the ID
+    res.json({ 
+      previewId: previewId.toString(),
+      preview,
+      customFields 
+    });
+  } catch (error) {
+    console.error('Error saving customization preview:', error);
+    res.status(500).send({ error: 'Error saving customization preview' });
+  }
+});
+
+// Update order download endpoint to include customization files
+app.get("/api/orders/:id/download", auth, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user')
+      .populate('products.product')
+      .populate('products.customization.template');
+
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' });
+    }
+
+    if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).send({ error: 'Not authorized' });
+    }
+
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument();
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=order-${order._id}.pdf`);
+
+    doc.pipe(res);
+
+    // Order Details
+    doc.fontSize(20).text('Order Details', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(12).text(`Order ID: ${order._id}`);
+    doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`);
+    doc.text(`Customer: ${order.user.email}`);
+    doc.text(`Total Amount: $${order.totalAmount.toFixed(2)}`);
+    
+    // Products and Customizations
+    order.products.forEach((item, index) => {
+      doc.moveDown();
+      doc.text(`Product ${index + 1}: ${item.product.name}`);
+      doc.text(`Quantity: ${item.quantity}`);
+      
+      if (item.customization) {
+        doc.text('Customizations:', { underline: true });
+        
+        // Template information
+        if (item.customization.template) {
+          doc.text(`Template: ${item.customization.template.name}`);
+        }
+
+        // Custom fields
+        if (item.customization.customFields && item.customization.customFields.length > 0) {
+          item.customization.customFields.forEach(field => {
+            if (field.type === 'text') {
+              doc.text(`${field.type}: ${field.content}`);
+            }
+            // Images are stored separately and can be downloaded individually
+          });
+        }
+
+        // Description
+        if (item.customization.description) {
+          doc.text(`Special Instructions: ${item.customization.description}`);
+        }
+
+        // Preview image
+        if (item.customization.preview) {
+          doc.image(Buffer.from(item.customization.preview.split(',')[1], 'base64'), {
+            fit: [250, 250],
+            align: 'center'
+          });
+        }
+      }
+    });
+
+    doc.end();
+  } catch (error) {
+    console.error('Error generating order PDF:', error);
+    res.status(500).send({ error: 'Error generating order PDF' });
+  }
+});
+
+// Add endpoint to get individual customization files
+app.get("/api/orders/:orderId/products/:productIndex/files/:fieldId", auth, async (req, res) => {
+  try {
+    const { orderId, productIndex, fieldId } = req.params;
+    
+    const order = await Order.findById(orderId)
+      .populate('user')
+      .populate('products.product');
+
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' });
+    }
+
+    if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).send({ error: 'Not authorized' });
+    }
+
+    const product = order.products[productIndex];
+    if (!product) {
+      return res.status(404).send({ error: 'Product not found in order' });
+    }
+
+    const field = product.customization?.customFields?.find(f => f.fieldId === fieldId);
+    if (!field) {
+      return res.status(404).send({ error: 'Customization field not found' });
+    }
+
+    // Send the file based on field type
+    if (field.type === 'image' || field.type === 'logo') {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.png`);
+      // Assuming the content is stored as base64
+      const imageBuffer = Buffer.from(field.content.split(',')[1], 'base64');
+      res.send(imageBuffer);
+    } else {
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
+      res.send(field.content);
+    }
+  } catch (error) {
+    console.error('Error downloading customization file:', error);
+    res.status(500).send({ error: 'Error downloading customization file' });
+  }
+});
+
+
+
+
+
+
+
+
 
 // Contact form validation and submission route
 app.post('/api/contact', contactLimiter, [

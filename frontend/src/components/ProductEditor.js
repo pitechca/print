@@ -8,17 +8,33 @@ import { useCart } from '../context/CartContext';
 const ProductEditor = () => {
   const [canvas, setCanvas] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [customText, setCustomText] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [orderDescription, setOrderDescription] = useState("");
   const canvasRef = useRef(null);
   const { productId } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
-  const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [categoryTemplates, setCategoryTemplates] = useState([]);
-  const [selectedProductImage, setSelectedProductImage] = useState(0); // Track selected image index
+  const [selectedProductImage, setSelectedProductImage] = useState(0);
+  
+  // Template field states
+  const [requiredFields, setRequiredFields] = useState([]);
+  const [fieldInputs, setFieldInputs] = useState({});
+  
+  // Customization states
+  const [selectedObject, setSelectedObject] = useState(null);
+  const [selectedColor, setSelectedColor] = useState('#000000');
+  const [fillColor, setFillColor] = useState('transparent');
+  const [selectedFontSize, setSelectedFontSize] = useState('20');
+  const [selectedFontFamily, setSelectedFontFamily] = useState('Arial');
+  const [customText, setCustomText] = useState('');
+  const [customizations, setCustomizations] = useState({});
+
+  const fontFamilies = [
+    'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana',
+    'Helvetica', 'Palatino', 'Garamond', 'Bookman', 'Tahoma'
+  ];
 
   useEffect(() => {
     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
@@ -26,6 +42,12 @@ const ProductEditor = () => {
       height: 500,
       backgroundColor: '#ffffff'
     });
+    
+    fabricCanvas.selection = true;
+    fabricCanvas.on('object:selected', handleObjectSelected);
+    fabricCanvas.on('selection:cleared', handleSelectionCleared);
+    fabricCanvas.on('object:modified', handleObjectModified);
+    
     setCanvas(fabricCanvas);
     return () => fabricCanvas.dispose();
   }, []);
@@ -33,29 +55,21 @@ const ProductEditor = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // First fetch the product
         const productRes = await axios.get(`/api/products/${productId}`);
         setSelectedProduct(productRes.data);
         
-        // Load initial image if available
         if (productRes.data.images && productRes.data.images.length > 0 && canvas) {
           loadProductImage(productRes.data.images[0].data);
         }
         
-        // Then fetch templates
         const templatesRes = await axios.get('/api/templates');
-        console.log('All templates:', templatesRes.data);
-        
-        // Filter templates by category
         const filteredTemplates = templatesRes.data.filter(template => {
           const templateCategoryId = template.category._id || template.category;
           const productCategoryId = productRes.data.category._id || productRes.data.category;
           return templateCategoryId === productCategoryId;
         });
 
-        console.log('Filtered templates:', filteredTemplates);
         setCategoryTemplates(filteredTemplates);
-
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -70,9 +84,7 @@ const ProductEditor = () => {
     if (!canvas) return;
 
     fabric.Image.fromURL(imageData, (img) => {
-      // Clear existing canvas
       canvas.clear();
-      
       const scale = Math.min(
         canvas.width / img.width,
         canvas.height / img.height
@@ -95,13 +107,16 @@ const ProductEditor = () => {
     if (!canvas || !template) return;
     
     setSelectedTemplate(template);
+    setRequiredFields(template.requiredFields || []);
+    setFieldInputs({});
+    setCustomizations({});
     
-    // Preserve background image
+    // Keep background image
     const bgImage = canvas.backgroundImage;
     canvas.clear();
     canvas.setBackgroundImage(bgImage, canvas.renderAll.bind(canvas));
     
-    // Parse and load template elements
+    // Load template elements
     let elementsData = template.elements;
     if (typeof template.elements === 'string') {
       try {
@@ -116,13 +131,17 @@ const ProductEditor = () => {
       elementsData.objects.forEach(obj => {
         fabric.util.enlivenObjects([obj], (enlivenedObjects) => {
           const enlivenedObject = enlivenedObjects[0];
-          if (enlivenedObject.data?.isPlaceholder) {
+          
+          // Keep required field IDs and placeholder properties
+          if (enlivenedObject.data?.isPlaceholder || enlivenedObject.data?.required) {
             enlivenedObject.set({
               hasControls: true,
               lockUniScaling: false,
-              lockRotation: false
+              lockRotation: false,
+              selectable: true
             });
           }
+          
           canvas.add(enlivenedObject);
           canvas.renderAll();
         });
@@ -130,157 +149,386 @@ const ProductEditor = () => {
     }
   };
 
-  const handleTextAdd = () => {
-    if (!customText || !canvas) return;
-    const text = new fabric.Text(customText, {
+  const handleObjectSelected = (e) => {
+    const obj = e.target;
+    if (!obj) return;
+
+    setSelectedObject(obj);
+    setSelectedColor(obj.fill || '#000000');
+    setFillColor(obj.fill === 'transparent' ? 'transparent' : obj.fill);
+    
+    if (obj.type === 'i-text' || obj.type === 'text') {
+      setSelectedFontSize(obj.fontSize?.toString() || '20');
+      setSelectedFontFamily(obj.fontFamily || 'Arial');
+      setCustomText(obj.text || '');
+    }
+  };
+
+  const handleObjectModified = (e) => {
+    const obj = e.target;
+    if (!obj || !obj.data?.id) return;
+
+    setCustomizations(prev => ({
+      ...prev,
+      [obj.data.id]: {
+        type: obj.data.type || 'text',
+        content: obj.type === 'i-text' || obj.type === 'text' ? obj.text : null,
+        image: obj.type === 'image' ? obj.toDataURL() : null,
+        properties: {
+          fontSize: obj.fontSize,
+          fontFamily: obj.fontFamily,
+          fill: obj.fill,
+          position: { x: obj.left, y: obj.top },
+          scale: { x: obj.scaleX, y: obj.scaleY }
+        }
+      }
+    }));
+
+    // Update field inputs if it's a required field
+    if (obj.data?.required) {
+      setFieldInputs(prev => ({
+        ...prev,
+        [obj.data.id]: obj.type === 'i-text' || obj.type === 'text' 
+          ? obj.text 
+          : obj.toDataURL()
+      }));
+    }
+  };
+
+  const handleSelectionCleared = () => {
+    setSelectedObject(null);
+    setSelectedColor('#000000');
+    setFillColor('transparent');
+    setSelectedFontSize('20');
+    setSelectedFontFamily('Arial');
+    setCustomText('');
+  };
+
+  const handleFieldInput = (fieldId, value, type) => {
+    const fields = canvas.getObjects().filter(obj => obj.data?.id === fieldId);
+    if (!fields.length) return;
+
+    const field = fields[0];
+
+    if (type === 'text' && (field.type === 'i-text' || field.type === 'text')) {
+      field.set('text', value);
+      setFieldInputs(prev => ({ ...prev, [fieldId]: value }));
+      handleObjectModified({ target: field });
+    } else if ((type === 'image' || type === 'logo') && value instanceof File) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        fabric.Image.fromURL(e.target.result, (img) => {
+          const scale = Math.min(
+            field.width * field.scaleX / img.width,
+            field.height * field.scaleY / img.height
+          );
+
+          img.set({
+            left: field.left,
+            top: field.top,
+            scaleX: scale,
+            scaleY: scale,
+            data: field.data
+          });
+
+          canvas.remove(field);
+          canvas.add(img);
+          canvas.setActiveObject(img);
+          canvas.renderAll();
+
+          setFieldInputs(prev => ({ ...prev, [fieldId]: e.target.result }));
+          handleObjectModified({ target: img });
+        });
+      };
+      reader.readAsDataURL(value);
+    }
+
+    canvas.renderAll();
+  };
+
+  const handleCustomText = () => {
+    if (!canvas || !customText) return;
+
+    const text = new fabric.IText(customText, {
       left: canvas.width / 2,
       top: canvas.height / 2,
-      fontSize: 30,
+      fontSize: parseInt(selectedFontSize),
+      fontFamily: selectedFontFamily,
+      fill: selectedColor,
       originX: 'center',
-      originY: 'center'
+      originY: 'center',
+      data: { type: 'custom-text', id: `custom_${Date.now()}` }
     });
+
     canvas.add(text);
     canvas.setActiveObject(text);
     canvas.renderAll();
-    setCustomText("");
+    setCustomText('');
+    handleObjectModified({ target: text });
   };
 
-  const handleImageUpload = (e) => {
+  const handleCustomImage = (e) => {
     const file = e.target.files[0];
     if (!file || !canvas) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
       fabric.Image.fromURL(event.target.result, (img) => {
-        // If there's a selected placeholder, replace it with the image
-        const activeObject = canvas.getActiveObject();
-        if (activeObject && activeObject.data?.isPlaceholder) {
-          img.scaleToWidth(activeObject.width * activeObject.scaleX);
-          img.scaleToHeight(activeObject.height * activeObject.scaleY);
-          img.set({
-            left: activeObject.left,
-            top: activeObject.top
-          });
-          canvas.remove(activeObject);
-        } else {
-          img.scaleToWidth(200);
-          img.set({
-            left: canvas.width / 2,
-            top: canvas.height / 2,
-            originX: 'center',
-            originY: 'center'
-          });
-        }
+        img.scaleToWidth(200);
+        img.set({
+          left: canvas.width / 2,
+          top: canvas.height / 2,
+          originX: 'center',
+          originY: 'center',
+          data: { type: 'custom-image', id: `custom_${Date.now()}` }
+        });
 
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.renderAll();
+        handleObjectModified({ target: img });
       });
     };
     reader.readAsDataURL(file);
   };
 
-  const handleAddToCart = async () => {
-    if (!selectedProduct || !canvas) return;
+  const updateSelectedObject = () => {
+    if (!canvas || !selectedObject) return;
 
-    const preview = canvas.toDataURL({
-      format: 'png',
-      quality: 1
-    });
-
-    const customization = {
-      customText: '',
-      customImage: null,
-      preview,
-      description: orderDescription
+    const updates = {
+      fill: selectedColor === 'transparent' ? 'transparent' : selectedColor
     };
 
-    canvas.getObjects().forEach(obj => {
-      if (obj.type === 'text') {
-        customization.customText = obj.text;
-      } else if (obj.type === 'image' && obj !== canvas.backgroundImage) {
-        customization.customImage = obj.toDataURL();
-      }
-    });
+    if (selectedObject.type === 'i-text' || selectedObject.type === 'text') {
+      updates.fontSize = parseInt(selectedFontSize);
+      updates.fontFamily = selectedFontFamily;
+    }
 
-    await addToCart({
-      product: selectedProduct,
-      quantity: parseInt(quantity),
-      customization
-    });
+    selectedObject.set(updates);
+    canvas.renderAll();
+    handleObjectModified({ target: selectedObject });
+  };
 
-    navigate('/cart');
+  const handleDelete = () => {
+    if (!canvas || !selectedObject) return;
+
+    // Prevent deletion of required template fields
+    if (selectedObject.data?.required) {
+      alert("Cannot delete required template elements");
+      return;
+    }
+
+    if (selectedObject.data?.id) {
+      setCustomizations(prev => {
+        const newCustomizations = { ...prev };
+        delete newCustomizations[selectedObject.data.id];
+        return newCustomizations;
+      });
+    }
+
+    canvas.remove(selectedObject);
+    canvas.discardActiveObject();
+    canvas.renderAll();
+    handleSelectionCleared();
+  };
+
+  const handleAddToCart = async () => {
+    if (!selectedProduct || !canvas) return;
+  
+    try {
+      // Get all custom elements
+      const customElements = canvas.getObjects().filter(obj => 
+        obj !== canvas.backgroundImage
+      );
+  
+      // Process custom fields
+      const customFields = customElements.map(obj => ({
+        fieldId: obj.data?.id || `custom_${Date.now()}`,
+        type: obj.type === 'text' || obj.type === 'i-text' ? 'text' : 'image',
+        content: obj.type === 'text' || obj.type === 'i-text' ? 
+                 obj.text : 
+                 obj.toDataURL('image/png'),
+        properties: {
+          fontSize: obj.fontSize || null,
+          fontFamily: obj.fontFamily || null,
+          fill: obj.fill || null,
+          position: {
+            x: obj.left || 0,
+            y: obj.top || 0
+          },
+          scale: {
+            x: obj.scaleX || 1,
+            y: obj.scaleY || 1
+          }
+        }
+      }));
+  
+      // Create customization data
+      const customization = {
+        template: selectedTemplate?._id || null,
+        preview: canvas.toDataURL('image/png'),
+        description: orderDescription || '',
+        customFields: customFields,
+        requiredFields: Object.entries(fieldInputs).map(([fieldId, value]) => ({
+          fieldId,
+          type: requiredFields.find(f => f.id === fieldId)?.type || 'text',
+          value: typeof value === 'string' ? value : value.toDataURL('image/png')
+        }))
+      };
+  
+      // Add to cart
+      await addToCart({
+        product: selectedProduct,
+        quantity: parseInt(quantity),
+        customization
+      });
+  
+      navigate('/cart');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert('Failed to add item to cart. Please try again.');
+    }
   };
 
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Canvas and Product Info Column */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <canvas ref={canvasRef} className="border rounded-lg" />
 
-       {/* Product Images */}
+          {/* Product Images */}
           {selectedProduct?.images && selectedProduct.images.length > 0 && (
-            <div className="mb-6">
-              <div className="grid grid-cols-6 gap-2">
-                {selectedProduct.images.map((image, index) => (
-                  <div
-                    key={index}
-                    className={`cursor-pointer border-2 rounded ${
-                      selectedProductImage === index ? 'border-blue-500' : 'border-gray-200'
-                    }`}
-                    onClick={() => {
-                      setSelectedProductImage(index);
-                      loadProductImage(image.data);
-                    }}
-                  >
-                    <img
-                      src={image.data}
-                      alt={`Product view ${index + 1}`}
-                      className="w-full h-16 object-cover rounded"
-                    />
-                  </div>
-                ))}
-              </div>
+            <div className="mt-4 grid grid-cols-6 gap-2">
+              {selectedProduct.images.map((image, index) => (
+                <div
+                  key={index}
+                  className={`cursor-pointer border-2 rounded ${
+                    selectedProductImage === index ? 'border-blue-500' : 'border-gray-200'
+                  }`}
+                  onClick={() => {
+                    setSelectedProductImage(index);
+                    loadProductImage(image.data);
+                  }}
+                >
+                  <img
+                    src={image.data}
+                    alt={`Product view ${index + 1}`}
+                    className="w-full h-16 object-cover rounded"
+                  />
+                </div>
+              ))}
             </div>
           )}
 
-          <p className="text-m mb-4">
-            Description: {selectedProduct?.description}
-          </p>
-          
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-m">
-              Price: ${selectedProduct?.basePrice || 0} + 
-              ({(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
+          {/* Customization Controls */}
+          {selectedObject && (
+            <div className="mt-4 p-4 border rounded">
+              <h4 className="font-semibold mb-2">Customize Element</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm mb-1">Color</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={selectedColor === 'transparent' ? '#ffffff' : selectedColor}
+                      onChange={(e) => {
+                        setSelectedColor(e.target.value);
+                        updateSelectedObject();
+                      }}
+                      className="w-full"
+                    />
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedColor === 'transparent'}
+                        onChange={(e) => {
+                          setSelectedColor(e.target.checked ? 'transparent' : '#000000');
+                          updateSelectedObject();
+                        }}
+                        className="mr-2"
+                      />
+                      Transparent
+                    </label>
+                  </div>
+                </div>
+
+                {(selectedObject.type === 'i-text' || selectedObject.type === 'text') && (
+                  <>
+                    <div>
+                      <label className="block text-sm mb-1">Font Size</label>
+                      <select
+                        value={selectedFontSize}
+                        onChange={(e) => {
+                          setSelectedFontSize(e.target.value);
+                          updateSelectedObject();
+                        }}
+                        className="w-full p-2 border rounded"
+                      >
+                        {[12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64].map(size => (
+                          <option key={size} value={size}>{size}px</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm mb-1">Font Family</label>
+                      <select
+                        value={selectedFontFamily}
+                        onChange={(e) => {
+                          setSelectedFontFamily(e.target.value);
+                          updateSelectedObject();
+                        }}
+                        className="w-full p-2 border rounded"
+                      >
+                        {fontFamilies.map(font => (
+                          <option key={font} value={font}>{font}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {!selectedObject.data?.required && (
+                <button
+                  onClick={handleDelete}
+                  className="mt-2 w-full bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                >
+                  Delete Element
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Product Info */}
+          <div className="mt-4">
+            <h2 className="text-xl font-bold">{selectedProduct?.name}</h2>
+            <p className="text-gray-600 mt-2">{selectedProduct?.description}</p>
+            <p className="text-lg font-semibold mt-2">
+              Price: ${selectedProduct?.basePrice || 0}
+              {(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
                 <span className="text-sm font-normal text-gray-600 ml-2">
-                  {[
+                  + {[
                     selectedProduct.hasGST && 'GST',
                     selectedProduct.hasPST && 'PST'
                   ].filter(Boolean).join(' + ')}
                 </span>
-              )} )
+              )}
             </p>
           </div>
-   
- 
         </div>
 
-        {/* Product Details */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold mb-4">
-            {selectedProduct?.name || 'Loading...'}
-          </h2>
-          
-                   {/* Template Selection */}
-                   <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Design Template
-            </label>
-            <div className="flex gap-2 overflow-x-auto pb-2">
+        {/* Design and Customization Column */}
+        <div className="bg-white p-6 rounded-lg shadow-md space-y-6">
+          {/* Template Selection */}
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Choose a Design Template</h3>
+            <div className="grid grid-cols-2 gap-4">
               {categoryTemplates.map((template) => (
                 <div
                   key={template._id}
-                  className={`p-2 border-2 rounded cursor-pointer ${
+                  className={`p-3 border-2 rounded cursor-pointer ${
                     selectedTemplate?._id === template._id ? 'border-blue-500' : 'border-gray-200'
                   }`}
                   onClick={() => handleTemplateChange(template)}
@@ -288,76 +536,143 @@ const ProductEditor = () => {
                   <img
                     src={template.preview}
                     alt={template.name}
-                    className="w-24 h-24 object-cover rounded"
+                    className="w-full h-32 object-contain rounded mb-2"
                   />
-                  <p className="text-sm text-center mt-1">{template.name}</p>
+                  <p className="text-center font-medium">{template.name}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Customization Tools */}
-          <div className="mt-4 space-y-4">
-            <div>
-              <input
-                type="text"
-                value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
-                className="w-full px-4 py-2 border rounded"
-                placeholder="Enter custom text"
-              />
-              <button
-                onClick={handleTextAdd}
-                className="mt-2 w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              >
-                Add Text
-              </button>
+          {/* Required Fields */}
+          {selectedTemplate && requiredFields.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Required Template Fields</h3>
+              {requiredFields.map((field) => (
+                <div key={field.id} className="p-4 bg-gray-50 rounded-lg">
+                  <label className="block font-medium mb-2">
+                    {field.type.charAt(0).toUpperCase() + field.type.slice(1)}
+                    {field.placeholder && ` - ${field.placeholder}`}
+                  </label>
+                  {field.type === 'text' ? (
+                    <input
+                      type="text"
+                      value={fieldInputs[field.id] || ''}
+                      onChange={(e) => handleFieldInput(field.id, e.target.value, 'text')}
+                      className="w-full px-3 py-2 border rounded"
+                      placeholder={field.placeholder || `Enter ${field.type}`}
+                    />
+                  ) : (
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFieldInput(field.id, e.target.files[0], field.type)}
+                        className="w-full"
+                      />
+                      <p className="text-sm text-gray-500 mt-1">
+                        Click the placeholder on the design to replace with your {field.type}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Upload Image
-              </label>
-              <input
-                type="file"
-                onChange={handleImageUpload}
-                accept="image/*"
-                className="w-full"
-              />
+          {/* Custom Elements */}
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Add Custom Elements</h3>
+            <div className="space-y-3">
+              <div>
+                <input
+                  type="text"
+                  value={customText}
+                  onChange={(e) => setCustomText(e.target.value)}
+                  className="w-full px-3 py-2 border rounded mb-2"
+                  placeholder="Enter custom text"
+                />
+                <button
+                  onClick={handleCustomText}
+                  className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                >
+                  Add Text
+                </button>
+              </div>
+
+              <div>
+                <label className="block font-medium mb-2">Add Custom Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCustomImage}
+                  className="w-full"
+                />
+              </div>
             </div>
+          </div>
 
+          {/* Order Details */}
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Quantity</label>
+              <label className="block font-medium mb-2">Quantity</label>
               <input
                 type="number"
                 min="1"
                 max="100"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                onChange={(e) => setQuantity(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                className="w-full px-3 py-2 border rounded"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Order Description</label>
+              <label className="block font-medium mb-2">Special Instructions</label>
               <textarea
                 value={orderDescription}
                 onChange={(e) => setOrderDescription(e.target.value)}
                 rows="3"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                placeholder="Add any special instructions..."
+                className="w-full px-3 py-2 border rounded"
+                placeholder="Add any special requirements or notes..."
               />
             </div>
           </div>
 
+          {/* Instructions Panel */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-2">Design Instructions</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Select a template or add custom elements</li>
+              <li>• Fill in all required fields for the selected template</li>
+              <li>• Click any element to customize it</li>
+              <li>• Double-click text to edit directly</li>
+              <li>• Drag elements to reposition</li>
+              <li>• Use corners to resize elements</li>
+            </ul>
+          </div>
 
-          
+          {/* Add to Cart Button */}
           <button
             onClick={handleAddToCart}
-            className="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            disabled={selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])}
+            className={`w-full bg-green-500 text-white px-6 py-3 rounded-lg text-lg font-semibold
+              ${selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])
+                ? 'opacity-50 cursor-not-allowed'
+                : 'hover:bg-green-600 transition-colors duration-200'
+              }`}
           >
-            Add to Cart
+            Add to Cart - ${((selectedProduct?.basePrice || 0) * quantity).toFixed(2)}
           </button>
+
+          {/* Tax Notice */}
+          {selectedProduct?.hasGST || selectedProduct?.hasPST ? (
+            <p className="text-sm text-gray-500 text-center">
+              *Final price will include applicable taxes ({[
+                selectedProduct.hasGST && 'GST',
+                selectedProduct.hasPST && 'PST'
+              ].filter(Boolean).join(' + ')})
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
@@ -365,316 +680,3 @@ const ProductEditor = () => {
 };
 
 export default ProductEditor;
-
-
-
-// // working properly but not very good with template
-// // src/components/ProductEditor.js
-// import React, { useEffect, useRef, useState } from "react";
-// import { fabric } from "fabric";
-// import axios from "axios";
-// import { useParams, useNavigate } from 'react-router-dom';
-// import { useCart } from '../context/CartContext';
-
-// const ProductEditor = () => {
-//   const [canvas, setCanvas] = useState(null);
-//   const [selectedProduct, setSelectedProduct] = useState(null);
-//   const [customText, setCustomText] = useState("");
-//   const [quantity, setQuantity] = useState(1);
-//   const [orderDescription, setOrderDescription] = useState("");
-//   const canvasRef = useRef(null);
-//   const { productId } = useParams();
-//   const navigate = useNavigate();
-//   const { addToCart } = useCart();
-//   const [templates, setTemplates] = useState([]);
-//   const [selectedTemplate, setSelectedTemplate] = useState(null);
-
-
-//   useEffect(() => {
-//     const fetchTemplates = async () => {
-//       try {
-//         const { data } = await axios.get('/api/templates');
-//         setTemplates(data);
-//       } catch (error) {
-//         console.error('Error fetching templates:', error);
-//       }
-//     };  
-//     fetchTemplates();
-//   }, []);
-
-//   useEffect(() => {
-//     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-//       width: 500,
-//       height: 500,
-//       backgroundColor: '#ffffff'
-//     });
-//     setCanvas(fabricCanvas);
-//     return () => fabricCanvas.dispose();
-//   }, []);
-
-//   useEffect(() => {
-//     const fetchProduct = async () => {
-//       try {
-//         const { data } = await axios.get(`/api/products/${productId}`);
-//         setSelectedProduct(data);
-//         if (data.templates && data.templates.length > 0 && canvas) {
-//           setSelectedTemplate(data.templates[0]); // Add this line
-//           fabric.Image.fromURL(data.templates[0].data, (img) => {
-//             const scale = Math.min(
-//               canvas.width / img.width,
-//               canvas.height / img.height
-//             ) * 0.9;
-  
-//             img.set({
-//               scaleX: scale,
-//               scaleY: scale,
-//               left: (canvas.width - img.width * scale) / 2,
-//               top: (canvas.height - img.height * scale) / 2,
-//               selectable: false,
-//               evented: false
-//             });
-  
-//             canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-//           });
-//         }
-//       } catch (error) {
-//         console.error('Error fetching product:', error);
-//       }
-//     };
-  
-//     if (productId && canvas) {
-//       fetchProduct();
-//     }
-//   }, [productId, canvas]);
-
-
-
-
-//   const handleTextAdd = () => {
-//     if (!customText || !canvas) return;
-//     const text = new fabric.Text(customText, {
-//       left: canvas.width / 2,
-//       top: canvas.height / 2,
-//       fontSize: 30,
-//       originX: 'center',
-//       originY: 'center'
-//     });
-//     canvas.add(text);
-//     canvas.setActiveObject(text);
-//     canvas.renderAll();
-//     setCustomText("");
-//   };
-
-//   const handleImageUpload = (e) => {
-//     const file = e.target.files[0];
-//     if (!file || !canvas) return;
-
-//     const reader = new FileReader();
-//     reader.onload = (event) => {
-//       fabric.Image.fromURL(event.target.result, (img) => {
-//         const scale = Math.min(
-//           200 / img.width,
-//           200 / img.height
-//         );
-//         img.scale(scale);
-//         img.set({
-//           left: canvas.width / 2,
-//           top: canvas.height / 2,
-//           originX: 'center',
-//           originY: 'center'
-//         });
-//         canvas.add(img);
-//         canvas.setActiveObject(img);
-//         canvas.renderAll();
-//       });
-//     };
-//     reader.readAsDataURL(file);
-//   };
-
-//   const handleTemplateChange = (template) => {
-//     if (!canvas || !template) return;
-    
-//     setSelectedTemplate(template);
-    
-//     // Clear all objects except background
-//     const backgroundImage = canvas.backgroundImage;
-//     canvas.clear();
-    
-//     // Restore the background image
-//     if (backgroundImage) {
-//       canvas.setBackgroundImage(backgroundImage, canvas.renderAll.bind(canvas));
-//     } else if (selectedProduct?.templates?.[0]?.data) {
-//       // If background was lost, reload it
-//       fabric.Image.fromURL(selectedProduct.templates[0].data, (img) => {
-//         const scale = Math.min(
-//           canvas.width / img.width,
-//           canvas.height / img.height
-//         ) * 0.9;
-  
-//         img.set({
-//           scaleX: scale,
-//           scaleY: scale,
-//           left: (canvas.width - img.width * scale) / 2,
-//           top: (canvas.height - img.height * scale) / 2,
-//           selectable: false,
-//           evented: false
-//         });
-  
-//         canvas.setBackgroundImage(img, () => {
-//           // Load template elements after ensuring background is set
-//           if (template.elements) {
-//             // Parse the elements if it's a string
-//             const elements = typeof template.elements === 'string' 
-//               ? JSON.parse(template.elements) 
-//               : template.elements;
-  
-//             // Load only the objects, not the background
-//             if (elements.objects) {
-//               elements.objects.forEach(obj => {
-//                 fabric.util.enlivenObjects([obj], (enlivenedObjects) => {
-//                   const enlivenedObject = enlivenedObjects[0];
-//                   canvas.add(enlivenedObject);
-//                   canvas.renderAll();
-//                 });
-//               });
-//             }
-//           }
-//         });
-//       });
-//     }
-//   };
-
-//   const handleAddToCart = async () => {
-//     if (!selectedProduct || !canvas) return;
-
-//     const preview = canvas.toDataURL({
-//       format: 'png',
-//       quality: 1
-//     });
-
-//     const customization = {
-//       customText: '',
-//       customImage: null,
-//       preview,
-//       description: orderDescription
-//     };
-
-//     canvas.getObjects().forEach(obj => {
-//       if (obj.type === 'text') {
-//         customization.customText = obj.text;
-//       } else if (obj.type === 'image' && obj !== canvas.backgroundImage) {
-//         customization.customImage = obj.toDataURL();
-//       }
-//     });
-
-//     await addToCart({
-//       product: selectedProduct,
-//       quantity: parseInt(quantity),
-//       customization
-//     });
-
-//     navigate('/cart');
-//   };
-
-//   return (
-//     <div className="container mx-auto p-4">
-//       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-//         <div className="bg-white p-6 rounded-lg shadow-md">
-//           <canvas ref={canvasRef} className="border rounded-lg" />
-//           <div className="mb-4">
-//             <label className="block text-sm font-medium text-gray-700 mb-2">
-//               Select Design Template
-//             </label>
-//             <div className="flex gap-2 overflow-x-auto pb-2">
-//               {templates.map((template, index) => (
-//                 <div
-//                   key={template._id}
-//                   className={`p-2 border-2 rounded cursor-pointer ${
-//                     selectedTemplate?._id === template._id ? 'border-blue-500' : 'border-gray-200'
-//                   }`}
-//                   onClick={() => handleTemplateChange(template)}
-//                 >
-//                   <img
-//                     src={template.preview}
-//                     alt={template.name}
-//                     className="w-24 h-24 object-cover rounded"
-//                   />
-//                   <p className="text-sm text-center mt-1">{template.name}</p>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-//           <div className="mt-4 space-y-4">
-//             <div>
-//               <input
-//                 type="text"
-//                 value={customText}
-//                 onChange={(e) => setCustomText(e.target.value)}
-//                 className="w-full px-4 py-2 border rounded"
-//                 placeholder="Enter custom text"
-//               />
-//               <button
-//                 onClick={handleTextAdd}
-//                 className="mt-2 w-full bg-blue-500 text-white px-4 py-2 rounded"
-//               >
-//                 Add Text
-//               </button>
-//             </div>
-//             <div>
-//               <input
-//                 type="file"
-//                 onChange={handleImageUpload}
-//                 accept="image/*"
-//                 className="w-full"
-//               />
-//             </div>
-//             <div>
-//               <label className="block text-sm font-medium text-gray-700">Quantity</label>
-//               <input
-//                 type="number"
-//                 min="1"
-//                 value={quantity}
-//                 onChange={(e) => setQuantity(e.target.value)}
-//                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-//               />
-//             </div>
-            
-//             <div>
-//               <label className="block text-sm font-medium text-gray-700">Order Description</label>
-//               <textarea
-//                 value={orderDescription}
-//                 onChange={(e) => setOrderDescription(e.target.value)}
-//                 rows="3"
-//                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-//                 placeholder="Add any special instructions or notes for your order..."
-//               />
-//             </div>
-//             <button
-//               onClick={handleAddToCart}
-//               className="w-full bg-green-500 text-white px-4 py-2 rounded"
-//             >
-//               Add to Cart
-//             </button>
-//           </div>
-//         </div>
-//         <div className="bg-white p-6 rounded-lg shadow-md">
-//           <h2 className="text-2xl font-bold mb-4">
-//             {selectedProduct?.name || 'Loading...'}
-//           </h2>
-//           <p className="text-gray-600 mb-4">
-//             {selectedProduct?.description}
-//           </p>
-//           <p className="text-xl font-bold mb-4">
-//             ${selectedProduct?.basePrice || 0}
-//           </p>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default ProductEditor;
-
-
-
-
