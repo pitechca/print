@@ -70,11 +70,23 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
         console.log('Payment successful, creating order...');
 
         // Prepare order data
+        // Prepare order data
         const selectedProducts = Array.from(selectedItems).map(index => ({
           product: cart[index].product._id,
           quantity: quantities[index],
-          customization: cart[index].customization || {}
+          customization: {
+            template: cart[index].customization?.template || null,
+            preview: cart[index].customization?.preview || null,
+            description: cart[index].customization?.description || '',
+            customFields: cart[index].customization?.customFields || [],
+            requiredFields: cart[index].customization?.requiredFields || []
+          }
         }));
+        // const selectedProducts = Array.from(selectedItems).map(index => ({
+        //   product: cart[index].product._id,
+        //   quantity: quantities[index],
+        //   customization: cart[index].customization || {}
+        // }));
 
         // Create order
         await axios.post('/api/orders', {
