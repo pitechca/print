@@ -116,14 +116,27 @@ export const CartProvider = ({ children }) => {
         })) || []
       };
   
+      // const cartItem = {
+      //   product: {
+      //     _id: item.product._id,
+      //   },
+      //   quantity: item.quantity || 1,
+      //   customization: customizationData
+      // };
       const cartItem = {
         product: {
           _id: item.product._id,
         },
         quantity: item.quantity || 1,
-        customization: customizationData
+        customization: {
+          template: item.customization?.template || null,
+          preview: item.customization?.preview || null,
+          description: item.customization?.description || '',
+          customFields: item.customization?.customFields || [],
+          requiredFields: item.customization?.requiredFields || []
+        }
       };
-  
+
       await axios.post('/api/cart/add', cartItem, {
         headers: {
           'Authorization': `Bearer ${token}`,

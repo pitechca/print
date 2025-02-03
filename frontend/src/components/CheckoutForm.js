@@ -70,7 +70,6 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
         console.log('Payment successful, creating order...');
 
         // Prepare order data
-        // Prepare order data
         const selectedProducts = Array.from(selectedItems).map(index => ({
           product: cart[index].product._id,
           quantity: quantities[index],
