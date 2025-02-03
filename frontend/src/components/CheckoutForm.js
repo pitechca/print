@@ -28,6 +28,7 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
     setError(null);
 
     if (!stripe || !elements) {
+      
       setError('Stripe has not been initialized.');
       setProcessing(false);
       return;

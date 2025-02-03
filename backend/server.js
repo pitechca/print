@@ -1354,7 +1354,6 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
 });
 
 // Order routes
-
 app.post("/api/orders", auth, async (req, res) => {
   try {
     const { products, totalAmount, paymentMethod, paymentId } = req.body;
@@ -1443,67 +1442,6 @@ app.post("/api/orders", auth, async (req, res) => {
     });
   }
 });
-// app.post("/api/orders", auth, async (req, res) => {
-//   try {
-//     const { products, totalAmount, paymentMethod, paymentId } = req.body;
-
-//     // Validate required fields
-//     if (!products || !Array.isArray(products) || products.length === 0) {
-//       return res.status(400).json({ 
-//         error: 'Invalid products data',
-//         details: 'Products array is required and must not be empty'
-//       });
-//     }
-
-//     if (!totalAmount || totalAmount <= 0) {
-//       return res.status(400).json({ 
-//         error: 'Invalid total amount',
-//         details: 'Total amount must be greater than 0'
-//       });
-//     }
-
-//     if (!paymentMethod) {
-//       return res.status(400).json({ 
-//         error: 'Payment method is required',
-//         details: 'Please specify a payment method'
-//       });
-//     }
-
-//     // Create order with the data directly from the cart
-//     const orderData = {
-//       user: req.user._id,
-//       products: products.map(item => ({
-//         product: item.product,
-//         quantity: item.quantity || 1,
-//         customization: {
-//           customText: item.customization?.customText || '',
-//           customImage: item.customization?.customImage || '',
-//           preview: item.customization?.preview || ''
-//         }
-//       })),
-//       totalAmount,
-//       paymentMethod,
-//       paymentId,
-//       status: 'completed'
-//     };
-
-//     const order = new Order(orderData);
-//     await order.save();
-
-//     // Fetch the complete order with populated fields
-//     const populatedOrder = await Order.findById(order._id)
-//       .populate('user', 'email')
-//       .populate('products.product');
-
-//     res.status(201).send(populatedOrder);
-//   } catch (error) {
-//     console.error('Order creation error:', error);
-//     res.status(400).json({
-//       error: 'Failed to create order',
-//       details: error.message
-//     });
-//   }
-// });
 
 app.get("/api/orders", auth, async (req, res) => {
   try {
