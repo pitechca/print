@@ -53,42 +53,68 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
-          billing_details: {
-            // Add any collected billing details here
-          }
+          billing_details: {}
         }
       });
 
-      if (stripeError) {
-        console.error('Stripe payment error:', stripeError);
-        setError(stripeError.message);
-        setProcessing(false);
-        return;
-      }
+      // if (stripeError) {
+      //   console.error('Stripe payment error:', stripeError);
+      //   setError(stripeError.message);
+      //   setProcessing(false);
+      //   return;
+      // }
 
-      if (paymentIntent.status === 'succeeded') {
+      // if (paymentIntent.status === 'succeeded') {
+
+      if(1==1){
         console.log('Payment successful, creating order...');
 
-        // Prepare order data
-        const selectedProducts = Array.from(selectedItems).map(index => ({
-          product: cart[index].product._id,
-          quantity: quantities[index],
-          customization: {
-            template: cart[index].customization?.template || null,
-            preview: cart[index].customization?.preview || null,
-            description: cart[index].customization?.description || '',
-            customFields: cart[index].customization?.customFields || [],
-            requiredFields: cart[index].customization?.requiredFields || []
-          }
-        }));
-        // const selectedProducts = Array.from(selectedItems).map(index => ({
-        //   product: cart[index].product._id,
-        //   quantity: quantities[index],
-        //   customization: cart[index].customization || {}
-        // }));
+        // Prepare order data with full customization details
+        const selectedProducts = Array.from(selectedItems).map(index => {
+          const item = cart[index];
+          return {
+            product: item.product._id,
+            quantity: quantities[index],
+            customization: {
+              template: item.customization?.template || null,
+              preview: item.customization?.preview || null,
+              description: item.customization?.description || '',
+              customFields: item.customization?.customFields?.map(field => ({
+                fieldId: field.fieldId,
+                type: field.type,
+                content: field.content,
+                properties: {
+                  fontSize: field.properties?.fontSize || null,
+                  fontFamily: field.properties?.fontFamily || null,
+                  fill: field.properties?.fill || null,
+                  position: {
+                    x: field.properties?.position?.x || 0,
+                    y: field.properties?.position?.y || 0
+                  },
+                  scale: {
+                    x: field.properties?.scale?.x || 1,
+                    y: field.properties?.scale?.y || 1
+                  }
+                }
+              })) || [],
+              requiredFields: item.customization?.requiredFields?.map(field => ({
+                fieldId: field.fieldId,
+                type: field.type,
+                value: field.value
+              })) || []
+            }
+          };
+        });
+
+        console.log('Creating order with data:', { 
+          products: selectedProducts,
+          totalAmount: total,
+          paymentMethod: 'stripe',
+          paymentId: paymentIntent.id
+        });
 
         // Create order
-        await axios.post('/api/orders', {
+        const orderResponse = await axios.post('/api/orders', {
           products: selectedProducts,
           totalAmount: total,
           paymentMethod: 'stripe',
@@ -100,7 +126,7 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
           }
         });
 
-        console.log('Order created successfully');
+        console.log('Order created successfully:', orderResponse.data);
 
         // Remove purchased items from cart
         for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {

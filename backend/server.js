@@ -1354,6 +1354,7 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
 });
 
 // Order routes
+
 app.post("/api/orders", auth, async (req, res) => {
   try {
     const { products, totalAmount, paymentMethod, paymentId } = req.body;
@@ -1373,23 +1374,46 @@ app.post("/api/orders", auth, async (req, res) => {
       });
     }
 
-    if (!paymentMethod) {
+    if (!paymentMethod || !paymentId) {
       return res.status(400).json({ 
-        error: 'Payment method is required',
-        details: 'Please specify a payment method'
+        error: 'Payment information is required',
+        details: 'Payment method and ID are required'
       });
     }
 
-    // Create order with the data directly from the cart
+    // Create order with complete customization data
     const orderData = {
       user: req.user._id,
       products: products.map(item => ({
         product: item.product,
-        quantity: item.quantity || 1,
+        quantity: item.quantity,
         customization: {
-          customText: item.customization?.customText || '',
-          customImage: item.customization?.customImage || '',
-          preview: item.customization?.preview || ''
+          template: item.customization?.template || null,
+          preview: item.customization?.preview || null,
+          description: item.customization?.description || '',
+          customFields: (item.customization?.customFields || []).map(field => ({
+            fieldId: field.fieldId,
+            type: field.type,
+            content: field.content,
+            properties: {
+              fontSize: field.properties?.fontSize || null,
+              fontFamily: field.properties?.fontFamily || null,
+              fill: field.properties?.fill || null,
+              position: {
+                x: field.properties?.position?.x || 0,
+                y: field.properties?.position?.y || 0
+              },
+              scale: {
+                x: field.properties?.scale?.x || 1,
+                y: field.properties?.scale?.y || 1
+              }
+            }
+          })),
+          requiredFields: (item.customization?.requiredFields || []).map(field => ({
+            fieldId: field.fieldId,
+            type: field.type,
+            value: field.value
+          }))
         }
       })),
       totalAmount,
@@ -1397,6 +1421,9 @@ app.post("/api/orders", auth, async (req, res) => {
       paymentId,
       status: 'completed'
     };
+
+    // Log the order data for debugging
+    console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
 
     const order = new Order(orderData);
     await order.save();
@@ -1411,10 +1438,72 @@ app.post("/api/orders", auth, async (req, res) => {
     console.error('Order creation error:', error);
     res.status(400).json({
       error: 'Failed to create order',
-      details: error.message
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
+// app.post("/api/orders", auth, async (req, res) => {
+//   try {
+//     const { products, totalAmount, paymentMethod, paymentId } = req.body;
+
+//     // Validate required fields
+//     if (!products || !Array.isArray(products) || products.length === 0) {
+//       return res.status(400).json({ 
+//         error: 'Invalid products data',
+//         details: 'Products array is required and must not be empty'
+//       });
+//     }
+
+//     if (!totalAmount || totalAmount <= 0) {
+//       return res.status(400).json({ 
+//         error: 'Invalid total amount',
+//         details: 'Total amount must be greater than 0'
+//       });
+//     }
+
+//     if (!paymentMethod) {
+//       return res.status(400).json({ 
+//         error: 'Payment method is required',
+//         details: 'Please specify a payment method'
+//       });
+//     }
+
+//     // Create order with the data directly from the cart
+//     const orderData = {
+//       user: req.user._id,
+//       products: products.map(item => ({
+//         product: item.product,
+//         quantity: item.quantity || 1,
+//         customization: {
+//           customText: item.customization?.customText || '',
+//           customImage: item.customization?.customImage || '',
+//           preview: item.customization?.preview || ''
+//         }
+//       })),
+//       totalAmount,
+//       paymentMethod,
+//       paymentId,
+//       status: 'completed'
+//     };
+
+//     const order = new Order(orderData);
+//     await order.save();
+
+//     // Fetch the complete order with populated fields
+//     const populatedOrder = await Order.findById(order._id)
+//       .populate('user', 'email')
+//       .populate('products.product');
+
+//     res.status(201).send(populatedOrder);
+//   } catch (error) {
+//     console.error('Order creation error:', error);
+//     res.status(400).json({
+//       error: 'Failed to create order',
+//       details: error.message
+//     });
+//   }
+// });
 
 app.get("/api/orders", auth, async (req, res) => {
   try {
