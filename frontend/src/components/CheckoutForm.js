@@ -70,84 +70,154 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
         console.log('Payment successful, creating order...');
 
         // Prepare order data with full customization details
-        const selectedProducts = Array.from(selectedItems).map(index => {
-          const item = cart[index];
-          return {
-            product: item.product._id,
-            quantity: quantities[index],
-            customization: {
-              template: item.customization?.template || null,
-              preview: item.customization?.preview || null,
-              description: item.customization?.description || '',
-              customFields: item.customization?.customFields?.map(field => ({
-                fieldId: field.fieldId,
-                type: field.type,
-                content: field.content,
-                properties: {
-                  fontSize: field.properties?.fontSize || null,
-                  fontFamily: field.properties?.fontFamily || null,
-                  fill: field.properties?.fill || null,
-                  position: {
-                    x: field.properties?.position?.x || 0,
-                    y: field.properties?.position?.y || 0
-                  },
-                  scale: {
-                    x: field.properties?.scale?.x || 1,
-                    y: field.properties?.scale?.y || 1
-                  }
-                }
-              })) || [],
-              requiredFields: item.customization?.requiredFields?.map(field => ({
-                fieldId: field.fieldId,
-                type: field.type,
-                value: field.value
-              })) || []
+         // Updated order data structure
+    const selectedProducts = Array.from(selectedItems).map(index => {
+      const item = cart[index];
+      return {
+        product: item.product._id,
+        quantity: quantities[index],
+        customization: {
+          template: item.customization?.template || null,
+          preview: item.customization?.preview || null,
+          description: item.customization?.description || '',
+          customFields: (item.customization?.customFields || []).map(field => ({
+            fieldId: field.fieldId,
+            type: field.type,
+            content: field.content,
+            properties: {
+              fontSize: field.properties?.fontSize || null,
+              fontFamily: field.properties?.fontFamily || null,
+              fill: field.properties?.fill || null,
+              position: {
+                x: field.properties?.position?.x || 0,
+                y: field.properties?.position?.y || 0
+              },
+              scale: {
+                x: field.properties?.scale?.x || 1,
+                y: field.properties?.scale?.y || 1
+              }
             }
-          };
-        });
-
-        console.log('Creating order with data:', { 
-          products: selectedProducts,
-          totalAmount: total,
-          paymentMethod: 'stripe',
-         paymentId: paymentIntent.id
-        });
-
-        // Create order
-        const orderResponse = await axios.post('/api/orders', {
-          products: selectedProducts,
-          totalAmount: total,
-          paymentMethod: 'stripe',
-          paymentId: paymentIntent.id
-        }, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        console.log('Order created successfully:', orderResponse.data);
-
-        // Remove purchased items from cart
-        for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
-          await removeFromCart(index);
+          })),
+          requiredFields: (item.customization?.requiredFields || []).map(field => ({
+            fieldId: field.fieldId,
+            type: field.type,
+            value: field.value
+          }))
         }
+      };
+    });
 
-        // Redirect to orders page
-        navigate('/orders');
+    try {
+      const orderResponse = await axios.post('/api/orders', {
+        products: selectedProducts,
+        totalAmount: total,
+        paymentMethod: 'stripe',
+        paymentId: paymentIntent.id
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Order created successfully:', orderResponse.data);
+
+      // Remove purchased items from cart
+      for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
+        await removeFromCart(index);
       }
+
+      navigate('/orders');
     } catch (error) {
-      console.error('Checkout error:', error);
+      console.error('Order creation error:', error);
       setError(
         error.response?.data?.error?.details || 
         error.response?.data?.error || 
         error.message || 
-        'An error occurred during checkout. Please try again.'
+        'An error occurred while creating the order. Please try again.'
       );
+      setProcessing(false);
     }
+  
+};
+  //       const selectedProducts = Array.from(selectedItems).map(index => {
+  //         const item = cart[index];
+  //         return {
+  //           product: item.product._id,
+  //           quantity: quantities[index],
+  //           customization: {
+  //             template: item.customization?.template || null,
+  //             preview: item.customization?.preview || null,
+  //             description: item.customization?.description || '',
+  //             customFields: item.customization?.customFields?.map(field => ({
+  //               fieldId: field.fieldId,
+  //               type: field.type,
+  //               content: field.content,
+  //               properties: {
+  //                 fontSize: field.properties?.fontSize || null,
+  //                 fontFamily: field.properties?.fontFamily || null,
+  //                 fill: field.properties?.fill || null,
+  //                 position: {
+  //                   x: field.properties?.position?.x || 0,
+  //                   y: field.properties?.position?.y || 0
+  //                 },
+  //                 scale: {
+  //                   x: field.properties?.scale?.x || 1,
+  //                   y: field.properties?.scale?.y || 1
+  //                 }
+  //               }
+  //             })) || [],
+  //             requiredFields: item.customization?.requiredFields?.map(field => ({
+  //               fieldId: field.fieldId,
+  //               type: field.type,
+  //               value: field.value
+  //             })) || []
+  //           }
+  //         };
+  //       });
 
-    setProcessing(false);
-  };
+  //       console.log('Creating order with data:', { 
+  //         products: selectedProducts,
+  //         totalAmount: total,
+  //         paymentMethod: 'stripe',
+  //        paymentId: paymentIntent.id
+  //       });
+
+  //       // Create order
+  //       const orderResponse = await axios.post('/api/orders', {
+  //         products: selectedProducts,
+  //         totalAmount: total,
+  //         paymentMethod: 'stripe',
+  //         paymentId: paymentIntent.id
+  //       }, {
+  //         headers: {
+  //           'Authorization': `Bearer ${localStorage.getItem('token')}`,
+  //           'Content-Type': 'application/json'
+  //         }
+  //       });
+
+  //       console.log('Order created successfully:', orderResponse.data);
+
+  //       // Remove purchased items from cart
+  //       for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
+  //         await removeFromCart(index);
+  //       }
+
+  //       // Redirect to orders page
+  //       navigate('/orders');
+  //     }
+  //   } catch (error) {
+  //     console.error('Checkout error:', error);
+  //     setError(
+  //       error.response?.data?.error?.details || 
+  //       error.response?.data?.error || 
+  //       error.message || 
+  //       'An error occurred during checkout. Please try again.'
+  //     );
+  //   }
+
+  //   setProcessing(false);
+  // };
 
   return (
     <form onSubmit={handleSubmit} className="mt-4">
