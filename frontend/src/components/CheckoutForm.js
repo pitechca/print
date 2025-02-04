@@ -109,7 +109,9 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
           products: selectedProducts,
           totalAmount: total,
           paymentMethod: 'stripe',
-          paymentId: paymentIntent.id
+      //    paymentId: paymentIntent.id
+               paymentId: 123
+
         });
 
         // Create order
@@ -117,9 +119,7 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
           products: selectedProducts,
           totalAmount: total,
           paymentMethod: 'stripe',
-      //    paymentId: paymentIntent.id
-                paymentId: 6545
-
+         paymentId: paymentIntent.id
         }, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
