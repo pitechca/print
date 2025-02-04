@@ -22,12 +22,14 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
   };
 
   const createOrder = async (status = 'pending') => {
+    // Build the selectedProducts array from the cart
     const selectedProducts = Array.from(selectedItems).map(index => {
       const item = cart[index];
       return {
         product: item.product._id,
         quantity: quantities[index],
         customization: item.customization ? {
+          // If the template is an object, extract its _id; otherwise pass the string
           template: item.customization.template 
             ? (typeof item.customization.template === 'object' 
                 ? item.customization.template._id 
@@ -70,6 +72,9 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
       paymentId: 'pending'
     };
   
+    // Log the data before sending (check your browser console)
+    console.log("🛒 Sending Order Data:", JSON.stringify(orderData, null, 2));
+  
     const response = await axios.post('/api/orders', orderData, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -79,6 +84,7 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
   
     return response.data;
   };
+  
   // const createOrder = async (status = 'pending') => {
   //   const selectedProducts = Array.from(selectedItems).map(index => {
   //     const item = cart[index];

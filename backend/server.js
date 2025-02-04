@@ -1442,6 +1442,7 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
 //     });
 //   }
 // });
+
 app.post("/api/orders", auth, async (req, res) => {
   try {
     const { products, totalAmount, status, paymentMethod, paymentId } = req.body;
@@ -1461,15 +1462,18 @@ app.post("/api/orders", auth, async (req, res) => {
       });
     }
 
-    // Create order with initial status
+    // Build the order data:
     const orderData = {
+      // The authenticated user from the auth middleware is used here.
       user: req.user._id,
       products: products.map(item => ({
+        // Convert the product ID using 'new'
         product: new mongoose.Types.ObjectId(item.product),
         quantity: item.quantity,
         customization: item.customization ? {
-          template: item.customization.template 
-            ? new mongoose.Types.ObjectId(item.customization.template) 
+          // Only convert if the provided template ID is valid
+          template: item.customization.template && mongoose.isValidObjectId(item.customization.template)
+            ? new mongoose.Types.ObjectId(item.customization.template)
             : null,
           preview: item.customization.preview || null,
           description: item.customization.description || '',
@@ -1497,7 +1501,7 @@ app.post("/api/orders", auth, async (req, res) => {
             value: field.value
           }))
         } : null
-    })),    
+      })),
       totalAmount,
       status: status || 'pending',
       paymentMethod,
@@ -1507,7 +1511,7 @@ app.post("/api/orders", auth, async (req, res) => {
     const order = new Order(orderData);
     await order.save();
 
-    // Fetch the complete order with populated fields
+    // Populate the order with user and product info before sending the response
     const populatedOrder = await Order.findById(order._id)
       .populate('user', 'email')
       .populate('products.product');
