@@ -22,96 +22,163 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
     );
   };
 
+  // const handleSubmit = async (event) => {
+  //   event.preventDefault();
+  //   setProcessing(true);
+  //   setError(null);
+
+  //   if (!stripe || !elements) {
+  //     setError('Stripe has not been initialized.');
+  //     setProcessing(false);
+  //     return;
+  //   }
+
+  //   try {
+  //     const total = calculateTotal();
+  //     console.log('Creating payment intent for amount:', total);
+
+  //     // Create payment intent
+  //     const { data: { clientSecret } } = await axios.post('/api/create-payment-intent', {
+  //       amount: total
+  //     }, {
+  //       headers: {
+  //         'Authorization': `Bearer ${localStorage.getItem('token')}`,
+  //         'Content-Type': 'application/json',
+  //       }
+  //     });
+
+  //     console.log('Processing payment with Stripe...');
+
+  //     // Process payment with Stripe
+  //     const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+  //       payment_method: {
+  //         card: elements.getElement(CardElement),
+  //         billing_details: {
+  //           // Add any collected billing details here
+  //         }
+  //       }
+  //     });
+
+  //     if (stripeError) {
+  //       console.error('Stripe payment error:', stripeError);
+  //       setError(stripeError.message);
+  //       setProcessing(false);
+  //       return;
+  //     }
+
+  //     if (paymentIntent.status === 'succeeded') {
+  //       console.log('Payment successful, creating order...');
+
+  //       // Prepare order data
+  //       const selectedProducts = Array.from(selectedItems).map(index => ({
+  //         product: cart[index].product._id,
+  //         quantity: quantities[index],
+  //         customization: cart[index].customization || {}
+  //       }));
+
+  //       // Create order
+  //       await axios.post('/api/orders', {
+  //         products: selectedProducts,
+  //         totalAmount: total,
+  //         paymentMethod: 'stripe',
+  //         paymentId: paymentIntent.id
+  //       }, {
+  //         headers: {
+  //           'Authorization': `Bearer ${localStorage.getItem('token')}`,
+  //           'Content-Type': 'application/json'
+  //         }
+  //       });
+
+  //       console.log('Order created successfully');
+
+  //       // Remove purchased items from cart
+  //       for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
+  //         await removeFromCart(index);
+  //       }
+
+  //       // Redirect to orders page
+  //       navigate('/orders');
+  //     }
+  //   } catch (error) {
+  //     console.error('Checkout error:', error);
+  //     setError(
+  //       error.response?.data?.error?.details || 
+  //       error.response?.data?.error || 
+  //       error.message || 
+  //       'An error occurred during checkout. Please try again.'
+  //     );
+  //   }
+
+  //   setProcessing(false);
+  // };
   const handleSubmit = async (event) => {
     event.preventDefault();
     setProcessing(true);
     setError(null);
-
+  
     if (!stripe || !elements) {
       setError('Stripe has not been initialized.');
       setProcessing(false);
       return;
     }
-
+  
     try {
-      const total = calculateTotal();
-      console.log('Creating payment intent for amount:', total);
-
-      // Create payment intent
-      const { data: { clientSecret } } = await axios.post('/api/create-payment-intent', {
-        amount: total
+      const selectedProducts = Array.from(selectedItems).map(index => ({
+        product: cart[index].product._id,
+        quantity: quantities[index],
+        customization: cart[index].customization
+      }));
+  
+      // Step 1: Create Order
+      const { data: { order, clientSecret } } = await axios.post('/api/orders', {
+        products: selectedProducts,
+        totalAmount: calculateTotal(),
+        paymentMethod: 'stripe'
       }, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-        }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-
-      console.log('Processing payment with Stripe...');
-
-      // Process payment with Stripe
+  
+      console.log("Order created:", order);
+  
+      // Step 2: Process payment using clientSecret
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-          billing_details: {
-            // Add any collected billing details here
-          }
-        }
+        payment_method: { card: elements.getElement(CardElement) }
       });
-
+  
       if (stripeError) {
-        console.error('Stripe payment error:', stripeError);
         setError(stripeError.message);
         setProcessing(false);
+  
+        // Cancel the order if payment fails
+        await axios.put(`/api/orders/${order._id}/cancel`, {}, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+  
         return;
       }
-
-      if (paymentIntent.status === 'succeeded') {
-        console.log('Payment successful, creating order...');
-
-        // Prepare order data
-        const selectedProducts = Array.from(selectedItems).map(index => ({
-          product: cart[index].product._id,
-          quantity: quantities[index],
-          customization: cart[index].customization || {}
-        }));
-
-        // Create order
-        await axios.post('/api/orders', {
-          products: selectedProducts,
-          totalAmount: total,
-          paymentMethod: 'stripe',
-          paymentId: paymentIntent.id
-        }, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        console.log('Order created successfully');
-
-        // Remove purchased items from cart
-        for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
-          await removeFromCart(index);
-        }
-
-        // Redirect to orders page
-        navigate('/orders');
+  
+      // Step 3: Mark order as completed
+      await axios.put(`/api/orders/${order._id}/complete`, {}, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+  
+      console.log("Order completed");
+  
+      // Remove purchased items from cart
+      for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
+        await removeFromCart(index);
       }
+  
+      navigate('/orders');
+  
     } catch (error) {
       console.error('Checkout error:', error);
-      setError(
-        error.response?.data?.error?.details || 
-        error.response?.data?.error || 
-        error.message || 
-        'An error occurred during checkout. Please try again.'
-      );
+      setError(error.message || 'An error occurred during checkout.');
     }
-
+  
     setProcessing(false);
   };
-
+  
   return (
     <form onSubmit={handleSubmit} className="mt-4">
       <div className="mb-4">
