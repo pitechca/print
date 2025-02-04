@@ -1446,27 +1446,57 @@ app.post("/api/orders", auth, async (req, res) => {
   try {
     const { products, totalAmount, status, paymentMethod, paymentId } = req.body;
 
+    // Validate required fields
     if (!products || !Array.isArray(products) || products.length === 0) {
-      return res.status(400).json({ error: 'Invalid products data' });
+      return res.status(400).json({ 
+        error: 'Invalid products data',
+        details: 'Products array is required and must not be empty'
+      });
     }
 
     if (!totalAmount || totalAmount <= 0) {
-      return res.status(400).json({ error: 'Invalid total amount' });
+      return res.status(400).json({ 
+        error: 'Invalid total amount',
+        details: 'Total amount must be greater than 0'
+      });
     }
 
     // Create order with initial status
     const orderData = {
       user: req.user._id,
       products: products.map(item => ({
-        product: item.product,
+        product: mongoose.Types.ObjectId(item.product),
         quantity: item.quantity,
-        customization: {
-          template: item.customization?.template || null,
-          preview: item.customization?.preview || '',
-          description: item.customization?.description || '',
-          customFields: item.customization?.customFields || [],
-          requiredFields: item.customization?.requiredFields || []
-        }
+        customization: item.customization ? {
+          template: item.customization.template 
+            ? mongoose.Types.ObjectId(item.customization.template) 
+            : null,
+          preview: item.customization.preview || null,
+          description: item.customization.description || '',
+          customFields: (item.customization.customFields || []).map(field => ({
+            fieldId: field.fieldId,
+            type: field.type,
+            content: field.content,
+            properties: {
+              fontSize: field.properties?.fontSize || null,
+              fontFamily: field.properties?.fontFamily || null,
+              fill: field.properties?.fill || null,
+              position: {
+                x: field.properties?.position?.x || 0,
+                y: field.properties?.position?.y || 0
+              },
+              scale: {
+                x: field.properties?.scale?.x || 1,
+                y: field.properties?.scale?.y || 1
+              }
+            }
+          })),
+          requiredFields: (item.customization.requiredFields || []).map(field => ({
+            fieldId: field.fieldId,
+            type: field.type,
+            value: field.value
+          }))
+        } : null
       })),
       totalAmount,
       status: status || 'pending',
@@ -1477,28 +1507,12 @@ app.post("/api/orders", auth, async (req, res) => {
     const order = new Order(orderData);
     await order.save();
 
-    // Process payment (if using Stripe)
-    if (paymentMethod === "stripe") {
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(totalAmount * 100),
-        currency: 'cad',
-        metadata: { orderId: order._id.toString() }
-      });
+    // Fetch the complete order with populated fields
+    const populatedOrder = await Order.findById(order._id)
+      .populate('user', 'email')
+      .populate('products.product');
 
-      // Update order with payment ID
-      order.paymentId = paymentIntent.id;
-      await order.save();
-
-      return res.status(201).json({
-        order,
-        clientSecret: paymentIntent.client_secret
-      });
-    }
-
-    // Handle other payment methods here (e.g., PayPal)
-    
-    res.status(201).json(order);
-
+    res.status(201).send(populatedOrder);
   } catch (error) {
     console.error('Order creation error:', error);
     res.status(400).json({
@@ -2031,8 +2045,15 @@ mongoose.connect(process.env.MONGO_URI
     console.log("Connected to MongoDB Atlas");
     // Start the server after successful database connection
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    // app.listen(PORT, () => {
+      app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server is running on port ${PORT}`);
+
+
+
+      // Increase timeout settings
+      app.keepAliveTimeout = 120000; // 120 seconds
+      app.headersTimeout = 120000; // 120 seconds
     });
   })
   .catch((error) => {

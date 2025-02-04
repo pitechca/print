@@ -28,19 +28,35 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
         product: item.product._id,
         quantity: quantities[index],
         customization: item.customization ? {
-          template: item.customization.template?._id || null,
+          template: item.customization.template 
+            ? (typeof item.customization.template === 'object' 
+                ? item.customization.template._id 
+                : item.customization.template) 
+            : null,
           preview: item.customization.preview || null,
           description: item.customization.description || '',
           customFields: (item.customization.customFields || []).map(field => ({
-            fieldId: field?.fieldId || 'unknown_field', // Ensure fieldId exists
-            type: field?.type || 'text', // Ensure type is not null
-            content: field?.content || '', // Default to empty string if content is missing
-            properties: field.properties || {} // Default empty object
+            fieldId: field.fieldId,
+            type: field.type,
+            content: field.content,
+            properties: {
+              fontSize: field.properties?.fontSize || null,
+              fontFamily: field.properties?.fontFamily || null,
+              fill: field.properties?.fill || null,
+              position: {
+                x: field.properties?.position?.x || 0,
+                y: field.properties?.position?.y || 0
+              },
+              scale: {
+                x: field.properties?.scale?.x || 1,
+                y: field.properties?.scale?.y || 1
+              }
+            }
           })),
           requiredFields: (item.customization.requiredFields || []).map(field => ({
-            fieldId: field?.fieldId || 'unknown_required_field', // Ensure fieldId exists
-            type: field?.type || 'text', // Ensure type is not null
-            value: field?.value || '' // Default to empty string if value is missing
+            fieldId: field.fieldId,
+            type: field.type,
+            value: field.value
           }))
         } : null
       };
@@ -51,24 +67,66 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
       totalAmount: calculateTotal(),
       status: status,
       paymentMethod: 'stripe',
-      paymentId: status === 'pending' ? 'pending' : ''
+      paymentId: 'pending'
     };
   
-    console.log("🛒 Sending Order Data:", JSON.stringify(orderData, null, 2));
+    const response = await axios.post('/api/orders', orderData, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
   
-    try {
-      const response = await axios.post('/api/orders', orderData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error("❌ Order Creation Error:", error.response?.data || error.message);
-      throw error;
-    }
+    return response.data;
   };
+  // const createOrder = async (status = 'pending') => {
+  //   const selectedProducts = Array.from(selectedItems).map(index => {
+  //     const item = cart[index];
+  //     return {
+  //       product: item.product._id,
+  //       quantity: quantities[index],
+  //       customization: item.customization ? {
+  //         template: item.customization.template?._id || null,
+  //         preview: item.customization.preview || null,
+  //         description: item.customization.description || '',
+  //         customFields: (item.customization.customFields || []).map(field => ({
+  //           fieldId: field?.fieldId || 'unknown_field', // Ensure fieldId exists
+  //           type: field?.type || 'text', // Ensure type is not null
+  //           content: field?.content || '', // Default to empty string if content is missing
+  //           properties: field.properties || {} // Default empty object
+  //         })),
+  //         requiredFields: (item.customization.requiredFields || []).map(field => ({
+  //           fieldId: field?.fieldId || 'unknown_required_field', // Ensure fieldId exists
+  //           type: field?.type || 'text', // Ensure type is not null
+  //           value: field?.value || '' // Default to empty string if value is missing
+  //         }))
+  //       } : null
+  //     };
+  //   });
+  
+  //   const orderData = {
+  //     products: selectedProducts,
+  //     totalAmount: calculateTotal(),
+  //     status: status,
+  //     paymentMethod: 'stripe',
+  //     paymentId: status === 'pending' ? 'pending' : ''
+  //   };
+  
+  //   console.log("🛒 Sending Order Data:", JSON.stringify(orderData, null, 2));
+  
+  //   try {
+  //     const response = await axios.post('/api/orders', orderData, {
+  //       headers: {
+  //         'Authorization': `Bearer ${localStorage.getItem('token')}`,
+  //         'Content-Type': 'application/json'
+  //       }
+  //     });
+  //     return response.data;
+  //   } catch (error) {
+  //     console.error("❌ Order Creation Error:", error.response?.data || error.message);
+  //     throw error;
+  //   }
+  // };
   
   const handleSubmit = async (event) => {
     event.preventDefault();
