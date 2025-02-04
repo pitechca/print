@@ -103,12 +103,9 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
       // Process payment
       console.log('Processing payment...');
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-          billing_details: {}
-        }
+        payment_method: { card: elements.getElement(CardElement) }
       });
-
+  
       if (stripeError) {
         throw new Error(stripeError.message);
       }
@@ -133,17 +130,12 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
       navigate('/orders');
     } catch (error) {
       console.error('Checkout error:', error);
-      setError(
-        error.response?.data?.error || 
-        error.response?.data?.details || 
-        error.message || 
-        'An error occurred during checkout. Please try again.'
-      );
+      setError(error.message || 'An error occurred during checkout.');
     }
-
+  
     setProcessing(false);
   };
-
+  
   return (
     <form onSubmit={handleSubmit} className="mt-4">
       <div className="mb-4">
