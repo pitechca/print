@@ -1417,7 +1417,7 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
 // });
 app.post("/api/orders", auth, async (req, res) => {
   try {
-    const { products, totalAmount, paymentMethod, paymentId } = req.body;
+    const { products, totalAmount, status, paymentMethod, paymentId } = req.body;
 
     if (!products || !Array.isArray(products) || products.length === 0) {
       return res.status(400).json({ error: 'Invalid products data' });
@@ -1446,6 +1446,7 @@ app.post("/api/orders", auth, async (req, res) => {
         }
       })),
       totalAmount,
+      status: status || 'pending',
       paymentMethod,
       paymentId: null,
       status: "pending"
@@ -1482,6 +1483,36 @@ app.post("/api/orders", auth, async (req, res) => {
   }
 });
 
+// Update order
+app.put("/api/orders/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true }
+    ).populate('products.product');
+
+    res.json(updatedOrder);
+  } catch (error) {
+    console.error('Order update error:', error);
+    res.status(400).json({
+      error: 'Failed to update order',
+      details: error.message
+    });
+  }
+});
 app.get("/api/orders", auth, async (req, res) => {
   try {
     let orders;
