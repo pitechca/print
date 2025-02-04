@@ -294,11 +294,7 @@ const Cart = () => {
                       <SelectItem value="applepay">Apple Pay</SelectItem>
                       <SelectItem value="googlepay">Google Pay</SelectItem>
                       <SelectItem value="klarna">Klarna</SelectItem>
-                      {process.env.NODE_ENV === 'development' && (
-                        <SelectItem value="test">Test Payment (Dev Only)</SelectItem>
-                      )}
-
-                    </SelectContent>
+                     </SelectContent>
                   </Select>
                 </div>
 
