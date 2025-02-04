@@ -32,30 +32,30 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
           preview: item.customization.preview || null,
           description: item.customization.description || '',
           customFields: (item.customization.customFields || []).map(field => ({
-            fieldId: field.fieldId,
-            type: field.type,
-            content: field.content,
-            properties: field.properties || {}
+            fieldId: field?.fieldId || 'unknown_field', // Ensure fieldId exists
+            type: field?.type || 'text', // Ensure type is not null
+            content: field?.content || '', // Default to empty string if content is missing
+            properties: field.properties || {} // Default empty object
           })),
           requiredFields: (item.customization.requiredFields || []).map(field => ({
-            fieldId: field.fieldId,
-            type: field.type,
-            value: field.value
+            fieldId: field?.fieldId || 'unknown_required_field', // Ensure fieldId exists
+            type: field?.type || 'text', // Ensure type is not null
+            value: field?.value || '' // Default to empty string if value is missing
           }))
         } : null
       };
     });
-
+  
     const orderData = {
       products: selectedProducts,
       totalAmount: calculateTotal(),
       status: status,
-      paymentMethod: 'stripe',  // Ensure this is set correctly
+      paymentMethod: 'stripe',
       paymentId: status === 'pending' ? 'pending' : ''
     };
-
+  
     console.log("🛒 Sending Order Data:", JSON.stringify(orderData, null, 2));
-
+  
     try {
       const response = await axios.post('/api/orders', orderData, {
         headers: {
@@ -69,7 +69,7 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
       throw error;
     }
   };
-
+  
   const handleSubmit = async (event) => {
     event.preventDefault();
     setProcessing(true);
