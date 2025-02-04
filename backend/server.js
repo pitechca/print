@@ -1354,9 +1354,97 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
 });
 
 // Order routes
+// app.post("/api/orders", auth, async (req, res) => {
+//   try {
+//     const { products, totalAmount, paymentMethod, paymentId } = req.body;
+
+//     // Validate required fields
+//     if (!products || !Array.isArray(products) || products.length === 0) {
+//       return res.status(400).json({ 
+//         error: 'Invalid products data',
+//         details: 'Products array is required and must not be empty'
+//       });
+//     }
+
+//     if (!totalAmount || totalAmount <= 0) {
+//       return res.status(400).json({ 
+//         error: 'Invalid total amount',
+//         details: 'Total amount must be greater than 0'
+//       });
+//     }
+
+//     if (!paymentMethod || !paymentId) {
+//       return res.status(400).json({ 
+//         error: 'Payment information is required',
+//         details: 'Payment method and ID are required'
+//       });
+//     }
+
+//     // Create order with complete customization data
+//     const orderData = {
+//       user: req.user._id,
+//       products: products.map(item => ({
+//         product: item.product,
+//         quantity: item.quantity,
+//         customization: {
+//           template: item.customization?.template || null,
+//           preview: item.customization?.preview || null,
+//           description: item.customization?.description || '',
+//           customFields: (item.customization?.customFields || []).map(field => ({
+//             fieldId: field.fieldId,
+//             type: field.type,
+//             content: field.content,
+//             properties: {
+//               fontSize: field.properties?.fontSize || null,
+//               fontFamily: field.properties?.fontFamily || null,
+//               fill: field.properties?.fill || null,
+//               position: {
+//                 x: field.properties?.position?.x || 0,
+//                 y: field.properties?.position?.y || 0
+//               },
+//               scale: {
+//                 x: field.properties?.scale?.x || 1,
+//                 y: field.properties?.scale?.y || 1
+//               }
+//             }
+//           })),
+//           requiredFields: (item.customization?.requiredFields || []).map(field => ({
+//             fieldId: field.fieldId,
+//             type: field.type,
+//             value: field.value
+//           }))
+//         }
+//       })),
+//       totalAmount,
+//       paymentMethod,
+//       paymentId,
+//       status: 'completed'
+//     };
+
+//     // Log the order data for debugging
+//     console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
+
+//     const order = new Order(orderData);
+//     await order.save();
+
+//     // Fetch the complete order with populated fields
+//     const populatedOrder = await Order.findById(order._id)
+//       .populate('user', 'email')
+//       .populate('products.product');
+
+//     res.status(201).send(populatedOrder);
+//   } catch (error) {
+//     console.error('Order creation error:', error);
+//     res.status(400).json({
+//       error: 'Failed to create order',
+//       details: error.message,
+//       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+//     });
+//   }
+// });
 app.post("/api/orders", auth, async (req, res) => {
   try {
-    const { products, totalAmount, paymentMethod, paymentId } = req.body;
+    const { products, totalAmount, status, paymentMethod, paymentId } = req.body;
 
     // Validate required fields
     if (!products || !Array.isArray(products) || products.length === 0) {
@@ -1373,14 +1461,7 @@ app.post("/api/orders", auth, async (req, res) => {
       });
     }
 
-    if (!paymentMethod || !paymentId) {
-      return res.status(400).json({ 
-        error: 'Payment information is required',
-        details: 'Payment method and ID are required'
-      });
-    }
-
-    // Create order with complete customization data
+    // Create order with initial status
     const orderData = {
       user: req.user._id,
       products: products.map(item => ({
@@ -1416,13 +1497,10 @@ app.post("/api/orders", auth, async (req, res) => {
         }
       })),
       totalAmount,
+      status: status || 'pending',
       paymentMethod,
-      paymentId,
-      status: 'completed'
+      paymentId
     };
-
-    // Log the order data for debugging
-    console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
 
     const order = new Order(orderData);
     await order.save();
@@ -1437,12 +1515,41 @@ app.post("/api/orders", auth, async (req, res) => {
     console.error('Order creation error:', error);
     res.status(400).json({
       error: 'Failed to create order',
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      details: error.message
     });
   }
 });
 
+// Update order
+app.put("/api/orders/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true }
+    ).populate('products.product');
+
+    res.json(updatedOrder);
+  } catch (error) {
+    console.error('Order update error:', error);
+    res.status(400).json({
+      error: 'Failed to update order',
+      details: error.message
+    });
+  }
+});
 app.get("/api/orders", auth, async (req, res) => {
   try {
     let orders;
