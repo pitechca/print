@@ -22,34 +22,86 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
     );
   };
 
+  const createOrder = async (status = 'pending') => {
+    const selectedProducts = Array.from(selectedItems).map(index => {
+      const item = cart[index];
+      return {
+        product: item.product._id,
+        quantity: quantities[index],
+        customization: item.customization ? {
+          template: item.customization.template?._id || null,
+          preview: item.customization.preview || null,
+          description: item.customization.description || '',
+          customFields: (item.customization.customFields || []).map(field => ({
+            fieldId: field.fieldId,
+            type: field.type,
+            content: field.content,
+            properties: {
+              fontSize: field.properties?.fontSize || null,
+              fontFamily: field.properties?.fontFamily || null,
+              fill: field.properties?.fill || null,
+              position: {
+                x: field.properties?.position?.x || 0,
+                y: field.properties?.position?.y || 0
+              },
+              scale: {
+                x: field.properties?.scale?.x || 1,
+                y: field.properties?.scale?.y || 1
+              }
+            }
+          })),
+          requiredFields: (item.customization.requiredFields || []).map(field => ({
+            fieldId: field.fieldId,
+            type: field.type,
+            value: field.value
+          }))
+        } : null
+      };
+    });
+
+    const orderData = {
+      products: selectedProducts,
+      totalAmount: calculateTotal(),
+      status: status,
+      paymentMethod: 'stripe',
+      paymentId: 'pending'
+    };
+
+    const response = await axios.post('/api/orders', orderData, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.data;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setProcessing(true);
     setError(null);
 
-    if (!stripe || !elements) {
-      setError('Stripe has not been initialized.');
-      setProcessing(false);
-      return;
-    }
-
     try {
-      const total = calculateTotal();
-      console.log('Creating payment intent for amount:', total);
+      // First create a pending order
+      console.log('Creating pending order...');
+      const pendingOrder = await createOrder('pending');
+      console.log('Pending order created:', pendingOrder);
 
-      // Create payment intent
+      // Then create payment intent
+      console.log('Creating payment intent...');
       const { data: { clientSecret } } = await axios.post('/api/create-payment-intent', {
-        amount: total
+        amount: calculateTotal(),
+        orderId: pendingOrder._id // Pass the order ID to link payment with order
       }, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
 
-      console.log('Processing payment with Stripe...');
-
-      // Process payment with Stripe
+      // Process payment
+      console.log('Processing payment...');
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -58,82 +110,27 @@ const CheckoutForm = ({ selectedItems, quantities }) => {
       });
 
       if (stripeError) {
-        console.error('Stripe payment error:', stripeError);
-        setError(stripeError.message);
-        setProcessing(false);
-        return;
+        throw new Error(stripeError.message);
       }
 
-      if (paymentIntent.status === 'succeeded') {
-        console.log('Payment successful, creating order...');
-
-        // Prepare order data with full customization details
-        const selectedProducts = Array.from(selectedItems).map(index => {
-          const item = cart[index];
-          return {
-            product: item.product._id,
-            quantity: quantities[index],
-            customization: item.customization ? {
-              template: item.customization.template?._id || null,
-              preview: item.customization.preview || null,
-              description: item.customization.description || '',
-              customFields: (item.customization.customFields || []).map(field => ({
-                fieldId: field.fieldId,
-                type: field.type,
-                content: field.content,
-                properties: {
-                  fontSize: field.properties?.fontSize || null,
-                  fontFamily: field.properties?.fontFamily || null,
-                  fill: field.properties?.fill || null,
-                  position: {
-                    x: field.properties?.position?.x || 0,
-                    y: field.properties?.position?.y || 0
-                  },
-                  scale: {
-                    x: field.properties?.scale?.x || 1,
-                    y: field.properties?.scale?.y || 1
-                  }
-                }
-              })),
-              requiredFields: (item.customization.requiredFields || []).map(field => ({
-                fieldId: field.fieldId,
-                type: field.type,
-                value: field.value
-              }))
-            } : null
-          };
-        });
-
-        console.log('Creating order with data:', {
-          products: selectedProducts,
-          totalAmount: total,
-          paymentMethod: 'stripe',
-         paymentId: paymentIntent.id
-        });
-
-        // Create order
-        const orderResponse = await axios.post('/api/orders', {
-          products: selectedProducts,
-          totalAmount: total,
-          paymentMethod: 'stripe',
-         paymentId: paymentIntent.id
-        }, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        console.log('Order created successfully:', orderResponse.data);
-
-        // Remove purchased items from cart
-        for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
-          await removeFromCart(index);
+      // Update order with payment details
+      console.log('Payment successful, updating order...');
+      await axios.put(`/api/orders/${pendingOrder._id}`, {
+        status: 'completed',
+        paymentId: paymentIntent.id
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
         }
+      });
 
-        // Redirect to orders page
-        navigate('/orders');
+      // Remove purchased items from cart
+      for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
+        await removeFromCart(index);
       }
+
+      navigate('/orders');
     } catch (error) {
       console.error('Checkout error:', error);
       setError(
