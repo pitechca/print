@@ -136,54 +136,38 @@ const cartSchema = new mongoose.Schema({
 // cartSchema.index({ user: 1 });
 // cartSchema.index({ 'items.product': 1 });
 
+const orderItemSchema = new mongoose.Schema({
+  product: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: true
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    default: 1,
+    min: 1
+  },
+  customization: {
+    template: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Template',
+      default: null
+    },
+    preview: { type: String, default: null },
+    description: { type: String, default: '' },
+    customFields: [customFieldSchema],
+    requiredFields: [requiredFieldSchema]
+  }
+});
+
 const OrderSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  products: [{
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product',
-      required: true
-    },
-    quantity: {
-      type: Number,
-      required: true
-    },
-    customization: {
-      template: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Template'
-      },
-      preview: String,
-      description: String,
-      customFields: [{
-        fieldId: String,
-        type: String,
-        content: String,
-        properties: {
-          fontSize: Number,
-          fontFamily: String,
-          fill: String,
-          position: {
-            x: Number,
-            y: Number
-          },
-          scale: {
-            x: Number,
-            y: Number
-          }
-        }
-      }],
-      requiredFields: [{
-        fieldId: String,
-        type: String,
-        value: String
-      }]
-    }
-  }],
+  products: [orderItemSchema],
   totalAmount: {
     type: Number,
     required: true
@@ -237,57 +221,6 @@ const CouponSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-const CustomizationSchema = new mongoose.Schema({
-  fieldId: String,
-  type: String,
-  content: mongoose.Schema.Types.Mixed, // Can store text content or image data
-  properties: {
-    fontSize: Number,
-    fontFamily: String,
-    color: String,
-    position: {
-      x: Number,
-      y: Number
-    },
-    scale: {
-      x: Number,
-      y: Number
-    }
-  }
-});
-
-const OrderItemSchema = new mongoose.Schema({
-  product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  quantity: { type: Number, required: true, min: 1 },
-  customization: {
-    template: { type: mongoose.Schema.Types.ObjectId, ref: 'Template' },
-    preview: String,
-    customFields: [{
-      fieldId: String,
-      type: String,
-      content: String,
-      properties: {
-        fontSize: Number,
-        fontFamily: String,
-        fill: String,
-        position: {
-          x: Number,
-          y: Number
-        },
-        scale: {
-          x: Number,
-          y: Number
-        }
-      }
-    }],
-    requiredFields: [{
-      fieldId: String,
-      type: String,
-      value: String
-    }],
-    description: String
-  }
-});
 
 const Category = mongoose.model('Category', CategorySchema);
 const Template = mongoose.model('Template', TemplateSchema);
@@ -1356,7 +1289,7 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
 // Order routes
 app.post("/api/orders", auth, async (req, res) => {
   try {
-    const { products, totalAmount, paymentMethod, paymentId } = req.body;
+    const { products, totalAmount, status, paymentMethod, paymentId } = req.body;
 
     // Validate required fields
     if (!products || !Array.isArray(products) || products.length === 0) {
@@ -1373,38 +1306,38 @@ app.post("/api/orders", auth, async (req, res) => {
       });
     }
 
-    if (!paymentMethod) {
-      return res.status(400).json({ 
-        error: 'Payment method is required',
-        details: 'Please specify a payment method'
-      });
-    }
-
-    // Create order with the data directly from the cart
+    // Create order with initial status
     const orderData = {
       user: req.user._id,
       products: products.map(item => ({
         product: item.product,
-        quantity: item.quantity || 1,
+        quantity: item.quantity,
         customization: {
-          customText: item.customization?.customText || '',
-          customImage: item.customization?.customImage || '',
-          preview: item.customization?.preview || ''
+          template: item.customization?.template || null,
+          preview: item.customization?.preview || null,
+          description: item.customization?.description || '',
+          customFields: item.customization?.customFields || [],
+          requiredFields: item.customization?.requiredFields || []
         }
       })),
       totalAmount,
+      status: status || 'pending',
       paymentMethod,
-      paymentId,
-      status: 'completed'
+      paymentId
     };
+
+    console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
 
     const order = new Order(orderData);
     await order.save();
 
     // Fetch the complete order with populated fields
     const populatedOrder = await Order.findById(order._id)
-      .populate('user', 'email')
-      .populate('products.product');
+      .populate({
+        path: 'products.product',
+        model: 'Product'
+      })
+      .populate('user');
 
     res.status(201).send(populatedOrder);
   } catch (error) {
@@ -1659,8 +1592,54 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
   }
 });
 
-// Add endpoint to get individual customization files
-app.get("/api/orders/:orderId/products/:productIndex/files/:fieldId", auth, async (req, res) => {
+// // Add endpoint to get individual customization files
+// app.get("/api/orders/:orderId/products/:productIndex/files/:fieldId", auth, async (req, res) => {
+//   try {
+//     const { orderId, productIndex, fieldId } = req.params;
+    
+//     const order = await Order.findById(orderId)
+//       .populate('user')
+//       .populate('products.product');
+
+//     if (!order) {
+//       return res.status(404).send({ error: 'Order not found' });
+//     }
+
+//     if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
+//       return res.status(403).send({ error: 'Not authorized' });
+//     }
+
+//     const product = order.products[productIndex];
+//     if (!product) {
+//       return res.status(404).send({ error: 'Product not found in order' });
+//     }
+
+//     const field = product.customization?.customFields?.find(f => f.fieldId === fieldId);
+//     if (!field) {
+//       return res.status(404).send({ error: 'Customization field not found' });
+//     }
+
+//     // Send the file based on field type
+//     if (field.type === 'image' || field.type === 'logo') {
+//       res.setHeader('Content-Type', 'image/png');
+//       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.png`);
+//       // Assuming the content is stored as base64
+//       const imageBuffer = Buffer.from(field.content.split(',')[1], 'base64');
+//       res.send(imageBuffer);
+//     } else {
+//       res.setHeader('Content-Type', 'text/plain');
+//       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
+//       res.send(field.content);
+//     }
+//   } catch (error) {
+//     console.error('Error downloading customization file:', error);
+//     res.status(500).send({ error: 'Error downloading customization file' });
+//   }
+// });
+
+// Add these routes to your server.js
+
+app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, async (req, res) => {
   try {
     const { orderId, productIndex, fieldId } = req.params;
     
@@ -1681,30 +1660,58 @@ app.get("/api/orders/:orderId/products/:productIndex/files/:fieldId", auth, asyn
       return res.status(404).send({ error: 'Product not found in order' });
     }
 
-    const field = product.customization?.customFields?.find(f => f.fieldId === fieldId);
-    if (!field) {
-      return res.status(404).send({ error: 'Customization field not found' });
+    // Find field in customization data
+    let fieldData = null;
+    let fieldContent = null;
+
+    // Check required fields
+    const requiredField = product.customization?.requiredFields?.find(f => f.fieldId === fieldId);
+    if (requiredField) {
+      fieldData = requiredField;
+      fieldContent = requiredField.value;
     }
 
-    // Send the file based on field type
-    if (field.type === 'image' || field.type === 'logo') {
-      res.setHeader('Content-Type', 'image/png');
-      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.png`);
-      // Assuming the content is stored as base64
-      const imageBuffer = Buffer.from(field.content.split(',')[1], 'base64');
-      res.send(imageBuffer);
-    } else {
+    // Check custom fields
+    const customField = product.customization?.customFields?.find(f => f.fieldId === fieldId);
+    if (customField) {
+      fieldData = customField;
+      fieldContent = customField.content;
+    }
+
+    // Check for preview
+    if (fieldId === 'preview' && product.customization?.preview) {
+      fieldData = { type: 'image' };
+      fieldContent = product.customization.preview;
+    }
+
+    if (!fieldData || !fieldContent) {
+      return res.status(404).send({ error: 'Field not found' });
+    }
+
+    // Handle text fields
+    if (fieldData.type === 'text') {
       res.setHeader('Content-Type', 'text/plain');
       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
-      res.send(field.content);
+      return res.send(fieldContent);
     }
+
+    // Handle image fields
+    if (fieldData.type === 'image' || fieldData.type === 'logo') {
+      // Convert base64 to buffer
+      const base64Data = fieldContent.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.png`);
+      return res.send(buffer);
+    }
+
+    res.status(400).send({ error: 'Unsupported field type' });
   } catch (error) {
     console.error('Error downloading customization file:', error);
-    res.status(500).send({ error: 'Error downloading customization file' });
+    res.status(500).send({ error: 'Server error' });
   }
 });
-
-
 
 
 
