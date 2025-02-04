@@ -1465,11 +1465,11 @@ app.post("/api/orders", auth, async (req, res) => {
     const orderData = {
       user: req.user._id,
       products: products.map(item => ({
-        product: mongoose.Types.ObjectId(item.product),
+        product: new mongoose.Types.ObjectId(item.product),
         quantity: item.quantity,
         customization: item.customization ? {
           template: item.customization.template 
-            ? mongoose.Types.ObjectId(item.customization.template) 
+            ? new mongoose.Types.ObjectId(item.customization.template) 
             : null,
           preview: item.customization.preview || null,
           description: item.customization.description || '',
@@ -1497,7 +1497,7 @@ app.post("/api/orders", auth, async (req, res) => {
             value: field.value
           }))
         } : null
-      })),
+    })),    
       totalAmount,
       status: status || 'pending',
       paymentMethod,
