@@ -294,7 +294,7 @@ const Cart = () => {
                       <SelectItem value="applepay">Apple Pay</SelectItem>
                       <SelectItem value="googlepay">Google Pay</SelectItem>
                       <SelectItem value="klarna">Klarna</SelectItem>
-                    </SelectContent>
+                     </SelectContent>
                   </Select>
                 </div>
 
