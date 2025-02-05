@@ -25,14 +25,15 @@ const Footer = () => {
         </div>
         <div>
           <h4 className="text-xl font-bold mb-4">Contact</h4>
-          <p>Phone: {phoneNumber}
+          <p>☏ Phone: {phoneNumber}
             {/* {<PhoneIcon className="mr-2 h-5 w-5"/>} */}
            </p>
-          <p style={{marginTop:7+'px'}}>Email: support@bagbox.ca
+          <p style={{marginTop:7+'px'}}>
+            ✉ Email: support@bagbox.ca
             {/* {<MailIcon className="mr-2 h-5 w-5"/>}  */}
              </p>
           <p style={{marginTop:7+'px'}}>
-            Address: 102-1127 14th St W,<br/> North Vancouver, BC, V7P 1J9
+           ⚲ Address: 102-1127 14th St W,<br/> North Vancouver, BC, V7P 1J9
 
           </p>
         </div>

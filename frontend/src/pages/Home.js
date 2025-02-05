@@ -1,4 +1,3 @@
-// working but without optimization
 // src/pages/Home.js
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Search, Phone, ShoppingCart } from 'lucide-react';
@@ -122,13 +121,14 @@ const Home = () => {
     <div className="flex flex-col min-h-screen">
       {/* Cart Notification */}
       {showCartNotification && (
-        <div className="fixed top-24 right-4 z-50 animate-slide-in">
+        <div className="fixed top-24 right-4 z-50 transition-all duration-300 ease-in-out animate-notification">
           <div className="bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2">
-            <ShoppingCart className="h-4 w-4" />
+            <ShoppingCart className="h-4 w-4 animate-bounce" />
             <p>Item added to cart successfully!</p>
           </div>
         </div>
       )}
+
 
       {/* Hero Section */}
        <div 
@@ -525,19 +525,45 @@ const Home = () => {
           scrollbar-width: none;
         }
         
-        @keyframes slide-in {
-          from {
-            transform: translateX(100%);
+        @keyframes notification {
+          0% {
             opacity: 0;
+            transform: translateX(100%) translateY(-50%);
           }
-          to {
-            transform: translateX(0);
+          7% {
             opacity: 1;
+            transform: translateX(-10%) translateY(0);
+          }
+          10% {
+            transform: translateX(0);
+          }
+          90% {
+            opacity: 1;
+            transform: translateX(0);
+          }
+          100% {
+            opacity: 0;
+            transform: translateX(100%);
           }
         }
         
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out forwards;
+        .animate-notification {
+          animation: notification 2s ease-in-out forwards;
+        }
+
+        @keyframes bounce {
+          0%, 100% {
+            transform: translateY(-25%);
+            animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+          }
+          50% {
+            transform: translateY(0);
+            animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+          }
+        }
+        
+        .animate-bounce {
+          animation: bounce 1s infinite;
         }
       `}</style>
     </div>

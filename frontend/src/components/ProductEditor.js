@@ -1,14 +1,17 @@
+
+
+
+
+
+// working properly without dual view
 // src/components/ProductEditor.js
 import React, { useEffect, useRef, useState } from "react";
 import { fabric } from "fabric";
 import axios from "axios";
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import ProductViewTransformer from './ProductViewTransformer';
-
 
 const ProductEditor = () => {
-  const [canvasVersion, setCanvasVersion] = useState(0);
   const [canvas, setCanvas] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -34,10 +37,6 @@ const ProductEditor = () => {
   const [customText, setCustomText] = useState('');
   const [customizations, setCustomizations] = useState({});
 
-  const updateCanvasVersion = () => {
-    setCanvasVersion(prev => prev + 1);
-  };
-  
   const fontFamilies = [
     'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana',
     'Helvetica', 'Palatino', 'Garamond', 'Bookman', 'Tahoma'
@@ -53,12 +52,7 @@ const ProductEditor = () => {
     fabricCanvas.selection = true;
     fabricCanvas.on('object:selected', handleObjectSelected);
     fabricCanvas.on('selection:cleared', handleSelectionCleared);
-    fabricCanvas.on('object:modified', (e) => {
-      handleObjectModified(e);
-      updateCanvasVersion();
-    });
-    fabricCanvas.on('object:added', updateCanvasVersion);
-    fabricCanvas.on('object:removed', updateCanvasVersion);
+    fabricCanvas.on('object:modified', handleObjectModified);
     
     setCanvas(fabricCanvas);
     return () => fabricCanvas.dispose();
@@ -116,55 +110,50 @@ const ProductEditor = () => {
   };
 
   const handleTemplateChange = (template) => {
-  if (!canvas || !template) return;
-  
-  setSelectedTemplate(template);
-  setRequiredFields(template.requiredFields || []);
-  setFieldInputs({});
-  setCustomizations({});
-  
-  const bgImage = canvas.backgroundImage;
-  canvas.clear();
-  canvas.setBackgroundImage(bgImage, canvas.renderAll.bind(canvas));
-  
-  let elementsData = template.elements;
-  if (typeof template.elements === 'string') {
-    try {
-      elementsData = JSON.parse(template.elements);
-    } catch (error) {
-      console.error('Error parsing template elements:', error);
-      return;
-    }
-  }
-  
-  if (elementsData && elementsData.objects) {
-    let loadedObjects = 0;
-    const totalObjects = elementsData.objects.length;
+    if (!canvas || !template) return;
     
-    elementsData.objects.forEach(obj => {
-      fabric.util.enlivenObjects([obj], (enlivenedObjects) => {
-        const enlivenedObject = enlivenedObjects[0];
-        
-        if (enlivenedObject.data?.isPlaceholder || enlivenedObject.data?.required) {
-          enlivenedObject.set({
-            hasControls: true,
-            lockUniScaling: false,
-            lockRotation: false,
-            selectable: true
-          });
-        }
-        
-        canvas.add(enlivenedObject);
-        loadedObjects++;
-        
-        if (loadedObjects === totalObjects) {
+    setSelectedTemplate(template);
+    setRequiredFields(template.requiredFields || []);
+    setFieldInputs({});
+    setCustomizations({});
+    
+    // Keep background image
+    const bgImage = canvas.backgroundImage;
+    canvas.clear();
+    canvas.setBackgroundImage(bgImage, canvas.renderAll.bind(canvas));
+    
+    // Load template elements
+    let elementsData = template.elements;
+    if (typeof template.elements === 'string') {
+      try {
+        elementsData = JSON.parse(template.elements);
+      } catch (error) {
+        console.error('Error parsing template elements:', error);
+        return;
+      }
+    }
+    
+    if (elementsData && elementsData.objects) {
+      elementsData.objects.forEach(obj => {
+        fabric.util.enlivenObjects([obj], (enlivenedObjects) => {
+          const enlivenedObject = enlivenedObjects[0];
+          
+          // Keep required field IDs and placeholder properties
+          if (enlivenedObject.data?.isPlaceholder || enlivenedObject.data?.required) {
+            enlivenedObject.set({
+              hasControls: true,
+              lockUniScaling: false,
+              lockRotation: false,
+              selectable: true
+            });
+          }
+          
+          canvas.add(enlivenedObject);
           canvas.renderAll();
-          updateCanvasVersion();
-        }
+        });
       });
-    });
-  }
-};
+    }
+  };
 
   const handleObjectSelected = (e) => {
     const obj = e.target;
@@ -221,13 +210,12 @@ const ProductEditor = () => {
     setCustomText('');
   };
 
-
   const handleFieldInput = (fieldId, value, type) => {
     const fields = canvas.getObjects().filter(obj => obj.data?.id === fieldId);
     if (!fields.length) return;
-  
+
     const field = fields[0];
-  
+
     if (type === 'text' && (field.type === 'i-text' || field.type === 'text')) {
       field.set('text', value);
       setFieldInputs(prev => ({ ...prev, [fieldId]: value }));
@@ -236,71 +224,33 @@ const ProductEditor = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         fabric.Image.fromURL(e.target.result, (img) => {
-          // Preserve original field's data and positioning
+          const scale = Math.min(
+            field.width * field.scaleX / img.width,
+            field.height * field.scaleY / img.height
+          );
+
           img.set({
             left: field.left,
             top: field.top,
-            scaleX: field.width / img.width,
-            scaleY: field.height / img.height,
-            data: field.data  // Preserve original field's metadata
+            scaleX: scale,
+            scaleY: scale,
+            data: field.data
           });
-  
-          // Replace the field with the new image
+
           canvas.remove(field);
           canvas.add(img);
           canvas.setActiveObject(img);
           canvas.renderAll();
-  
+
           setFieldInputs(prev => ({ ...prev, [fieldId]: e.target.result }));
           handleObjectModified({ target: img });
         });
       };
       reader.readAsDataURL(value);
     }
-  
+
     canvas.renderAll();
   };
-  // const handleFieldInput = (fieldId, value, type) => {
-  //   const fields = canvas.getObjects().filter(obj => obj.data?.id === fieldId);
-  //   if (!fields.length) return;
-
-  //   const field = fields[0];
-
-  //   if (type === 'text' && (field.type === 'i-text' || field.type === 'text')) {
-  //     field.set('text', value);
-  //     setFieldInputs(prev => ({ ...prev, [fieldId]: value }));
-  //     handleObjectModified({ target: field });
-  //   } else if ((type === 'image' || type === 'logo') && value instanceof File) {
-  //     const reader = new FileReader();
-  //     reader.onload = (e) => {
-  //       fabric.Image.fromURL(e.target.result, (img) => {
-  //         const scale = Math.min(
-  //           field.width * field.scaleX / img.width,
-  //           field.height * field.scaleY / img.height
-  //         );
-
-  //         img.set({
-  //           left: field.left,
-  //           top: field.top,
-  //           scaleX: scale,
-  //           scaleY: scale,
-  //           data: field.data
-  //         });
-
-  //         canvas.remove(field);
-  //         canvas.add(img);
-  //         canvas.setActiveObject(img);
-  //         canvas.renderAll();
-
-  //         setFieldInputs(prev => ({ ...prev, [fieldId]: e.target.result }));
-  //         handleObjectModified({ target: img });
-  //       });
-  //     };
-  //     reader.readAsDataURL(value);
-  //   }
-
-  //   canvas.renderAll();
-  // };
 
   const handleCustomText = () => {
     if (!canvas || !customText) return;
@@ -388,7 +338,6 @@ const ProductEditor = () => {
     handleSelectionCleared();
   };
 
-
   const handleAddToCart = async () => {
     if (!selectedProduct || !canvas) return;
   
@@ -398,82 +347,27 @@ const ProductEditor = () => {
         obj !== canvas.backgroundImage
       );
   
-      console.log('All Custom Elements:', customElements);
-
       // Process custom fields
-      const customFields = customElements.map(obj => {
-        
-        console.log('Processing Object:', obj);
-        console.log('Object Data:', obj.data);
-
-        // Special handling for logo/image placeholders
-        if (obj.data?.type === 'logo' || obj.data?.type === 'image') {
-          
-          const dataUrl = obj.toDataURL ? obj.toDataURL('image/png') : null;
-          console.log('Logo/Image DataURL:', dataUrl);
-
-          return {
-            fieldId: obj.data?.id || `custom_${Date.now()}`,
-            type: 'image',
-            content: obj.toDataURL('image/png'),
-            properties: {
-              fontSize: null,
-              fontFamily: null,
-              fill: null,
-              position: {
-                x: obj.left || 0,
-                y: obj.top || 0
-              },
-              scale: {
-                x: obj.scaleX || 1,
-                y: obj.scaleY || 1
-              }
-            }
-          };
-        }
-        
-        // Existing handling for text objects
-        if (obj.type === 'text' || obj.type === 'i-text') {
-          return {
-            fieldId: obj.data?.id || `custom_${Date.now()}`,
-            type: 'text',
-            content: obj.text,
-            properties: {
-              fontSize: obj.fontSize || null,
-              fontFamily: obj.fontFamily || null,
-              fill: obj.fill || null,
-              position: {
-                x: obj.left || 0,
-                y: obj.top || 0
-              },
-              scale: {
-                x: obj.scaleX || 1,
-                y: obj.scaleY || 1
-              }
-            }
-          };
-        }
-  
-        // Fallback for other types of objects
-        return {
-          fieldId: obj.data?.id || `custom_${Date.now()}`,
-          type: obj.type,
-          content: obj.toDataURL ? obj.toDataURL('image/png') : null,
-          properties: {
-            fontSize: null,
-            fontFamily: null,
-            fill: null,
-            position: {
-              x: obj.left || 0,
-              y: obj.top || 0
-            },
-            scale: {
-              x: obj.scaleX || 1,
-              y: obj.scaleY || 1
-            }
+      const customFields = customElements.map(obj => ({
+        fieldId: obj.data?.id || `custom_${Date.now()}`,
+        type: obj.type === 'text' || obj.type === 'i-text' ? 'text' : 'image',
+        content: obj.type === 'text' || obj.type === 'i-text' ? 
+                 obj.text : 
+                 obj.toDataURL('image/png'),
+        properties: {
+          fontSize: obj.fontSize || null,
+          fontFamily: obj.fontFamily || null,
+          fill: obj.fill || null,
+          position: {
+            x: obj.left || 0,
+            y: obj.top || 0
+          },
+          scale: {
+            x: obj.scaleX || 1,
+            y: obj.scaleY || 1
           }
-        };
-      });
+        }
+      }));
   
       // Create customization data
       const customization = {
@@ -488,8 +382,6 @@ const ProductEditor = () => {
         }))
       };
   
-      console.log('Customization payload:', customization);
-  
       // Add to cart
       await addToCart({
         product: selectedProduct,
@@ -503,72 +395,12 @@ const ProductEditor = () => {
       alert('Failed to add item to cart. Please try again.');
     }
   };
-  // const handleAddToCart = async () => {
-  //   if (!selectedProduct || !canvas) return;
-  
-  //   try {
-  //     // Get all custom elements
-  //     const customElements = canvas.getObjects().filter(obj => 
-  //       obj !== canvas.backgroundImage
-  //     );
-  
-  //     // Process custom fields
-  //     const customFields = customElements.map(obj => ({
-  //       fieldId: obj.data?.id || `custom_${Date.now()}`,
-  //       type: obj.type === 'text' || obj.type === 'i-text' ? 'text' : 'image',
-  //       content: obj.type === 'text' || obj.type === 'i-text' ? 
-  //                obj.text : 
-  //                obj.toDataURL('image/png'),
-  //       properties: {
-  //         fontSize: obj.fontSize || null,
-  //         fontFamily: obj.fontFamily || null,
-  //         fill: obj.fill || null,
-  //         position: {
-  //           x: obj.left || 0,
-  //           y: obj.top || 0
-  //         },
-  //         scale: {
-  //           x: obj.scaleX || 1,
-  //           y: obj.scaleY || 1
-  //         }
-  //       }
-  //     }));
-  
-  //     // Create customization data
-  //     const customization = {
-  //       template: selectedTemplate?._id || null,
-  //       preview: canvas.toDataURL('image/png'),
-  //       description: orderDescription || '',
-  //       customFields: customFields,
-  //       requiredFields: Object.entries(fieldInputs).map(([fieldId, value]) => ({
-  //         fieldId,
-  //         type: requiredFields.find(f => f.id === fieldId)?.type || 'text',
-  //         value: typeof value === 'string' ? value : value.toDataURL('image/png')
-  //       }))
-  //     };
-  
-  //     console.log('Customization payload:', customization);
-
-  //     // Add to cart
-  //     await addToCart({
-  //       product: selectedProduct,
-  //       quantity: parseInt(quantity),
-  //       customization
-  //     });
-  
-  //     navigate('/cart');
-  //   } catch (error) {
-  //     console.error('Error adding to cart:', error);
-  //     alert('Failed to add item to cart. Please try again.');
-  //   }
-  // };
 
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Front View Column */}
+        {/* Canvas and Product Info Column */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-4">Design View</h3>
           <canvas ref={canvasRef} className="border rounded-lg" />
 
           {/* Product Images */}
@@ -693,21 +525,8 @@ const ProductEditor = () => {
           </div>
         </div>
 
- {/* Rotated View Column */}
- <div className="bg-white p-6 rounded-lg shadow-md">
-        <h3 className="text-lg font-semibold mb-4">Preview Rotated View</h3>
-        <ProductViewTransformer
-          frontCanvas={canvas}
-          rotatedImageUrl={selectedProduct?.images[2]?.data}
-          horizontalRotation={30}
-          verticalRotation={30}
-          canvasVersion={canvasVersion}
-        />
-      </div>
-
-
         {/* Design and Customization Column */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="bg-white p-6 rounded-lg shadow-md space-y-6">
           {/* Template Selection */}
           <div>
             <h3 className="text-lg font-semibold mb-3">Choose a Design Template</h3>
@@ -872,19 +691,18 @@ export default ProductEditor;
 
 
 
-
-
-
-
-// // working properly without dual view
+// // for bags with dual canvas
 // // src/components/ProductEditor.js
 // import React, { useEffect, useRef, useState } from "react";
 // import { fabric } from "fabric";
 // import axios from "axios";
 // import { useParams, useNavigate } from 'react-router-dom';
 // import { useCart } from '../context/CartContext';
+// import ProductViewTransformer from './ProductViewTransformer';
+
 
 // const ProductEditor = () => {
+//   const [canvasVersion, setCanvasVersion] = useState(0);
 //   const [canvas, setCanvas] = useState(null);
 //   const [selectedProduct, setSelectedProduct] = useState(null);
 //   const [quantity, setQuantity] = useState(1);
@@ -910,6 +728,10 @@ export default ProductEditor;
 //   const [customText, setCustomText] = useState('');
 //   const [customizations, setCustomizations] = useState({});
 
+//   const updateCanvasVersion = () => {
+//     setCanvasVersion(prev => prev + 1);
+//   };
+  
 //   const fontFamilies = [
 //     'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana',
 //     'Helvetica', 'Palatino', 'Garamond', 'Bookman', 'Tahoma'
@@ -925,7 +747,12 @@ export default ProductEditor;
 //     fabricCanvas.selection = true;
 //     fabricCanvas.on('object:selected', handleObjectSelected);
 //     fabricCanvas.on('selection:cleared', handleSelectionCleared);
-//     fabricCanvas.on('object:modified', handleObjectModified);
+//     fabricCanvas.on('object:modified', (e) => {
+//       handleObjectModified(e);
+//       updateCanvasVersion();
+//     });
+//     fabricCanvas.on('object:added', updateCanvasVersion);
+//     fabricCanvas.on('object:removed', updateCanvasVersion);
     
 //     setCanvas(fabricCanvas);
 //     return () => fabricCanvas.dispose();
@@ -983,50 +810,55 @@ export default ProductEditor;
 //   };
 
 //   const handleTemplateChange = (template) => {
-//     if (!canvas || !template) return;
-    
-//     setSelectedTemplate(template);
-//     setRequiredFields(template.requiredFields || []);
-//     setFieldInputs({});
-//     setCustomizations({});
-    
-//     // Keep background image
-//     const bgImage = canvas.backgroundImage;
-//     canvas.clear();
-//     canvas.setBackgroundImage(bgImage, canvas.renderAll.bind(canvas));
-    
-//     // Load template elements
-//     let elementsData = template.elements;
-//     if (typeof template.elements === 'string') {
-//       try {
-//         elementsData = JSON.parse(template.elements);
-//       } catch (error) {
-//         console.error('Error parsing template elements:', error);
-//         return;
-//       }
+//   if (!canvas || !template) return;
+  
+//   setSelectedTemplate(template);
+//   setRequiredFields(template.requiredFields || []);
+//   setFieldInputs({});
+//   setCustomizations({});
+  
+//   const bgImage = canvas.backgroundImage;
+//   canvas.clear();
+//   canvas.setBackgroundImage(bgImage, canvas.renderAll.bind(canvas));
+  
+//   let elementsData = template.elements;
+//   if (typeof template.elements === 'string') {
+//     try {
+//       elementsData = JSON.parse(template.elements);
+//     } catch (error) {
+//       console.error('Error parsing template elements:', error);
+//       return;
 //     }
+//   }
+  
+//   if (elementsData && elementsData.objects) {
+//     let loadedObjects = 0;
+//     const totalObjects = elementsData.objects.length;
     
-//     if (elementsData && elementsData.objects) {
-//       elementsData.objects.forEach(obj => {
-//         fabric.util.enlivenObjects([obj], (enlivenedObjects) => {
-//           const enlivenedObject = enlivenedObjects[0];
-          
-//           // Keep required field IDs and placeholder properties
-//           if (enlivenedObject.data?.isPlaceholder || enlivenedObject.data?.required) {
-//             enlivenedObject.set({
-//               hasControls: true,
-//               lockUniScaling: false,
-//               lockRotation: false,
-//               selectable: true
-//             });
-//           }
-          
-//           canvas.add(enlivenedObject);
+//     elementsData.objects.forEach(obj => {
+//       fabric.util.enlivenObjects([obj], (enlivenedObjects) => {
+//         const enlivenedObject = enlivenedObjects[0];
+        
+//         if (enlivenedObject.data?.isPlaceholder || enlivenedObject.data?.required) {
+//           enlivenedObject.set({
+//             hasControls: true,
+//             lockUniScaling: false,
+//             lockRotation: false,
+//             selectable: true
+//           });
+//         }
+        
+//         canvas.add(enlivenedObject);
+//         loadedObjects++;
+        
+//         if (loadedObjects === totalObjects) {
 //           canvas.renderAll();
-//         });
+//           updateCanvasVersion();
+//         }
 //       });
-//     }
-//   };
+//     });
+//   }
+// };
 
 //   const handleObjectSelected = (e) => {
 //     const obj = e.target;
@@ -1083,12 +915,13 @@ export default ProductEditor;
 //     setCustomText('');
 //   };
 
+
 //   const handleFieldInput = (fieldId, value, type) => {
 //     const fields = canvas.getObjects().filter(obj => obj.data?.id === fieldId);
 //     if (!fields.length) return;
-
+  
 //     const field = fields[0];
-
+  
 //     if (type === 'text' && (field.type === 'i-text' || field.type === 'text')) {
 //       field.set('text', value);
 //       setFieldInputs(prev => ({ ...prev, [fieldId]: value }));
@@ -1097,33 +930,71 @@ export default ProductEditor;
 //       const reader = new FileReader();
 //       reader.onload = (e) => {
 //         fabric.Image.fromURL(e.target.result, (img) => {
-//           const scale = Math.min(
-//             field.width * field.scaleX / img.width,
-//             field.height * field.scaleY / img.height
-//           );
-
+//           // Preserve original field's data and positioning
 //           img.set({
 //             left: field.left,
 //             top: field.top,
-//             scaleX: scale,
-//             scaleY: scale,
-//             data: field.data
+//             scaleX: field.width / img.width,
+//             scaleY: field.height / img.height,
+//             data: field.data  // Preserve original field's metadata
 //           });
-
+  
+//           // Replace the field with the new image
 //           canvas.remove(field);
 //           canvas.add(img);
 //           canvas.setActiveObject(img);
 //           canvas.renderAll();
-
+  
 //           setFieldInputs(prev => ({ ...prev, [fieldId]: e.target.result }));
 //           handleObjectModified({ target: img });
 //         });
 //       };
 //       reader.readAsDataURL(value);
 //     }
-
+  
 //     canvas.renderAll();
 //   };
+//   // const handleFieldInput = (fieldId, value, type) => {
+//   //   const fields = canvas.getObjects().filter(obj => obj.data?.id === fieldId);
+//   //   if (!fields.length) return;
+
+//   //   const field = fields[0];
+
+//   //   if (type === 'text' && (field.type === 'i-text' || field.type === 'text')) {
+//   //     field.set('text', value);
+//   //     setFieldInputs(prev => ({ ...prev, [fieldId]: value }));
+//   //     handleObjectModified({ target: field });
+//   //   } else if ((type === 'image' || type === 'logo') && value instanceof File) {
+//   //     const reader = new FileReader();
+//   //     reader.onload = (e) => {
+//   //       fabric.Image.fromURL(e.target.result, (img) => {
+//   //         const scale = Math.min(
+//   //           field.width * field.scaleX / img.width,
+//   //           field.height * field.scaleY / img.height
+//   //         );
+
+//   //         img.set({
+//   //           left: field.left,
+//   //           top: field.top,
+//   //           scaleX: scale,
+//   //           scaleY: scale,
+//   //           data: field.data
+//   //         });
+
+//   //         canvas.remove(field);
+//   //         canvas.add(img);
+//   //         canvas.setActiveObject(img);
+//   //         canvas.renderAll();
+
+//   //         setFieldInputs(prev => ({ ...prev, [fieldId]: e.target.result }));
+//   //         handleObjectModified({ target: img });
+//   //       });
+//   //     };
+//   //     reader.readAsDataURL(value);
+//   //   }
+
+//   //   canvas.renderAll();
+//   // };
 
 //   const handleCustomText = () => {
 //     if (!canvas || !customText) return;
@@ -1211,6 +1082,7 @@ export default ProductEditor;
 //     handleSelectionCleared();
 //   };
 
+
 //   const handleAddToCart = async () => {
 //     if (!selectedProduct || !canvas) return;
   
@@ -1220,27 +1092,82 @@ export default ProductEditor;
 //         obj !== canvas.backgroundImage
 //       );
   
+//       console.log('All Custom Elements:', customElements);
+
 //       // Process custom fields
-//       const customFields = customElements.map(obj => ({
-//         fieldId: obj.data?.id || `custom_${Date.now()}`,
-//         type: obj.type === 'text' || obj.type === 'i-text' ? 'text' : 'image',
-//         content: obj.type === 'text' || obj.type === 'i-text' ? 
-//                  obj.text : 
-//                  obj.toDataURL('image/png'),
-//         properties: {
-//           fontSize: obj.fontSize || null,
-//           fontFamily: obj.fontFamily || null,
-//           fill: obj.fill || null,
-//           position: {
-//             x: obj.left || 0,
-//             y: obj.top || 0
-//           },
-//           scale: {
-//             x: obj.scaleX || 1,
-//             y: obj.scaleY || 1
-//           }
+//       const customFields = customElements.map(obj => {
+        
+//         console.log('Processing Object:', obj);
+//         console.log('Object Data:', obj.data);
+
+//         // Special handling for logo/image placeholders
+//         if (obj.data?.type === 'logo' || obj.data?.type === 'image') {
+          
+//           const dataUrl = obj.toDataURL ? obj.toDataURL('image/png') : null;
+//           console.log('Logo/Image DataURL:', dataUrl);
+
+//           return {
+//             fieldId: obj.data?.id || `custom_${Date.now()}`,
+//             type: 'image',
+//             content: obj.toDataURL('image/png'),
+//             properties: {
+//               fontSize: null,
+//               fontFamily: null,
+//               fill: null,
+//               position: {
+//                 x: obj.left || 0,
+//                 y: obj.top || 0
+//               },
+//               scale: {
+//                 x: obj.scaleX || 1,
+//                 y: obj.scaleY || 1
+//               }
+//             }
+//           };
 //         }
-//       }));
+        
+//         // Existing handling for text objects
+//         if (obj.type === 'text' || obj.type === 'i-text') {
+//           return {
+//             fieldId: obj.data?.id || `custom_${Date.now()}`,
+//             type: 'text',
+//             content: obj.text,
+//             properties: {
+//               fontSize: obj.fontSize || null,
+//               fontFamily: obj.fontFamily || null,
+//               fill: obj.fill || null,
+//               position: {
+//                 x: obj.left || 0,
+//                 y: obj.top || 0
+//               },
+//               scale: {
+//                 x: obj.scaleX || 1,
+//                 y: obj.scaleY || 1
+//               }
+//             }
+//           };
+//         }
+  
+//         // Fallback for other types of objects
+//         return {
+//           fieldId: obj.data?.id || `custom_${Date.now()}`,
+//           type: obj.type,
+//           content: obj.toDataURL ? obj.toDataURL('image/png') : null,
+//           properties: {
+//             fontSize: null,
+//             fontFamily: null,
+//             fill: null,
+//             position: {
+//               x: obj.left || 0,
+//               y: obj.top || 0
+//             },
+//             scale: {
+//               x: obj.scaleX || 1,
+//               y: obj.scaleY || 1
+//             }
+//           }
+//         };
+//       });
   
 //       // Create customization data
 //       const customization = {
@@ -1255,6 +1182,8 @@ export default ProductEditor;
 //         }))
 //       };
   
+//       console.log('Customization payload:', customization);
+  
 //       // Add to cart
 //       await addToCart({
 //         product: selectedProduct,
@@ -1268,12 +1197,72 @@ export default ProductEditor;
 //       alert('Failed to add item to cart. Please try again.');
 //     }
 //   };
+//   // const handleAddToCart = async () => {
+//   //   if (!selectedProduct || !canvas) return;
+  
+//   //   try {
+//   //     // Get all custom elements
+//   //     const customElements = canvas.getObjects().filter(obj => 
+//   //       obj !== canvas.backgroundImage
+//   //     );
+  
+//   //     // Process custom fields
+//   //     const customFields = customElements.map(obj => ({
+//   //       fieldId: obj.data?.id || `custom_${Date.now()}`,
+//   //       type: obj.type === 'text' || obj.type === 'i-text' ? 'text' : 'image',
+//   //       content: obj.type === 'text' || obj.type === 'i-text' ? 
+//   //                obj.text : 
+//   //                obj.toDataURL('image/png'),
+//   //       properties: {
+//   //         fontSize: obj.fontSize || null,
+//   //         fontFamily: obj.fontFamily || null,
+//   //         fill: obj.fill || null,
+//   //         position: {
+//   //           x: obj.left || 0,
+//   //           y: obj.top || 0
+//   //         },
+//   //         scale: {
+//   //           x: obj.scaleX || 1,
+//   //           y: obj.scaleY || 1
+//   //         }
+//   //       }
+//   //     }));
+  
+//   //     // Create customization data
+//   //     const customization = {
+//   //       template: selectedTemplate?._id || null,
+//   //       preview: canvas.toDataURL('image/png'),
+//   //       description: orderDescription || '',
+//   //       customFields: customFields,
+//   //       requiredFields: Object.entries(fieldInputs).map(([fieldId, value]) => ({
+//   //         fieldId,
+//   //         type: requiredFields.find(f => f.id === fieldId)?.type || 'text',
+//   //         value: typeof value === 'string' ? value : value.toDataURL('image/png')
+//   //       }))
+//   //     };
+  
+//   //     console.log('Customization payload:', customization);
+
+//   //     // Add to cart
+//   //     await addToCart({
+//   //       product: selectedProduct,
+//   //       quantity: parseInt(quantity),
+//   //       customization
+//   //     });
+  
+//   //     navigate('/cart');
+//   //   } catch (error) {
+//   //     console.error('Error adding to cart:', error);
+//   //     alert('Failed to add item to cart. Please try again.');
+//   //   }
+//   // };
 
 //   return (
 //     <div className="container mx-auto p-4">
 //       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-//         {/* Canvas and Product Info Column */}
+//         {/* Front View Column */}
 //         <div className="bg-white p-6 rounded-lg shadow-md">
+//           <h3 className="text-lg font-semibold mb-4">Design View</h3>
 //           <canvas ref={canvasRef} className="border rounded-lg" />
 
 //           {/* Product Images */}
@@ -1398,8 +1387,21 @@ export default ProductEditor;
 //           </div>
 //         </div>
 
+//  {/* Rotated View Column */}
+//  <div className="bg-white p-6 rounded-lg shadow-md">
+//         <h3 className="text-lg font-semibold mb-4">Preview Rotated View</h3>
+//         <ProductViewTransformer
+//           frontCanvas={canvas}
+//           rotatedImageUrl={selectedProduct?.images[2]?.data}
+//           horizontalRotation={30}
+//           verticalRotation={30}
+//           canvasVersion={canvasVersion}
+//         />
+//       </div>
+
+
 //         {/* Design and Customization Column */}
-//         <div className="bg-white p-6 rounded-lg shadow-md space-y-6">
+//         <div className="bg-white p-6 rounded-lg shadow-md">
 //           {/* Template Selection */}
 //           <div>
 //             <h3 className="text-lg font-semibold mb-3">Choose a Design Template</h3>
@@ -1559,3 +1561,7 @@ export default ProductEditor;
 // };
 
 // export default ProductEditor;
+
+
+
+

@@ -1,23 +1,31 @@
 // src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import './styles/main.css';
+import ProductEditorRoute from './routs/ProductEditorRoute';
+
+//components
+import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 import Navbar from './components/Navbar';
-import Home from './pages/Home';
-import ProductEditor from './components/ProductEditor';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Cart from './pages/Cart';
-import AdminDashboard from './pages/AdminDashboard';
+// import ProductEditor from './components/ProductEditor';
+
+//Context
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
-import Profile from './pages/Profile';
-import Orders from './pages/Orders';
-import './styles/main.css';
-import Footer from './components/Footer';
+
+//pages
+import Home from './pages/Home';
 import AboutUs from './pages/AboutUs';
 import Contact from './pages/Contact';
 import Product from './pages/Product';
-import ScrollToTop from './components/ScrollToTop';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Profile from './pages/Profile';
+import Orders from './pages/Orders';
+import Cart from './pages/Cart';
+import AdminDashboard from './pages/AdminDashboard';
+
 
 
 function App() {
@@ -31,7 +39,8 @@ function App() {
             <main className="container mx-auto px-4 py-8" style={{minWidth:100 + "%", padding: 0}}>
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/customize/:productId" element={<ProductEditor />} />
+                {/* <Route path="/customize/:productId" element={<ProductEditor />} /> */}
+                <Route path="/customize/:productId" element={<ProductEditorRoute />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/cart" element={<Cart />} />
