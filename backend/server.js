@@ -1592,8 +1592,122 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
   }
 });
 
-// // Add endpoint to get individual customization files
+
+// // endpoint to get individual customization files
+
+// In server.js:
+
+app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, async (req, res) => {
+  try {
+    const { orderId, productIndex, fieldId } = req.params;
+    const order = await Order.findById(orderId).populate('products.product');
+    
+    if (!order) return res.status(404).send({ error: 'Order not found' });
+    
+    const product = order.products[productIndex];
+    if (!product) return res.status(404).send({ error: 'Product not found' });
+    
+    const customField = product.customization?.customFields?.find(f => f.fieldId === fieldId);
+    const requiredField = product.customization?.requiredFields?.find(f => f.fieldId === fieldId);
+    const field = customField || requiredField;
+    
+    if (!field) return res.status(404).send({ error: 'Field not found' });
+    
+    if (field.type === 'image' || field.type === 'logo') {
+      const imageData = field.content; // Original file data
+      if (!imageData) return res.status(404).send({ error: 'Image data not found' });
+      
+      const binary = Buffer.from(imageData.split(',')[1], 'base64');
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}_original.png`);
+      res.send(binary);
+    } else {
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
+      res.send(field.content || field.value);
+    }
+  } catch (error) {
+    console.error('Download error:', error);
+    res.status(500).send({ error: 'Server error' });
+  }
+});
+// //updated one but still the same as the original
 // app.get("/api/orders/:orderId/products/:productIndex/files/:fieldId", auth, async (req, res) => {
+//   try {
+//     const { orderId, productIndex, fieldId } = req.params;
+//     const order = await Order.findById(orderId)
+//       .populate('user')
+//       .populate('products.product');
+
+//     if (!order) {
+//       return res.status(404).send({ error: 'Order not found' });
+//     }
+
+//     if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
+//       return res.status(403).send({ error: 'Not authorized' });
+//     }
+
+//     const product = order.products[productIndex];
+//     if (!product) {
+//       return res.status(404).send({ error: 'Product not found in order' });
+//     }
+
+//     // Find field in customization data
+//     let fieldData = null;
+//     let fieldContent = null;
+//     let originalData = null;
+
+//     // Check custom fields first
+//     const customField = product.customization?.customFields?.find(f => f.fieldId === fieldId);
+//     if (customField) {
+//       fieldData = customField;
+//       fieldContent = customField.content;
+//       originalData = customField.originalData;
+//     }
+
+//     // Then check required fields
+//     const requiredField = product.customization?.requiredFields?.find(f => f.fieldId === fieldId);
+//     if (requiredField) {
+//       fieldData = requiredField;
+//       fieldContent = requiredField.value;
+//       originalData = requiredField.originalData;
+//     }
+
+//     if (!fieldData) {
+//       return res.status(404).send({ error: 'Field not found' });
+//     }
+
+//     // For images and logos, send original high-quality data if available
+//     if (fieldData.type === 'image' || fieldData.type === 'logo') {
+//       const imageData = originalData || fieldContent;
+//       if (!imageData) {
+//         return res.status(404).send({ error: 'Image data not found' });
+//       }
+
+//       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+//       const buffer = Buffer.from(base64Data, 'base64');
+      
+//       res.setHeader('Content-Type', 'image/png');
+//       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}_original.png`);
+//       return res.send(buffer);
+//     }
+
+//     // For text fields
+//     if (fieldData.type === 'text') {
+//       res.setHeader('Content-Type', 'text/plain');
+//       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
+//       return res.send(fieldContent);
+//     }
+
+//     res.status(400).send({ error: 'Unsupported field type' });
+//   } catch (error) {
+//     console.error('Error downloading file:', error);
+//     res.status(500).send({ error: 'Server error' });
+//   }
+// });
+
+// //original one, working properly
+// app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, async (req, res) => {
 //   try {
 //     const { orderId, productIndex, fieldId } = req.params;
     
@@ -1614,104 +1728,58 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
 //       return res.status(404).send({ error: 'Product not found in order' });
 //     }
 
-//     const field = product.customization?.customFields?.find(f => f.fieldId === fieldId);
-//     if (!field) {
-//       return res.status(404).send({ error: 'Customization field not found' });
+//     // Find field in customization data
+//     let fieldData = null;
+//     let fieldContent = null;
+
+//     // Check required fields
+//     const requiredField = product.customization?.requiredFields?.find(f => f.fieldId === fieldId);
+//     if (requiredField) {
+//       fieldData = requiredField;
+//       fieldContent = requiredField.value;
 //     }
 
-//     // Send the file based on field type
-//     if (field.type === 'image' || field.type === 'logo') {
-//       res.setHeader('Content-Type', 'image/png');
-//       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.png`);
-//       // Assuming the content is stored as base64
-//       const imageBuffer = Buffer.from(field.content.split(',')[1], 'base64');
-//       res.send(imageBuffer);
-//     } else {
+//     // Check custom fields
+//     const customField = product.customization?.customFields?.find(f => f.fieldId === fieldId);
+//     if (customField) {
+//       fieldData = customField;
+//       fieldContent = customField.content;
+//     }
+
+//     // Check for preview
+//     if (fieldId === 'preview' && product.customization?.preview) {
+//       fieldData = { type: 'image' };
+//       fieldContent = product.customization.preview;
+//     }
+
+//     if (!fieldData || !fieldContent) {
+//       return res.status(404).send({ error: 'Field not found' });
+//     }
+
+//     // Handle text fields
+//     if (fieldData.type === 'text') {
 //       res.setHeader('Content-Type', 'text/plain');
 //       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
-//       res.send(field.content);
+//       return res.send(fieldContent);
 //     }
+
+//     // Handle image fields
+//     if (fieldData.type === 'image' || fieldData.type === 'logo') {
+//       // Convert base64 to buffer
+//       const base64Data = fieldContent.replace(/^data:image\/\w+;base64,/, '');
+//       const buffer = Buffer.from(base64Data, 'base64');
+      
+//       res.setHeader('Content-Type', 'image/png');
+//       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.png`);
+//       return res.send(buffer);
+//     }
+
+//     res.status(400).send({ error: 'Unsupported field type' });
 //   } catch (error) {
 //     console.error('Error downloading customization file:', error);
-//     res.status(500).send({ error: 'Error downloading customization file' });
+//     res.status(500).send({ error: 'Server error' });
 //   }
 // });
-
-// Add these routes to your server.js
-
-app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, async (req, res) => {
-  try {
-    const { orderId, productIndex, fieldId } = req.params;
-    
-    const order = await Order.findById(orderId)
-      .populate('user')
-      .populate('products.product');
-
-    if (!order) {
-      return res.status(404).send({ error: 'Order not found' });
-    }
-
-    if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
-      return res.status(403).send({ error: 'Not authorized' });
-    }
-
-    const product = order.products[productIndex];
-    if (!product) {
-      return res.status(404).send({ error: 'Product not found in order' });
-    }
-
-    // Find field in customization data
-    let fieldData = null;
-    let fieldContent = null;
-
-    // Check required fields
-    const requiredField = product.customization?.requiredFields?.find(f => f.fieldId === fieldId);
-    if (requiredField) {
-      fieldData = requiredField;
-      fieldContent = requiredField.value;
-    }
-
-    // Check custom fields
-    const customField = product.customization?.customFields?.find(f => f.fieldId === fieldId);
-    if (customField) {
-      fieldData = customField;
-      fieldContent = customField.content;
-    }
-
-    // Check for preview
-    if (fieldId === 'preview' && product.customization?.preview) {
-      fieldData = { type: 'image' };
-      fieldContent = product.customization.preview;
-    }
-
-    if (!fieldData || !fieldContent) {
-      return res.status(404).send({ error: 'Field not found' });
-    }
-
-    // Handle text fields
-    if (fieldData.type === 'text') {
-      res.setHeader('Content-Type', 'text/plain');
-      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
-      return res.send(fieldContent);
-    }
-
-    // Handle image fields
-    if (fieldData.type === 'image' || fieldData.type === 'logo') {
-      // Convert base64 to buffer
-      const base64Data = fieldContent.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      
-      res.setHeader('Content-Type', 'image/png');
-      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.png`);
-      return res.send(buffer);
-    }
-
-    res.status(400).send({ error: 'Unsupported field type' });
-  } catch (error) {
-    console.error('Error downloading customization file:', error);
-    res.status(500).send({ error: 'Server error' });
-  }
-});
 
 
 
