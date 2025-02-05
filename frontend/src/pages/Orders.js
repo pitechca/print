@@ -257,6 +257,20 @@ const Orders = () => {
                     <p className="font-bold text-lg mt-1">
                       Total: ${order.totalAmount.toFixed(2)}
                     </p>
+                      {/* Coupon Display */}
+              {order.coupon && (
+                <div className="mt-4 bg-blue-50 p-3 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-semibold text-gray-800">Coupon Applied:</span>
+                      <span className="ml-2 text-gray-600">{order.coupon.code}</span>
+                    </div>
+                    <div className="text-green-600 font-medium">
+                      -${order.coupon.discountAmount.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              )}
                   </div>
                   <div className="flex space-x-2">
                     <button

@@ -260,6 +260,8 @@ const ProductEditorBags = () => {
   
     canvas.renderAll();
   };
+
+  // //original
   // const handleFieldInput = (fieldId, value, type) => {
   //   const fields = canvas.getObjects().filter(obj => obj.data?.id === fieldId);
   //   if (!fields.length) return;

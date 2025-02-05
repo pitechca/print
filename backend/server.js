@@ -188,8 +188,46 @@ const OrderSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  coupon: {
+    code: { type: String },
+    discountAmount: { type: Number },
+    discountType: { 
+      type: String, 
+      enum: ['percentage', 'fixed'] 
+    },
+    discountValue: { type: Number }
   }
 });
+// const OrderSchema = new mongoose.Schema({
+//   user: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: 'User',
+//     required: true
+//   },
+//   products: [orderItemSchema],
+//   totalAmount: {
+//     type: Number,
+//     required: true
+//   },
+//   status: {
+//     type: String,
+//     enum: ['pending', 'processing', 'completed', 'cancelled'],
+//     default: 'pending'
+//   },
+//   paymentMethod: {
+//     type: String,
+//     required: true
+//   },
+//   paymentId: {
+//     type: String,
+//     required: true
+//   },
+//   createdAt: {
+//     type: Date,
+//     default: Date.now
+//   }
+// });
 
 const CategorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
@@ -1161,9 +1199,10 @@ app.post("/api/coupons/validate", auth, async (req, res) => {
     }
 
     // Check if coupon is assigned to specific users
-    if (coupon.assignedUsers.length > 0 && 
-        !coupon.assignedUsers.includes(req.user._id)) {
-      return res.status(403).send({ error: "Coupon not available for this user" });
+    if (coupon.assignedUsers.length > -1 && 
+        // !coupon.assignedUsers.includes(req.user._id)) {
+     !coupon.assignedUsers.some(userId => userId.toString() === req.user._id.toString())) {
+        return res.status(403).send({ error: "Coupon not available for this user" });
     }
 
     // Check max uses
@@ -1289,7 +1328,7 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
 // Order routes
 app.post("/api/orders", auth, async (req, res) => {
   try {
-    const { products, totalAmount, status, paymentMethod, paymentId } = req.body;
+    const { products, totalAmount, status, paymentMethod, paymentId, coupon } = req.body;
 
     // Validate required fields
     if (!products || !Array.isArray(products) || products.length === 0) {
@@ -1306,7 +1345,37 @@ app.post("/api/orders", auth, async (req, res) => {
       });
     }
 
-    // Create order with initial status
+    // If a coupon was applied, validate it again
+    if (coupon) {
+      try {
+        const couponValidation = await Coupon.findOne({ 
+          code: coupon.code,
+          isActive: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() }
+        });
+
+        if (!couponValidation) {
+          return res.status(400).json({ 
+            error: 'Invalid or expired coupon'
+          });
+        }
+
+        // Update coupon usage
+        await Coupon.findOneAndUpdate(
+          { code: coupon.code },
+          { $inc: { currentUses: 1 } }
+        );
+      } catch (couponError) {
+        console.error('Coupon validation error:', couponError);
+        return res.status(400).json({ 
+          error: 'Error processing coupon',
+          details: couponError.message
+        });
+      }
+    }
+
+    // Create order with coupon details
     const orderData = {
       user: req.user._id,
       products: products.map(item => ({
@@ -1323,10 +1392,14 @@ app.post("/api/orders", auth, async (req, res) => {
       totalAmount,
       status: status || 'pending',
       paymentMethod,
-      paymentId
+      paymentId,
+      coupon: coupon ? {
+        code: coupon.code,
+        discountAmount: coupon.discountAmount,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue
+      } : null
     };
-
-    console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
 
     const order = new Order(orderData);
     await order.save();
@@ -1348,6 +1421,67 @@ app.post("/api/orders", auth, async (req, res) => {
     });
   }
 });
+// app.post("/api/orders", auth, async (req, res) => {
+//   try {
+//     const { products, totalAmount, status, paymentMethod, paymentId } = req.body;
+
+//     // Validate required fields
+//     if (!products || !Array.isArray(products) || products.length === 0) {
+//       return res.status(400).json({ 
+//         error: 'Invalid products data',
+//         details: 'Products array is required and must not be empty'
+//       });
+//     }
+
+//     if (!totalAmount || totalAmount <= 0) {
+//       return res.status(400).json({ 
+//         error: 'Invalid total amount',
+//         details: 'Total amount must be greater than 0'
+//       });
+//     }
+
+//     // Create order with initial status
+//     const orderData = {
+//       user: req.user._id,
+//       products: products.map(item => ({
+//         product: item.product,
+//         quantity: item.quantity,
+//         customization: {
+//           template: item.customization?.template || null,
+//           preview: item.customization?.preview || null,
+//           description: item.customization?.description || '',
+//           customFields: item.customization?.customFields || [],
+//           requiredFields: item.customization?.requiredFields || []
+//         }
+//       })),
+//       totalAmount,
+//       status: status || 'pending',
+//       paymentMethod,
+//       paymentId
+//     };
+
+//     console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
+
+//     const order = new Order(orderData);
+//     await order.save();
+
+//     // Fetch the complete order with populated fields
+//     const populatedOrder = await Order.findById(order._id)
+//       .populate({
+//         path: 'products.product',
+//         model: 'Product'
+//       })
+//       .populate('user');
+
+//     res.status(201).send(populatedOrder);
+//   } catch (error) {
+//     console.error('Order creation error:', error);
+//     res.status(400).json({
+//       error: 'Failed to create order',
+//       details: error.message
+//     });
+//   }
+// });
 
 app.get("/api/orders", auth, async (req, res) => {
   try {
@@ -1594,8 +1728,6 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
 
 
 // // endpoint to get individual customization files
-
-// In server.js:
 
 app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, async (req, res) => {
   try {
