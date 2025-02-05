@@ -166,9 +166,16 @@ const Cart = () => {
                   
                   <div className="w-1/3">
                     <img
-                      src={item.customization?.preview || item.product.images?.[0]?.data}
+            //        src={item.customization?.preview || item.product.images?.[0]?.data}
+                      src={item.customization?.preview || item.customization?.customFields?.find(field => field.type === 'image')?.content || item.product.images?.[0]?.data}
                       alt={item.product.name}
                       className="w-full h-48 object-contain rounded-lg"
+                      onError={(e) => {
+                        console.error('Image preview failed:', {
+                          preview: item.customization?.preview,
+                          customFields: item.customization?.customFields
+                        });
+                      }}
                     />
                   </div>
 
