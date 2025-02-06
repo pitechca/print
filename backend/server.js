@@ -1733,54 +1733,6 @@ app.get("/api/images", auth, async (req, res) => {
   }
 });
 
-// Get all images with pagination and base64 conversion
-// app.get("/api/images", auth, async (req, res) => {
-//   try {
-//     if (!req.user.isAdmin) {
-//       return res.status(403).send({ error: "Only admins can access images" });
-//     }
-
-//     const page = parseInt(req.query.page) || 1;
-//     const limit = parseInt(req.query.limit) || 12; // Reduced limit for better performance
-//     const skip = (page - 1) * limit;
-
-//     // Get total count first
-//     const total = await Image.countDocuments();
-//     const totalPages = Math.ceil(total / limit);
-
-//     // Validate page number
-//     if (page > totalPages) {
-//       return res.status(400).send({ error: 'Page number exceeds total pages' });
-//     }
-
-//     const images = await Image.find()
-//       .sort({ createdAt: -1 })
-//       .skip(skip)
-//       .limit(limit)
-//       .lean();
-
-//     // Convert Buffer to base64 string
-//     const processedImages = images.map(img => ({
-//       _id: img._id,
-//       contentType: img.contentType,
-//       data: img.data.toString('base64'),
-//       createdAt: img.createdAt
-//     }));
-
-//     res.json({
-//       images: processedImages,
-//       total,
-//       page,
-//       totalPages,
-//       hasMore: page < totalPages
-//     });
-
-//   } catch (error) {
-//     console.error('Error fetching images:', error);
-//     res.status(500).send({ error: 'Error fetching images' });
-//   }
-// });
-
 // Delete image with reference checking
 app.delete("/api/images/:id", auth, async (req, res) => {
   try {
