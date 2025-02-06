@@ -914,6 +914,42 @@ app.delete('/api/templates/:id', auth, async (req, res) => {
   }
 });
 
+
+// Get template fields
+app.get('/api/templates/:id/fields', async (req, res) => {
+  try {
+    const template = await Template.findById(req.params.id);
+    if (!template) {
+      return res.status(404).send({ error: 'Template not found' });
+    }
+    
+    const fields = template.requiredFields || [];
+    res.json(fields);
+  } catch (error) {
+    console.error('Error fetching template fields:', error);
+    res.status(500).send({ error: 'Error fetching template fields' });
+  }
+});
+
+// Save customization preview
+app.post('/api/customizations/preview', auth, async (req, res) => {
+  try {
+    const { preview, customFields, templateId } = req.body;
+    
+    // Store preview temporarily (you might want to use a separate collection or temporary storage)
+    const previewId = new mongoose.Types.ObjectId();
+    
+    res.json({ 
+      previewId: previewId.toString(),
+      preview,
+      customFields 
+    });
+  } catch (error) {
+    console.error('Error saving customization preview:', error);
+    res.status(500).send({ error: 'Error saving customization preview' });
+  }
+});
+
 // Cart routes
 app.get('/api/cart', auth, async (req, res) => {
     try {
@@ -1421,67 +1457,6 @@ app.post("/api/orders", auth, async (req, res) => {
     });
   }
 });
-// app.post("/api/orders", auth, async (req, res) => {
-//   try {
-//     const { products, totalAmount, status, paymentMethod, paymentId } = req.body;
-
-//     // Validate required fields
-//     if (!products || !Array.isArray(products) || products.length === 0) {
-//       return res.status(400).json({ 
-//         error: 'Invalid products data',
-//         details: 'Products array is required and must not be empty'
-//       });
-//     }
-
-//     if (!totalAmount || totalAmount <= 0) {
-//       return res.status(400).json({ 
-//         error: 'Invalid total amount',
-//         details: 'Total amount must be greater than 0'
-//       });
-//     }
-
-//     // Create order with initial status
-//     const orderData = {
-//       user: req.user._id,
-//       products: products.map(item => ({
-//         product: item.product,
-//         quantity: item.quantity,
-//         customization: {
-//           template: item.customization?.template || null,
-//           preview: item.customization?.preview || null,
-//           description: item.customization?.description || '',
-//           customFields: item.customization?.customFields || [],
-//           requiredFields: item.customization?.requiredFields || []
-//         }
-//       })),
-//       totalAmount,
-//       status: status || 'pending',
-//       paymentMethod,
-//       paymentId
-//     };
-
-//     console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
-
-//     const order = new Order(orderData);
-//     await order.save();
-
-//     // Fetch the complete order with populated fields
-//     const populatedOrder = await Order.findById(order._id)
-//       .populate({
-//         path: 'products.product',
-//         model: 'Product'
-//       })
-//       .populate('user');
-
-//     res.status(201).send(populatedOrder);
-//   } catch (error) {
-//     console.error('Order creation error:', error);
-//     res.status(400).json({
-//       error: 'Failed to create order',
-//       details: error.message
-//     });
-//   }
-// });
 
 app.get("/api/orders", auth, async (req, res) => {
   try {
@@ -1555,7 +1530,6 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
   }
 });
 
-
 app.get('/api/orders/:orderId/customization/:fieldId', auth, async (req, res) => {
   try {
     const { orderId, fieldId } = req.params;
@@ -1602,53 +1576,7 @@ app.get('/api/orders/:orderId/customization/:fieldId', auth, async (req, res) =>
   }
 });
 
-
-
-
-
-
-
-
-// Add these new endpoints after your existing routes:
-
-// Get template fields
-app.get('/api/templates/:id/fields', async (req, res) => {
-  try {
-    const template = await Template.findById(req.params.id);
-    if (!template) {
-      return res.status(404).send({ error: 'Template not found' });
-    }
-    
-    const fields = template.requiredFields || [];
-    res.json(fields);
-  } catch (error) {
-    console.error('Error fetching template fields:', error);
-    res.status(500).send({ error: 'Error fetching template fields' });
-  }
-});
-
-// Save customization preview
-app.post('/api/customizations/preview', auth, async (req, res) => {
-  try {
-    const { preview, customFields, templateId } = req.body;
-    
-    // Store preview temporarily (you might want to use a separate collection or temporary storage)
-    const previewId = new mongoose.Types.ObjectId();
-    
-    // You could store this in a temporary collection or use a caching solution
-    // For now, we'll just return the ID
-    res.json({ 
-      previewId: previewId.toString(),
-      preview,
-      customFields 
-    });
-  } catch (error) {
-    console.error('Error saving customization preview:', error);
-    res.status(500).send({ error: 'Error saving customization preview' });
-  }
-});
-
-// Update order download endpoint to include customization files
+// endpoint to include customization files
 app.get("/api/orders/:id/download", auth, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
@@ -1726,9 +1654,7 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
   }
 });
 
-
-// // endpoint to get individual customization files
-
+// endpoint to get individual customization files
 app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, async (req, res) => {
   try {
     const { orderId, productIndex, fieldId } = req.params;
@@ -1763,161 +1689,148 @@ app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, asyn
     res.status(500).send({ error: 'Server error' });
   }
 });
-// //updated one but still the same as the original
-// app.get("/api/orders/:orderId/products/:productIndex/files/:fieldId", auth, async (req, res) => {
+
+// Update the GET route in server.js
+app.get("/api/images", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can access images" });
+    }
+
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = 8; // Reduced for better performance
+    const skip = (page - 1) * limit;
+
+    // Get total count
+    const total = await Image.countDocuments();
+    const totalPages = Math.ceil(total / limit);
+
+    // Get images for current page
+    const images = await Image.find()
+      .sort('-createdAt')
+      .skip(skip)
+      .limit(limit)
+      .select('contentType data createdAt')
+      .lean();
+
+    const processedImages = images.map(img => ({
+      _id: img._id,
+      contentType: img.contentType,
+      data: img.data.toString('base64'),
+      createdAt: img.createdAt
+    }));
+
+    res.json({
+      images: processedImages,
+      total,
+      page,
+      totalPages
+    });
+
+  } catch (error) {
+    console.error('Error in GET /api/images:', error);
+    res.status(500).json({ error: 'Error fetching images' });
+  }
+});
+
+// Get all images with pagination and base64 conversion
+// app.get("/api/images", auth, async (req, res) => {
 //   try {
-//     const { orderId, productIndex, fieldId } = req.params;
-//     const order = await Order.findById(orderId)
-//       .populate('user')
-//       .populate('products.product');
-
-//     if (!order) {
-//       return res.status(404).send({ error: 'Order not found' });
+//     if (!req.user.isAdmin) {
+//       return res.status(403).send({ error: "Only admins can access images" });
 //     }
 
-//     if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
-//       return res.status(403).send({ error: 'Not authorized' });
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 12; // Reduced limit for better performance
+//     const skip = (page - 1) * limit;
+
+//     // Get total count first
+//     const total = await Image.countDocuments();
+//     const totalPages = Math.ceil(total / limit);
+
+//     // Validate page number
+//     if (page > totalPages) {
+//       return res.status(400).send({ error: 'Page number exceeds total pages' });
 //     }
 
-//     const product = order.products[productIndex];
-//     if (!product) {
-//       return res.status(404).send({ error: 'Product not found in order' });
-//     }
+//     const images = await Image.find()
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(limit)
+//       .lean();
 
-//     // Find field in customization data
-//     let fieldData = null;
-//     let fieldContent = null;
-//     let originalData = null;
+//     // Convert Buffer to base64 string
+//     const processedImages = images.map(img => ({
+//       _id: img._id,
+//       contentType: img.contentType,
+//       data: img.data.toString('base64'),
+//       createdAt: img.createdAt
+//     }));
 
-//     // Check custom fields first
-//     const customField = product.customization?.customFields?.find(f => f.fieldId === fieldId);
-//     if (customField) {
-//       fieldData = customField;
-//       fieldContent = customField.content;
-//       originalData = customField.originalData;
-//     }
+//     res.json({
+//       images: processedImages,
+//       total,
+//       page,
+//       totalPages,
+//       hasMore: page < totalPages
+//     });
 
-//     // Then check required fields
-//     const requiredField = product.customization?.requiredFields?.find(f => f.fieldId === fieldId);
-//     if (requiredField) {
-//       fieldData = requiredField;
-//       fieldContent = requiredField.value;
-//       originalData = requiredField.originalData;
-//     }
-
-//     if (!fieldData) {
-//       return res.status(404).send({ error: 'Field not found' });
-//     }
-
-//     // For images and logos, send original high-quality data if available
-//     if (fieldData.type === 'image' || fieldData.type === 'logo') {
-//       const imageData = originalData || fieldContent;
-//       if (!imageData) {
-//         return res.status(404).send({ error: 'Image data not found' });
-//       }
-
-//       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-//       const buffer = Buffer.from(base64Data, 'base64');
-      
-//       res.setHeader('Content-Type', 'image/png');
-//       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}_original.png`);
-//       return res.send(buffer);
-//     }
-
-//     // For text fields
-//     if (fieldData.type === 'text') {
-//       res.setHeader('Content-Type', 'text/plain');
-//       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
-//       return res.send(fieldContent);
-//     }
-
-//     res.status(400).send({ error: 'Unsupported field type' });
 //   } catch (error) {
-//     console.error('Error downloading file:', error);
-//     res.status(500).send({ error: 'Server error' });
+//     console.error('Error fetching images:', error);
+//     res.status(500).send({ error: 'Error fetching images' });
 //   }
 // });
 
-// //original one, working properly
-// app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, async (req, res) => {
-//   try {
-//     const { orderId, productIndex, fieldId } = req.params;
+// Delete image with reference checking
+app.delete("/api/images/:id", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can delete images" });
+    }
+
+    // Check if image is used in products or categories
+    const productUsingImage = await Product.findOne({ 
+      images: req.params.id 
+    });
     
-//     const order = await Order.findById(orderId)
-//       .populate('user')
-//       .populate('products.product');
+    const categoryUsingImage = await Category.findOne({ 
+      image: req.params.id 
+    });
 
-//     if (!order) {
-//       return res.status(404).send({ error: 'Order not found' });
-//     }
+    if (productUsingImage || categoryUsingImage) {
+      return res.status(400).send({ 
+        error: 'Image is in use and cannot be deleted' 
+      });
+    }
 
-//     if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
-//       return res.status(403).send({ error: 'Not authorized' });
-//     }
+    const image = await Image.findByIdAndDelete(req.params.id);
+    if (!image) {
+      return res.status(404).send({ error: 'Image not found' });
+    }
 
-//     const product = order.products[productIndex];
-//     if (!product) {
-//       return res.status(404).send({ error: 'Product not found in order' });
-//     }
+    res.json({ message: 'Image deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    res.status(500).send({ error: 'Error deleting image' });
+  }
+});
 
-//     // Find field in customization data
-//     let fieldData = null;
-//     let fieldContent = null;
+app.delete("/api/images/:id", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can delete images" });
+    }
 
-//     // Check required fields
-//     const requiredField = product.customization?.requiredFields?.find(f => f.fieldId === fieldId);
-//     if (requiredField) {
-//       fieldData = requiredField;
-//       fieldContent = requiredField.value;
-//     }
+    const image = await Image.findByIdAndDelete(req.params.id);
+    if (!image) {
+      return res.status(404).send({ error: 'Image not found' });
+    }
 
-//     // Check custom fields
-//     const customField = product.customization?.customFields?.find(f => f.fieldId === fieldId);
-//     if (customField) {
-//       fieldData = customField;
-//       fieldContent = customField.content;
-//     }
-
-//     // Check for preview
-//     if (fieldId === 'preview' && product.customization?.preview) {
-//       fieldData = { type: 'image' };
-//       fieldContent = product.customization.preview;
-//     }
-
-//     if (!fieldData || !fieldContent) {
-//       return res.status(404).send({ error: 'Field not found' });
-//     }
-
-//     // Handle text fields
-//     if (fieldData.type === 'text') {
-//       res.setHeader('Content-Type', 'text/plain');
-//       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
-//       return res.send(fieldContent);
-//     }
-
-//     // Handle image fields
-//     if (fieldData.type === 'image' || fieldData.type === 'logo') {
-//       // Convert base64 to buffer
-//       const base64Data = fieldContent.replace(/^data:image\/\w+;base64,/, '');
-//       const buffer = Buffer.from(base64Data, 'base64');
-      
-//       res.setHeader('Content-Type', 'image/png');
-//       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.png`);
-//       return res.send(buffer);
-//     }
-
-//     res.status(400).send({ error: 'Unsupported field type' });
-//   } catch (error) {
-//     console.error('Error downloading customization file:', error);
-//     res.status(500).send({ error: 'Server error' });
-//   }
-// });
-
-
-
-
-
-
+    res.send({ message: 'Image deleted successfully' });
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
 
 // Contact form validation and submission route
 app.post('/api/contact', contactLimiter, [

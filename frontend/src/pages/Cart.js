@@ -115,36 +115,70 @@ const Cart = () => {
   };
 
   // Tax calculation function with coupon integration
-  const calculateTaxAndTotal = () => {
-    const subtotal = Array.from(selectedItems).reduce((sum, index) => {
-      const item = cart[index];
-      const itemTotal = item.product.basePrice * quantities[index];
-      return sum + itemTotal;
-    }, 0);
+  // Filter out invalid cart indices before calculations
+const calculateTaxAndTotal = () => {
+  // Get valid selected indices that exist in cart
+  const validSelectedItems = Array.from(selectedItems).filter(index => index < cart.length);
+  
+  const subtotal = validSelectedItems.reduce((sum, index) => {
+    const item = cart[index];
+    const itemTotal = item.product.basePrice * quantities[index];
+    return sum + itemTotal;
+  }, 0);
 
-    // Apply coupon discount if available
-    const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
-    const discountedSubtotal = subtotal - discountAmount;
+  const gstTotal = validSelectedItems.reduce((sum, index) => {
+    const item = cart[index];
+    return item.product.hasGST ? sum + (subtotal * 0.05) : sum;
+  }, 0);
 
-    const gstTotal = Array.from(selectedItems).reduce((sum, index) => {
-      const item = cart[index];
-      return item.product.hasGST ? sum + (discountedSubtotal * 0.05) : sum;
-    }, 0);
+  const pstTotal = validSelectedItems.reduce((sum, index) => {
+    const item = cart[index];
+    return item.product.hasPST ? sum + (subtotal * 0.07) : sum;
+  }, 0);
 
-    const pstTotal = Array.from(selectedItems).reduce((sum, index) => {
-      const item = cart[index];
-      return item.product.hasPST ? sum + (discountedSubtotal * 0.07) : sum;
-    }, 0);
+  // Apply coupon discount if available
+  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  const discountedSubtotal = subtotal - discountAmount;
 
-    return {
-      subtotal,
-      discountAmount,
-      discountedSubtotal,
-      gstTotal,
-      pstTotal,
-      total: discountedSubtotal + gstTotal + pstTotal
-    };
+  return {
+    subtotal,
+    discountAmount,
+    discountedSubtotal,
+    gstTotal,
+    pstTotal,
+    total: discountedSubtotal + gstTotal + pstTotal
   };
+};
+  // const calculateTaxAndTotal = () => {
+  //   const subtotal = Array.from(selectedItems).reduce((sum, index) => {
+  //     const item = cart[index];
+  //     const itemTotal = item.product.basePrice * quantities[index];
+  //     return sum + itemTotal;
+  //   }, 0);
+
+  //   // Apply coupon discount if available
+  //   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  //   const discountedSubtotal = subtotal - discountAmount;
+
+  //   const gstTotal = Array.from(selectedItems).reduce((sum, index) => {
+  //     const item = cart[index];
+  //     return item.product.hasGST ? sum + (discountedSubtotal * 0.05) : sum;
+  //   }, 0);
+
+  //   const pstTotal = Array.from(selectedItems).reduce((sum, index) => {
+  //     const item = cart[index];
+  //     return item.product.hasPST ? sum + (discountedSubtotal * 0.07) : sum;
+  //   }, 0);
+
+  //   return {
+  //     subtotal,
+  //     discountAmount,
+  //     discountedSubtotal,
+  //     gstTotal,
+  //     pstTotal,
+  //     total: discountedSubtotal + gstTotal + pstTotal
+  //   };
+  // };
 
   const renderPaymentMethod = () => {
     const { subtotal, discountAmount, discountedSubtotal, gstTotal, pstTotal, total } = calculateTaxAndTotal();
