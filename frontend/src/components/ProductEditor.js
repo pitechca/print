@@ -168,33 +168,77 @@ const ProductEditor = () => {
   const handleObjectModified = (e) => {
     const obj = e.target;
     if (!obj || !obj.data?.id) return;
-
+  
+    let customizationData = {
+      type: obj.data.type || 'text',
+      content: null,
+      properties: {
+        fontSize: obj.fontSize,
+        fontFamily: obj.fontFamily,
+        fill: obj.fill,
+        position: { x: obj.left, y: obj.top },
+        scale: { x: obj.scaleX, y: obj.scaleY }
+      }
+    };
+  
+    // Handle different types of content
+    if (obj.type === 'text' || obj.type === 'i-text') {
+      customizationData.content = obj.text;
+    } else if (obj.type === 'image') {
+      customizationData.content = obj.toDataURL();
+      // Preserve original image data if available
+      if (obj.data?.originalImage) {
+        customizationData.originalImage = obj.data.originalImage;
+      }
+    }
+  
     setCustomizations(prev => ({
       ...prev,
-      [obj.data.id]: {
-        type: obj.data.type || 'text',
-        content: obj.type === 'i-text' || obj.type === 'text' ? obj.text : null,
-        image: obj.type === 'image' ? obj.toDataURL() : null,
-        properties: {
-          fontSize: obj.fontSize,
-          fontFamily: obj.fontFamily,
-          fill: obj.fill,
-          position: { x: obj.left, y: obj.top },
-          scale: { x: obj.scaleX, y: obj.scaleY }
-        }
-      }
+      [obj.data.id]: customizationData
     }));
-
+  
     // Update field inputs if it's a required field
     if (obj.data?.required) {
+      const fieldValue = obj.type === 'text' || obj.type === 'i-text' 
+        ? obj.text 
+        : obj.toDataURL();
       setFieldInputs(prev => ({
         ...prev,
-        [obj.data.id]: obj.type === 'i-text' || obj.type === 'text' 
-          ? obj.text 
-          : obj.toDataURL()
+        [obj.data.id]: fieldValue
       }));
     }
   };
+
+  // const handleObjectModified = (e) => {
+  //   const obj = e.target;
+  //   if (!obj || !obj.data?.id) return;
+
+  //   setCustomizations(prev => ({
+  //     ...prev,
+  //     [obj.data.id]: {
+  //       type: obj.data.type || 'text',
+  //       content: obj.type === 'i-text' || obj.type === 'text' ? obj.text : null,
+  //       image: obj.type === 'image' ? obj.toDataURL() : null,
+  //       properties: {
+  //         fontSize: obj.fontSize,
+  //         fontFamily: obj.fontFamily,
+  //         fill: obj.fill,
+  //         position: { x: obj.left, y: obj.top },
+  //         scale: { x: obj.scaleX, y: obj.scaleY }
+  //       }
+  //     }
+  //   }));
+
+  //   // Update field inputs if it's a required field
+  //   if (obj.data?.required) {
+  //     setFieldInputs(prev => ({
+  //       ...prev,
+  //       [obj.data.id]: obj.type === 'i-text' || obj.type === 'text' 
+  //         ? obj.text 
+  //         : obj.toDataURL()
+  //     }));
+  //   }
+  // };
 
   const handleSelectionCleared = () => {
     setSelectedObject(null);
@@ -306,30 +350,158 @@ const ProductEditor = () => {
     handleObjectModified({ target: text });
   };
 
+  //old one
+  // const handleCustomImage = (e) => {
+  //   const file = e.target.files[0];
+  //   if (!file || !canvas) return;
+
+  //   const reader = new FileReader();
+  //   reader.onload = (event) => {
+  //     fabric.Image.fromURL(event.target.result, (img) => {
+  //       img.scaleToWidth(200);
+  //       img.set({
+  //         left: canvas.width / 2,
+  //         top: canvas.height / 2,
+  //         originX: 'center',
+  //         originY: 'center',
+  //         data: { type: 'custom-image', id: `custom_${Date.now()}` }
+  //       });
+
+  //       canvas.add(img);
+  //       canvas.setActiveObject(img);
+  //       canvas.renderAll();
+  //       handleObjectModified({ target: img });
+  //     });
+  //   };
+  //   reader.readAsDataURL(file);
+  // };
+
+  // //updated
+  // const handleCustomImage = (e) => {
+  //   const file = e.target.files[0];
+  //   if (!file || !canvas) return;
+
+  //   console.log('Custom image upload started:', {
+  //     fileName: file.name,
+  //     fileType: file.type,
+  //     fileSize: file.size
+  //   });
+  
+  //   const reader = new FileReader();
+  //   reader.onload = (event) => {      
+  //     const originalImageUrl = event.target.result;
+  //     console.log('Original image loaded:', {
+  //       dataLength: originalImageUrl.length,
+  //       startsWith: originalImageUrl.substring(0, 50) + '...'
+  //     });
+      
+  //     fabric.Image.fromURL(event.target.result, (img) => {
+  //       const customId = `custom_${Date.now()}`;
+
+  //       // Store the original image data before scaling
+  //       const originalImage = {
+  //         data: originalImageUrl,
+  //         contentType: file.type
+  //       };
+
+  //       img.set({
+  //         left: canvas.width / 2,
+  //         top: canvas.height / 2,
+  //         originX: 'center',
+  //         originY: 'center',
+  //         data: { 
+  //           type: 'custom-image', 
+  //           id: customId,
+  //           originalImage // Store the original image data here
+  //         }
+  //         });
+
+  //       img.scaleToWidth(200);
+  //       console.log('Image object created:', {
+  //         id: customId,
+  //         hasOriginalImage: !!img.data.originalImage,
+  //         dimensions: { width: img.width, height: img.height },
+  //         originalSize: originalImageUrl.length
+  //       });
+
+  //       canvas.add(img);
+  //       canvas.setActiveObject(img);
+  //       canvas.renderAll();
+  //       handleObjectModified({ target: img });
+  //     });
+  //   };
+  //   reader.readAsDataURL(file);
+  // };
+
   const handleCustomImage = (e) => {
-    const file = e.target.files[0];
-    if (!file || !canvas) return;
+  const file = e.target.files[0];
+  if (!file || !canvas) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      fabric.Image.fromURL(event.target.result, (img) => {
-        img.scaleToWidth(200);
-        img.set({
-          left: canvas.width / 2,
-          top: canvas.height / 2,
-          originX: 'center',
-          originY: 'center',
-          data: { type: 'custom-image', id: `custom_${Date.now()}` }
-        });
+  console.log('Custom image upload started:', {
+    fileName: file.name,
+    fileType: file.type,
+    fileSize: file.size
+  });
 
-        canvas.add(img);
-        canvas.setActiveObject(img);
-        canvas.renderAll();
-        handleObjectModified({ target: img });
-      });
+  const reader = new FileReader();
+  reader.onload = (event) => {      
+    // Store the original image data before any modifications
+    const originalImageData = {
+      data: event.target.result,
+      contentType: file.type,
+      metadata: {
+        fileName: file.name,
+        fileSize: file.size,
+        timestamp: new Date().toISOString()
+      }
     };
-    reader.readAsDataURL(file);
+
+    // Create fabric image for canvas display
+    fabric.Image.fromURL(event.target.result, (img) => {
+      const customId = `custom_${Date.now()}`;
+
+      // Calculate dimensions for preview (scaled down version)
+      const maxPreviewWidth = 200;
+      const scale = maxPreviewWidth / img.width;
+
+      img.set({
+        left: canvas.width / 2,
+        top: canvas.height / 2,
+        originX: 'center',
+        originY: 'center',
+        data: {
+          type: 'custom-image',
+          id: customId,
+          originalImage: originalImageData // Store complete original image data
+        }
+      });
+
+      // Scale the preview image
+      img.scaleToWidth(maxPreviewWidth);
+
+      console.log('Image object created:', {
+        id: customId,
+        hasOriginalImage: true,
+        originalSize: originalImageData.data.length,
+        previewSize: img.toDataURL().length,
+        originalDimensions: {
+          width: img.width,
+          height: img.height
+        },
+        previewDimensions: {
+          width: img.width * scale,
+          height: img.height * scale
+        }
+      });
+
+      canvas.add(img);
+      canvas.setActiveObject(img);
+      canvas.renderAll();
+      handleObjectModified({ target: img });
+    });
   };
+  reader.readAsDataURL(file);
+};
 
   const updateSelectedObject = () => {
     if (!canvas || !selectedObject) return;
@@ -376,37 +548,76 @@ const ProductEditor = () => {
   
     try {
       // Get all custom elements
+      console.log('Starting add to cart process');
       const customElements = canvas.getObjects().filter(obj => 
         obj !== canvas.backgroundImage
       );
   
+      console.log('Custom elements found:', customElements.length);
+
       // Process custom fields
       const customFields = customElements.map(obj => {
-        if (obj.data?.type === 'image' || obj.data?.type === 'logo') {
-          return {
+        console.log('Processing object:', {
+          type: obj.type,
+          id: obj.data?.id,
+          hasOriginalImage: !!obj.data?.originalImage
+        });
+
+        // if (obj.data?.type === 'image' || obj.data?.type === 'logo') {
+        //   return {
+        //     fieldId: obj.data?.id || `custom_${Date.now()}`,
+        //     type: obj.data.type,
+        //     content: obj.data.originalData || obj.toDataURL({
+        //       format: 'png',
+        //       quality: 1,
+        //       multiplier: 4 // Increase resolution
+        //     }),
+        //     properties: {
+        //       fontSize: null,
+        //       fontFamily: null,
+        //       fill: null,
+        //       position: {
+        //         x: obj.left || 0,
+        //         y: obj.top || 0
+        //       },
+        //       scale: {
+        //         x: obj.scaleX || 1,
+        //         y: obj.scaleY || 1
+        //       }
+        //     }
+        //   };
+        // }
+        // Handle image elements
+        if (obj.data?.type === 'logo' || obj.data?.type === 'image') {
+          const field = {
             fieldId: obj.data?.id || `custom_${Date.now()}`,
-            type: obj.data.type,
-            content: obj.data.originalData || obj.toDataURL({
-              format: 'png',
-              quality: 1,
-              multiplier: 4 // Increase resolution
-            }),
+            type: 'image',
+            content: obj.toDataURL('image/png'),
+            originalImage: obj.data.originalImage 
+              ? {
+                  data: obj.data.originalImage.data,
+                  contentType: obj.data.originalImage.contentType
+                }
+              : null,
             properties: {
               fontSize: null,
               fontFamily: null,
               fill: null,
-              position: {
-                x: obj.left || 0,
-                y: obj.top || 0
-              },
-              scale: {
-                x: obj.scaleX || 1,
-                y: obj.scaleY || 1
-              }
+              position: { x: obj.left || 0, y: obj.top || 0 },
+              scale: { x: obj.scaleX || 1, y: obj.scaleY || 1 }
             }
           };
-        }
         
+          console.log('Created image field:', {
+            fieldId: field.fieldId,
+            hasOriginalImage: !!field.originalImage,
+            contentLength: field.content.length,
+            originalImageSize: field.originalImage?.data.length
+          });
+        
+          return field;
+        }
+  
         if (obj.type === 'text' || obj.type === 'i-text') {
           return {
             fieldId: obj.data?.id || `custom_${Date.now()}`,
