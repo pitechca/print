@@ -16,7 +16,7 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="text-xl font-bold">
            <img style={{maxHeight:100+'px'}}
-           src='./images/logoBagBox.png' />
+           src='../images/logoBagBox.png' />
             {/* BAG & BOX STORE */}
           </Link>
           <div className="flex items-center space-x-4">

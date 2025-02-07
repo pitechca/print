@@ -43,14 +43,35 @@ const downloadOriginalImage = async (orderId, fieldId, productIndex) => {
     const url = window.URL.createObjectURL(response.data);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `original_${fieldId}.png`);
+    
+    // Try to use original filename from metadata if available
+    const filename = `original_${fieldId}.${response.data.type.split('/')[1] || 'png'}`;
+    
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
   } catch (error) {
     console.error('Error downloading original image:', error);
-    alert('Failed to download original image');
+    
+    // More detailed error handling
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+      console.error('Error response headers:', error.response.headers);
+      
+      alert(`Failed to download original image: ${error.response.data.error || 'Unknown server error'}`);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('No response received:', error.request);
+      alert('No response received from server');
+    } else {
+      // Something happened in setting up the request
+      console.error('Error setting up request:', error.message);
+      alert('Error setting up download request');
+    }
   }
 };
 

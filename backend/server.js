@@ -199,35 +199,6 @@ const OrderSchema = new mongoose.Schema({
     discountValue: { type: Number }
   }
 });
-// const OrderSchema = new mongoose.Schema({
-//   user: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: 'User',
-//     required: true
-//   },
-//   products: [orderItemSchema],
-//   totalAmount: {
-//     type: Number,
-//     required: true
-//   },
-//   status: {
-//     type: String,
-//     enum: ['pending', 'processing', 'completed', 'cancelled'],
-//     default: 'pending'
-//   },
-//   paymentMethod: {
-//     type: String,
-//     required: true
-//   },
-//   paymentId: {
-//     type: String,
-//     required: true
-//   },
-//   createdAt: {
-//     type: Date,
-//     default: Date.now
-//   }
-// });
 
 const OrderImageSchema = new mongoose.Schema({
   orderId: { 
@@ -241,18 +212,7 @@ const OrderImageSchema = new mongoose.Schema({
   },
   originalImage: {
     data: { type: Buffer, required: true },
-    contentType: { type: String, required: true },
-    metadata: {
-      fileName: String,
-      fileSize: Number,
-      originalWidth: Number,
-      originalHeight: Number,
-      timestamp: Date
-    }
-  },
-  modifiedImage: {
-    data: Buffer,
-    contentType: String
+    contentType: { type: String, required: true }
   },
   productIndex: {
     type: Number,
@@ -325,6 +285,18 @@ const upload = multer({
   }
 });
 
+// Helper function to convert base64 to Buffer
+const base64ToBuffer = (base64) => {
+  const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+  if (matches.length !== 3) {
+    throw new Error('Invalid base64 string');
+  }
+  return {
+    contentType: matches[1],
+    buffer: Buffer.from(matches[2], 'base64')
+  };
+};
+
 // API Routes
 app.post("/api/register", async (req, res) => {
   try {
@@ -371,6 +343,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+//Proudct routs
 // Lightweight product data without images
 app.get("/api/products/basic", async (req, res) => {
   try {
@@ -440,20 +413,6 @@ app.post("/api/products", auth, async (req, res) => {
     res.status(400).send(error);
   }
 });
-
-
-
-// Helper function to convert base64 to Buffer
-const base64ToBuffer = (base64) => {
-  const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-  if (matches.length !== 3) {
-    throw new Error('Invalid base64 string');
-  }
-  return {
-    contentType: matches[1],
-    buffer: Buffer.from(matches[2], 'base64')
-  };
-};
 
 app.put("/api/products/:id", auth, async (req, res) => {
   try {
@@ -1306,61 +1265,6 @@ app.post("/api/coupons/validate", auth, async (req, res) => {
   }
 });
 
-
-//Users routs
-// Get all users (for coupon assignment)
-app.get("/api/users", auth, async (req, res) => {
-  try {
-    // Only allow admin to fetch users
-    if (!req.user.isAdmin) {
-      return res.status(403).send({ error: "Only admins can access user list" });
-    }
-
-    // Fetch users, excluding sensitive information
-    const users = await User.find({}, 'email phone isAdmin');
-    res.send(users);
-  } catch (error) {
-    res.status(500).send({ error: "Error fetching users" });
-  }
-});
-
-app.put("/api/users/profile", auth, async (req, res) => {
-  try {
-    const { email, phone } = req.body;
-    
-    if (!email || !phone) {
-      return res.status(400).send({ error: 'Email and phone are required' });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { email, phone },
-      { new: true }
-    );
-
-    if (!user) {
-      return res.status(404).send({ error: 'User not found' });
-    }
-
-    const token = jwt.sign(
-      { userId: user._id, isAdmin: user.isAdmin },
-      process.env.JWT_SECRET
-    );
-
-    res.json({
-      user: {
-        _id: user._id,
-        email: user.email,
-        phone: user.phone,
-        isAdmin: user.isAdmin
-      },
-      token
-    });
-  } catch (error) {
-    res.status(400).send({ error: error.message });
-  }
-});
-
 // Payment routes
 app.post("/api/create-payment-intent", auth, async (req, res) => {
   try {
@@ -1398,207 +1302,7 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
   }
 });
 
-// Order routes
-app.get("/api/orders/:orderId/original-image/:fieldId", auth, async (req, res) => {
-  try {
-    const { orderId, fieldId } = req.params;
-    const productIndex = parseInt(req.query.productIndex);
-
-    // Verify order access
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).send({ error: 'Order not found' });
-    }
-
-    if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
-      return res.status(403).send({ error: 'Not authorized' });
-    }
-
-    // Find original image
-    const orderImage = await OrderImage.findOne({
-      orderId,
-      fieldId,
-      productIndex
-    });
-
-    if (!orderImage) {
-      return res.status(404).send({ error: 'Original image not found' });
-    }
-
-    // Send image
-    res.set('Content-Type', orderImage.originalImage.contentType);
-    res.set('Content-Disposition', `attachment; filename=${fieldId}_original.${orderImage.originalImage.contentType.split('/')[1]}`);
-    res.send(orderImage.originalImage.data);
-
-  } catch (error) {
-    console.error('Error downloading original image:', error);
-    res.status(500).send({ error: 'Error downloading original image' });
-  }
-});
-
-// app.post("/api/orders", auth, async (req, res) => {
-//   try {
-//     const { products, totalAmount, status, paymentMethod, paymentId, coupon } = req.body;
-
-//     // Validate required fields
-//     if (!products || !Array.isArray(products) || products.length === 0) {
-//       return res.status(400).json({ 
-//         error: 'Invalid products data',
-//         details: 'Products array is required and must not be empty'
-//       });
-//     }
-
-//     if (!totalAmount || totalAmount <= 0) {
-//       return res.status(400).json({ 
-//         error: 'Invalid total amount',
-//         details: 'Total amount must be greater than 0'
-//       });
-//     }
-
-//     // If a coupon was applied, validate it again
-//     if (coupon) {
-//       try {
-//         const couponValidation = await Coupon.findOne({ 
-//           code: coupon.code,
-//           isActive: true,
-//           startDate: { $lte: new Date() },
-//           endDate: { $gte: new Date() }
-//         });
-
-//         if (!couponValidation) {
-//           return res.status(400).json({ 
-//             error: 'Invalid or expired coupon'
-//           });
-//         }
-
-//         // Update coupon usage
-//         await Coupon.findOneAndUpdate(
-//           { code: coupon.code },
-//           { $inc: { currentUses: 1 } }
-//         );
-//       } catch (couponError) {
-//         console.error('Coupon validation error:', couponError);
-//         return res.status(400).json({ 
-//           error: 'Error processing coupon',
-//           details: couponError.message
-//         });
-//       }
-//     }
-
-//     // Create order with coupon details
-//     const orderData = {
-//       user: req.user._id,
-//       products: products.map(item => ({
-//         product: item.product,
-//         quantity: item.quantity,
-//         customization: {
-//           template: item.customization?.template || null,
-//           preview: item.customization?.preview || null,
-//           description: item.customization?.description || '',
-//           customFields: item.customization?.customFields || [],
-//           requiredFields: item.customization?.requiredFields || []
-//         }
-//       })),
-//       totalAmount,
-//       status: status || 'pending',
-//       paymentMethod,
-//       paymentId,
-//       coupon: coupon ? {
-//         code: coupon.code,
-//         discountAmount: coupon.discountAmount,
-//         discountType: coupon.discountType,
-//         discountValue: coupon.discountValue
-//       } : null
-//     };
-
-//     const order = new Order(orderData);
-//     await order.save();
-
-//     // Fetch the complete order with populated fields
-//     const populatedOrder = await Order.findById(order._id)
-//       .populate({
-//         path: 'products.product',
-//         model: 'Product'
-//       })
-//       .populate('user');
-
-//     res.status(201).send(populatedOrder);
-//   } catch (error) {
-//     console.error('Order creation error:', error);
-//     res.status(400).json({
-//       error: 'Failed to create order',
-//       details: error.message
-//     });
-//   }
-// });
-const processOrderImages = async (orderId, productIndex, customFields) => {
-  for (const field of customFields) {
-    if (field.type === 'image' || field.type === 'logo') {
-      console.log('Processing image field:', {
-        fieldId: field.fieldId,
-        type: field.type,
-        hasOriginalImage: !!field.originalImage
-      });
-
-      try {
-        // Process original image if available
-        if (field.originalImage) {
-          const matches = field.originalImage.data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-          if (matches && matches.length === 3) {
-            const buffer = Buffer.from(matches[2], 'base64');
-            
-            const orderImage = new OrderImage({
-              orderId,
-              fieldId: field.fieldId,
-              originalImage: {
-                data: buffer,
-                contentType: field.originalImage.contentType,
-                metadata: field.originalImage.metadata
-              },
-              productIndex,
-              modifiedImage: {
-                data: Buffer.from(field.content.split(',')[1], 'base64'),
-                contentType: field.content.split(';')[0].split(':')[1]
-              }
-            });
-
-            await orderImage.save();
-            console.log('Saved image with original:', {
-              fieldId: field.fieldId,
-              originalSize: buffer.length,
-              modifiedSize: field.content.length,
-              metadata: field.originalImage.metadata
-            });
-          }
-        } else {
-          // Fallback to storing just the modified version
-          const matches = field.content.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-          if (matches && matches.length === 3) {
-            const orderImage = new OrderImage({
-              orderId,
-              fieldId: field.fieldId,
-              originalImage: {
-                data: Buffer.from(matches[2], 'base64'),
-                contentType: matches[1]
-              },
-              productIndex
-            });
-
-            await orderImage.save();
-            console.log('Saved image without original:', {
-              fieldId: field.fieldId,
-              size: field.content.length
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error saving image:', error);
-        throw error;
-      }
-    }
-  }
-};
-
+//Order Routs
 app.post("/api/orders", auth, async (req, res) => {
   try {
     const { products, totalAmount, status, paymentMethod, paymentId, coupon } = req.body;
@@ -1618,62 +1322,27 @@ app.post("/api/orders", auth, async (req, res) => {
       });
     }
 
-    console.log('Creating new order:', {
-      userId: req.user._id,
-      productsCount: products.length,
-      totalAmount,
-      hasCoupon: !!coupon
-    });
-
-    // Validate and process coupon if provided
-    let validatedCoupon = null;
+    // If a coupon was applied, validate it again
     if (coupon) {
       try {
-        const couponDoc = await Coupon.findOne({ 
+        const couponValidation = await Coupon.findOne({ 
           code: coupon.code,
           isActive: true,
           startDate: { $lte: new Date() },
           endDate: { $gte: new Date() }
         });
 
-        if (!couponDoc) {
+        if (!couponValidation) {
           return res.status(400).json({ 
             error: 'Invalid or expired coupon'
           });
         }
 
-        // Verify user eligibility if coupon is user-specific
-        if (couponDoc.assignedUsers.length > 0 && 
-            !couponDoc.assignedUsers.some(userId => userId.toString() === req.user._id.toString())) {
-          return res.status(403).json({ 
-            error: 'Coupon not available for this user'
-          });
-        }
-
-        // Check usage limits
-        if (couponDoc.maxUses > 0 && couponDoc.currentUses >= couponDoc.maxUses) {
-          return res.status(400).json({ 
-            error: 'Coupon has reached maximum uses'
-          });
-        }
-
-        // Update coupon usage count
+        // Update coupon usage
         await Coupon.findOneAndUpdate(
           { code: coupon.code },
           { $inc: { currentUses: 1 } }
         );
-
-        validatedCoupon = {
-          code: couponDoc.code,
-          discountAmount: coupon.discountAmount,
-          discountType: couponDoc.discountType,
-          discountValue: couponDoc.discountValue
-        };
-
-        console.log('Coupon validated:', {
-          code: validatedCoupon.code,
-          discountAmount: validatedCoupon.discountAmount
-        });
       } catch (couponError) {
         console.error('Coupon validation error:', couponError);
         return res.status(400).json({ 
@@ -1683,8 +1352,8 @@ app.post("/api/orders", auth, async (req, res) => {
       }
     }
 
-    // Create the order
-    const order = new Order({
+    // Create order with coupon details
+    const orderData = {
       user: req.user._id,
       products: products.map(item => ({
         product: item.product,
@@ -1701,11 +1370,16 @@ app.post("/api/orders", auth, async (req, res) => {
       status: status || 'pending',
       paymentMethod,
       paymentId,
-      coupon: validatedCoupon
-    });
+      coupon: coupon ? {
+        code: coupon.code,
+        discountAmount: coupon.discountAmount,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue
+      } : null
+    };
 
+    const order = new Order(orderData);
     await order.save();
-    console.log('Order created:', order._id);
 
     // Process and store images for each product
     for (let productIndex = 0; productIndex < products.length; productIndex++) {
@@ -1716,67 +1390,20 @@ app.post("/api/orders", auth, async (req, res) => {
       });
 
       if (product.customization?.customFields) {
-        await processOrderImages(
-          order._id,
-          productIndex,
-          product.customization.customFields
-        );
+        try {
+          await processOrderImages(
+            order._id,
+            productIndex,
+            product.customization.customFields
+          );
+        } catch (imageError) {
+          console.error(`Error processing images for product ${productIndex}:`, imageError);
+          // Continue with order creation even if image processing fails
+        }
       }
     }
 
-    // Clear user's cart
-    try {
-      await Cart.findOneAndUpdate(
-        { user: req.user._id },
-        { $set: { items: [] } }
-      );
-      console.log('Cart cleared for user:', req.user._id);
-    } catch (cartError) {
-      console.error('Error clearing cart:', cartError);
-      // Don't fail the order if cart clearing fails
-    }
-
-    // Send order confirmation email
-    try {
-      const mailOptions = {
-        from: process.env.SMTP_USER,
-        to: req.user.email,
-        subject: `Order Confirmation #${order._id}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Order Confirmation</h2>
-            <p>Thank you for your order!</p>
-            <p>Order ID: ${order._id}</p>
-            <p>Total Amount: $${totalAmount.toFixed(2)}</p>
-            ${validatedCoupon ? `
-              <p>Coupon Applied: ${validatedCoupon.code}</p>
-              <p>Discount: $${validatedCoupon.discountAmount.toFixed(2)}</p>
-            ` : ''}
-            <div style="margin-top: 20px;">
-              <h3>Order Details:</h3>
-              ${products.map(item => `
-                <div style="margin-bottom: 15px;">
-                  <p>Product: ${item.product.name || 'Product'}</p>
-                  <p>Quantity: ${item.quantity}</p>
-                  ${item.customization?.description ? 
-                    `<p>Special Instructions: ${item.customization.description}</p>` : 
-                    ''}
-                </div>
-              `).join('')}
-            </div>
-            <p>We will process your order shortly.</p>
-          </div>
-        `
-      };
-
-      await transporter.sendMail(mailOptions);
-      console.log('Order confirmation email sent to:', req.user.email);
-    } catch (emailError) {
-      console.error('Error sending confirmation email:', emailError);
-      // Don't fail the order if email fails
-    }
-
-    // Fetch complete order with populated fields
+    // Fetch the complete order with populated fields
     const populatedOrder = await Order.findById(order._id)
       .populate({
         path: 'products.product',
@@ -1784,9 +1411,7 @@ app.post("/api/orders", auth, async (req, res) => {
       })
       .populate('user');
 
-    console.log('Order populated and ready to send');
     res.status(201).send(populatedOrder);
-
   } catch (error) {
     console.error('Order creation error:', error);
     res.status(400).json({
@@ -1797,6 +1422,93 @@ app.post("/api/orders", auth, async (req, res) => {
 });
 
 
+// Order routes
+app.get("/api/orders/:orderId/original-image/:fieldId", auth, async (req, res) => {
+  try {
+    const { orderId, fieldId } = req.params;
+    const productIndex = parseInt(req.query.productIndex);
+
+    console.log('ORIGINAL IMAGE REQUEST:', {
+      orderId,
+      fieldId,
+      productIndex
+    });
+
+    // Verify order access
+    const order = await Order.findById(orderId);
+    if (!order) {
+      console.warn('ORDER NOT FOUND');
+      return res.status(404).send({ error: 'Order not found' });
+    }
+
+    if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
+      console.warn('UNAUTHORIZED ACCESS');
+      return res.status(403).send({ error: 'Not authorized' });
+    }
+
+    // Find original image
+    const orderImage = await OrderImage.findOne({
+      orderId,
+      fieldId,
+      productIndex
+    });
+
+    console.log('FOUND ORDER IMAGE:', {
+      orderImageExists: !!orderImage,
+      contentType: orderImage?.originalImage?.contentType
+    });
+
+    if (!orderImage) {
+      console.warn('IMAGE NOT FOUND');
+      return res.status(404).send({ error: 'Original image not found' });
+    }
+
+    // Send image
+    res.set('Content-Type', orderImage.originalImage.contentType || 'image/png');
+    res.set('Content-Disposition', `attachment; filename=${fieldId}_original.${orderImage.originalImage.contentType?.split('/')[1] || 'png'}`);
+    res.send(orderImage.originalImage.data);
+
+  } catch (error) {
+    console.error('Error downloading original image:', error);
+    res.status(500).send({ error: 'Error downloading original image' });
+  }
+});
+
+// endpoint to get individual customization files
+app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, async (req, res) => {
+  try {
+    const { orderId, productIndex, fieldId } = req.params;
+    const order = await Order.findById(orderId).populate('products.product');
+    
+    if (!order) return res.status(404).send({ error: 'Order not found' });
+    
+    const product = order.products[productIndex];
+    if (!product) return res.status(404).send({ error: 'Product not found' });
+    
+    const customField = product.customization?.customFields?.find(f => f.fieldId === fieldId);
+    const requiredField = product.customization?.requiredFields?.find(f => f.fieldId === fieldId);
+    const field = customField || requiredField;
+    
+    if (!field) return res.status(404).send({ error: 'Field not found' });
+    
+    if (field.type === 'image' || field.type === 'logo') {
+      const imageData = field.content; // Original file data
+      if (!imageData) return res.status(404).send({ error: 'Image data not found' });
+      
+      const binary = Buffer.from(imageData.split(',')[1], 'base64');
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}_original.png`);
+      res.send(binary);
+    } else {
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
+      res.send(field.content || field.value);
+    }
+  } catch (error) {
+    console.error('Download error:', error);
+    res.status(500).send({ error: 'Server error' });
+  }
+});
 
 app.get("/api/orders", auth, async (req, res) => {
   try {
@@ -1994,39 +1706,58 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
   }
 });
 
-// endpoint to get individual customization files
-app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, async (req, res) => {
+
+//Users routs
+// Get all users (for coupon assignment)
+app.get("/api/users", auth, async (req, res) => {
   try {
-    const { orderId, productIndex, fieldId } = req.params;
-    const order = await Order.findById(orderId).populate('products.product');
-    
-    if (!order) return res.status(404).send({ error: 'Order not found' });
-    
-    const product = order.products[productIndex];
-    if (!product) return res.status(404).send({ error: 'Product not found' });
-    
-    const customField = product.customization?.customFields?.find(f => f.fieldId === fieldId);
-    const requiredField = product.customization?.requiredFields?.find(f => f.fieldId === fieldId);
-    const field = customField || requiredField;
-    
-    if (!field) return res.status(404).send({ error: 'Field not found' });
-    
-    if (field.type === 'image' || field.type === 'logo') {
-      const imageData = field.content; // Original file data
-      if (!imageData) return res.status(404).send({ error: 'Image data not found' });
-      
-      const binary = Buffer.from(imageData.split(',')[1], 'base64');
-      res.setHeader('Content-Type', 'image/png');
-      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}_original.png`);
-      res.send(binary);
-    } else {
-      res.setHeader('Content-Type', 'text/plain');
-      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
-      res.send(field.content || field.value);
+    // Only allow admin to fetch users
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Only admins can access user list" });
     }
+
+    // Fetch users, excluding sensitive information
+    const users = await User.find({}, 'email phone isAdmin');
+    res.send(users);
   } catch (error) {
-    console.error('Download error:', error);
-    res.status(500).send({ error: 'Server error' });
+    res.status(500).send({ error: "Error fetching users" });
+  }
+});
+
+app.put("/api/users/profile", auth, async (req, res) => {
+  try {
+    const { email, phone } = req.body;
+    
+    if (!email || !phone) {
+      return res.status(400).send({ error: 'Email and phone are required' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { email, phone },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).send({ error: 'User not found' });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, isAdmin: user.isAdmin },
+      process.env.JWT_SECRET
+    );
+
+    res.json({
+      user: {
+        _id: user._id,
+        email: user.email,
+        phone: user.phone,
+        isAdmin: user.isAdmin
+      },
+      token
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
   }
 });
 
