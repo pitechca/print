@@ -21,34 +21,6 @@ app.use(cors());
 
 app.set('trust proxy', true);
 
-// MongoDB Models
-// const UserSchema = new mongoose.Schema({
-//   email: { type: String, required: true, unique: true },
-//   password: { type: String, required: true },
-//   phone: { type: String, required: true },
-//   isAdmin: { type: Boolean, default: false }
-//});
-const UserSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  phone: { type: String, required: true },
-  address: {
-    street: { type: String },
-    city: { type: String },
-    state: { type: String },
-    postalCode: { type: String },
-    country: { type: String, required: true, default: 'Canada' }
-  },
-  company: { type: String },
-  isAdmin: { type: Boolean, default: false },
-  preferences: {
-    newsletter: { type: Boolean, default: false },
-    marketingEmails: { type: Boolean, default: false }
-  },
-  createdAt: { type: Date, default: Date.now }
-});
 
 
 // Rate limiting to prevent spam
@@ -73,6 +45,64 @@ const transporter = nodemailer.createTransport({
   //   user: process.env.EMAIL_USER, // Your email
   //   pass: process.env.EMAIL_PASS  // App password or generated credentials
   // }
+});
+
+
+
+// Middleware for authentication
+const auth = async (req, res, next) => {
+  try {
+    const token = req.header("Authorization").replace("Bearer ", "");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = await User.findById(decoded.userId);
+    next();
+  } catch (error) {
+    res.status(401).send({ error: "Please authenticate" });
+  }
+};
+
+// File upload configuration
+const upload = multer({
+  limits: {
+    fileSize: 5000000 // 5MB limit
+  }
+});
+
+// Helper function to convert base64 to Buffer
+const base64ToBuffer = (base64) => {
+  const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+  if (matches.length !== 3) {
+    throw new Error('Invalid base64 string');
+  }
+  return {
+    contentType: matches[1],
+    buffer: Buffer.from(matches[2], 'base64')
+  };
+};
+
+
+
+// MongoDB Models
+const UserSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  phone: { type: String, required: true },
+  address: {
+    street: { type: String },
+    city: { type: String },
+    state: { type: String },
+    postalCode: { type: String },
+    country: { type: String, required: true, default: 'Canada' }
+  },
+  company: { type: String },
+  isAdmin: { type: Boolean, default: false },
+  preferences: {
+    newsletter: { type: Boolean, default: false },
+    marketingEmails: { type: Boolean, default: false }
+  },
+  createdAt: { type: Date, default: Date.now }
 });
 
 const ImageSchema = new mongoose.Schema({
@@ -222,30 +252,6 @@ const OrderSchema = new mongoose.Schema({
   }
 });
 
-// const OrderImageSchema = new mongoose.Schema({
-//   orderId: { 
-//     type: mongoose.Schema.Types.ObjectId, 
-//     ref: 'Order', 
-//     required: true 
-//   },
-//   fieldId: { 
-//     type: String, 
-//     required: true 
-//   },
-//   originalImage: {
-//     data: { type: Buffer, required: true },
-//     contentType: { type: String, required: true }
-//   },
-//   productIndex: {
-//     type: Number,
-//     required: true
-//   },
-//   createdAt: { 
-//     type: Date, 
-//     default: Date.now 
-//   }
-// });
-
 const CategorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   description: String,
@@ -268,14 +274,16 @@ const CouponSchema = new mongoose.Schema({
   discountValue: { type: Number, required: true },
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
-  maxUses: { type: Number, default: 0 },
-  currentUses: { type: Number, default: 0 },
+  maxUsesPerUser: { type: Number, default: 0 }, 
+  userUsage: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    usageCount: { type: Number, default: 0 }
+  }],
   assignedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   isActive: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now }
 });
-
 
 const Category = mongoose.model('Category', CategorySchema);
 const Template = mongoose.model('Template', TemplateSchema);
@@ -285,39 +293,8 @@ const Image = mongoose.model("Image", ImageSchema);
 const Product = mongoose.model("Product", ProductSchema);
 const Order = mongoose.model("Order", OrderSchema);
 const Coupon = mongoose.model('Coupon', CouponSchema);
-// const OrderImage = mongoose.model('OrderImage', OrderImageSchema);
 
 
-// Middleware for authentication
-const auth = async (req, res, next) => {
-  try {
-    const token = req.header("Authorization").replace("Bearer ", "");
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.userId);
-    next();
-  } catch (error) {
-    res.status(401).send({ error: "Please authenticate" });
-  }
-};
-
-// File upload configuration
-const upload = multer({
-  limits: {
-    fileSize: 5000000 // 5MB limit
-  }
-});
-
-// Helper function to convert base64 to Buffer
-const base64ToBuffer = (base64) => {
-  const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-  if (matches.length !== 3) {
-    throw new Error('Invalid base64 string');
-  }
-  return {
-    contentType: matches[1],
-    buffer: Buffer.from(matches[2], 'base64')
-  };
-};
 
 // API Routes
 app.post("/api/register", async (req, res) => {
@@ -1140,6 +1117,7 @@ app.get('/api/cart', auth, async (req, res) => {
   });
 
 // Coupon routs
+// POST endpoint for creating coupons
 app.post("/api/coupons", auth, async (req, res) => {
   try {
     // Only admin can create coupons
@@ -1147,7 +1125,15 @@ app.post("/api/coupons", auth, async (req, res) => {
       return res.status(403).send({ error: "Only admins can create coupons" });
     }
 
-    const { code, discountType, discountValue, startDate, endDate, maxUses, assignedUsers } = req.body;
+    const { 
+      code, 
+      discountType, 
+      discountValue, 
+      startDate, 
+      endDate, 
+      maxUsesPerUser, 
+      assignedUsers 
+    } = req.body;
 
     // Validate input
     if (!code || !discountType || !discountValue || !startDate || !endDate) {
@@ -1160,23 +1146,129 @@ app.post("/api/coupons", auth, async (req, res) => {
       return res.status(400).send({ error: "Coupon code already exists" });
     }
 
-    // Create new coupon
+    // Validate discount value
+    if (discountType === 'percentage' && (discountValue <= 0 || discountValue > 100)) {
+      return res.status(400).send({ error: "Percentage discount must be between 0 and 100" });
+    }
+
+    if (discountType === 'fixed' && discountValue <= 0) {
+      return res.status(400).send({ error: "Fixed discount must be greater than 0" });
+    }
+
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end <= start) {
+      return res.status(400).send({ error: "End date must be after start date" });
+    }
+
+    // Create new coupon with user usage tracking
     const newCoupon = new Coupon({
       code,
       discountType,
       discountValue,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
-      maxUses: maxUses || 0,
+      startDate: start,
+      endDate: end,
+      maxUsesPerUser: maxUsesPerUser || 0,
       assignedUsers: assignedUsers || [],
-      createdBy: req.user._id
+      userUsage: [], // Initialize empty usage tracking
+      createdBy: req.user._id,
+      isActive: true
     });
 
     await newCoupon.save();
-    res.status(201).send(newCoupon);
+
+    // Populate user references before sending response
+    await newCoupon.populate([
+      { path: 'createdBy', select: 'email' },
+      { path: 'assignedUsers', select: 'email' }
+    ]);
+
+    res.status(201).send({
+      ...newCoupon.toObject(),
+      assignedUsers: newCoupon.assignedUsers.map(user => ({
+        _id: user._id,
+        email: user.email
+      }))
+    });
+
   } catch (error) {
     console.error('Coupon creation error:', error);
-    res.status(500).send({ error: "Error creating coupon" });
+    res.status(500).send({ 
+      error: "Error creating coupon",
+      details: error.message 
+    });
+  }
+});
+
+app.post("/api/coupons/validate", auth, async (req, res) => {
+  try {
+    const { couponCode, orderTotal } = req.body;
+
+    // Find the coupon
+    const coupon = await Coupon.findOne({ 
+      code: couponCode,
+      isActive: true,
+      startDate: { $lte: new Date() },
+      endDate: { $gte: new Date() }
+    });
+
+    // Check coupon existence
+    if (!coupon) {
+      return res.status(404).send({ error: "Invalid or expired coupon" });
+    }
+
+    // Check if coupon is assigned to specific users
+    if (coupon.assignedUsers.length > 0 && 
+        !coupon.assignedUsers.some(userId => userId.toString() === req.user._id.toString())) {
+      return res.status(403).send({ error: "Coupon not available for this user" });
+    }
+
+    // Check user's usage count
+    const userUsage = coupon.userUsage.find(
+      usage => usage.user.toString() === req.user._id.toString()
+    );
+
+    if (coupon.maxUsesPerUser > 0 && userUsage && userUsage.usageCount >= coupon.maxUsesPerUser) {
+      return res.status(400).send({ 
+        error: `You have reached the maximum usage limit (${coupon.maxUsesPerUser}) for this coupon`
+      });
+    }
+
+    // Calculate discount
+    let discountAmount = 0;
+    if (coupon.discountType === 'percentage') {
+      discountAmount = orderTotal * (coupon.discountValue / 100);
+    } else {
+      discountAmount = coupon.discountValue;
+    }
+
+    // Update user usage count
+    if (!userUsage) {
+      coupon.userUsage.push({
+        user: req.user._id,
+        usageCount: 1
+      });
+    } else {
+      userUsage.usageCount += 1;
+    }
+    await coupon.save();
+
+    res.send({
+      message: "Coupon applied successfully",
+      discountAmount,
+      couponDetails: {
+        code: coupon.code,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        remainingUses: coupon.maxUsesPerUser > 0 ? 
+          coupon.maxUsesPerUser - (userUsage ? userUsage.usageCount : 1) : 
+          'Unlimited'
+      }
+    });
+  } catch (error) {
+    console.error('Coupon validation error:', error);
+    res.status(500).send({ error: "Error validating coupon" });
   }
 });
 
@@ -1270,59 +1362,6 @@ app.delete("/api/coupons/:id", auth, async (req, res) => {
   } catch (error) {
     console.error('Coupon deletion error:', error);
     res.status(500).send({ error: "Error deleting coupon" });
-  }
-});
-
-// Validate coupon for an order
-app.post("/api/coupons/validate", auth, async (req, res) => {
-  try {
-    const { couponCode, orderTotal } = req.body;
-
-    // Find the coupon
-    const coupon = await Coupon.findOne({ 
-      code: couponCode,
-      isActive: true,
-      startDate: { $lte: new Date() },
-      endDate: { $gte: new Date() }
-    });
-
-    // Check coupon existence and usage
-    if (!coupon) {
-      return res.status(404).send({ error: "Invalid or expired coupon" });
-    }
-
-    // Check if coupon is assigned to specific users
-    if (coupon.assignedUsers.length > -1 && 
-        // !coupon.assignedUsers.includes(req.user._id)) {
-     !coupon.assignedUsers.some(userId => userId.toString() === req.user._id.toString())) {
-        return res.status(403).send({ error: "Coupon not available for this user" });
-    }
-
-    // Check max uses
-    if (coupon.maxUses > 0 && coupon.currentUses >= coupon.maxUses) {
-      return res.status(400).send({ error: "Coupon has reached maximum uses" });
-    }
-
-    // Calculate discount
-    let discountAmount = 0;
-    if (coupon.discountType === 'percentage') {
-      discountAmount = orderTotal * (coupon.discountValue / 100);
-    } else {
-      discountAmount = coupon.discountValue;
-    }
-
-    // Update coupon usage
-    coupon.currentUses += 1;
-    await coupon.save();
-
-    res.send({
-      message: "Coupon applied successfully",
-      discountAmount,
-      couponDetails: coupon
-    });
-  } catch (error) {
-    console.error('Coupon validation error:', error);
-    res.status(500).send({ error: "Error validating coupon" });
   }
 });
 
