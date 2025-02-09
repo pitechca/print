@@ -27,53 +27,29 @@ const handleDownloadImage = async (imageData, fileName) => {
   }
 };
 
-const downloadOriginalImage = async (orderId, fieldId, productIndex) => {
+const downloadOriginalImage = async (orderId, fieldId) => {
   try {
-    const response = await axios.get(
-      `/api/orders/${orderId}/original-image/${fieldId}?productIndex=${productIndex}`,
-      {
-        headers: { 
-          Authorization: `Bearer ${localStorage.getItem('token')}` 
-        },
-        responseType: 'blob'
-      }
-    );
+    const response = await axios.get(`/api/orders/${orderId}/original-image/${fieldId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      responseType: "blob"
+    });
 
-    // Create download link
     const url = window.URL.createObjectURL(response.data);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    
-    // Try to use original filename from metadata if available
-    const filename = `original_${fieldId}.${response.data.type.split('/')[1] || 'png'}`;
-    
-    link.setAttribute('download', filename);
+    link.setAttribute("download", `${fieldId}_original.png`);
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
   } catch (error) {
-    console.error('Error downloading original image:', error);
-    
-    // More detailed error handling
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      console.error('Error response data:', error.response.data);
-      console.error('Error response status:', error.response.status);
-      console.error('Error response headers:', error.response.headers);
-      
-      alert(`Failed to download original image: ${error.response.data.error || 'Unknown server error'}`);
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error('No response received:', error.request);
-      alert('No response received from server');
-    } else {
-      // Something happened in setting up the request
-      console.error('Error setting up request:', error.message);
-      alert('Error setting up download request');
-    }
+    console.error("Error downloading original image:", error);
+    alert("Failed to download original image. Please try again.");
   }
 };
+
+
+
 
 const ImageDownloadButton = ({ imageData, fileName, label }) => (
   <button
@@ -135,12 +111,13 @@ const CustomizationDetails = ({ customization, orderId, productIndex }) => {
                         fileName={`order-${orderId}-product-${productIndex}-custom-${idx}.png`}
                         label="Download Image"
                       />
-                        <button
-                          onClick={() => downloadOriginalImage(orderId, field.fieldId, productIndex)}
-                          className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded transition-colors"
-                        >
-                          Download Original
-                        </button>
+                  <button
+                    onClick={() => downloadOriginalImage(orderId, field.fieldId)}
+                    className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
+                  >
+                    🔽 Download Original Image
+                  </button>
+
                     </div>
                   )}
                   {field.properties && (

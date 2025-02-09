@@ -127,6 +127,11 @@ const CheckoutForm = ({ selectedItems, quantities, total, coupon }) => {
 export default CheckoutForm;
 
 
+
+
+
+
+
 // //WITH stripe
 // // src/components/CheckoutForm.js
 // import React, { useState } from 'react';

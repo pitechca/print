@@ -22,12 +22,34 @@ app.use(cors());
 app.set('trust proxy', true);
 
 // MongoDB Models
+// const UserSchema = new mongoose.Schema({
+//   email: { type: String, required: true, unique: true },
+//   password: { type: String, required: true },
+//   phone: { type: String, required: true },
+//   isAdmin: { type: Boolean, default: false }
+//});
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
   phone: { type: String, required: true },
-  isAdmin: { type: Boolean, default: false }
+  address: {
+    street: { type: String },
+    city: { type: String },
+    state: { type: String },
+    postalCode: { type: String },
+    country: { type: String, required: true, default: 'Canada' }
+  },
+  company: { type: String },
+  isAdmin: { type: Boolean, default: false },
+  preferences: {
+    newsletter: { type: Boolean, default: false },
+    marketingEmails: { type: Boolean, default: false }
+  },
+  createdAt: { type: Date, default: Date.now }
 });
+
 
 // Rate limiting to prevent spam
 const contactLimiter = rateLimit({
@@ -200,29 +222,29 @@ const OrderSchema = new mongoose.Schema({
   }
 });
 
-const OrderImageSchema = new mongoose.Schema({
-  orderId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Order', 
-    required: true 
-  },
-  fieldId: { 
-    type: String, 
-    required: true 
-  },
-  originalImage: {
-    data: { type: Buffer, required: true },
-    contentType: { type: String, required: true }
-  },
-  productIndex: {
-    type: Number,
-    required: true
-  },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  }
-});
+// const OrderImageSchema = new mongoose.Schema({
+//   orderId: { 
+//     type: mongoose.Schema.Types.ObjectId, 
+//     ref: 'Order', 
+//     required: true 
+//   },
+//   fieldId: { 
+//     type: String, 
+//     required: true 
+//   },
+//   originalImage: {
+//     data: { type: Buffer, required: true },
+//     contentType: { type: String, required: true }
+//   },
+//   productIndex: {
+//     type: Number,
+//     required: true
+//   },
+//   createdAt: { 
+//     type: Date, 
+//     default: Date.now 
+//   }
+// });
 
 const CategorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
@@ -263,7 +285,7 @@ const Image = mongoose.model("Image", ImageSchema);
 const Product = mongoose.model("Product", ProductSchema);
 const Order = mongoose.model("Order", OrderSchema);
 const Coupon = mongoose.model('Coupon', CouponSchema);
-const OrderImage = mongoose.model('OrderImage', OrderImageSchema);
+// const OrderImage = mongoose.model('OrderImage', OrderImageSchema);
 
 
 // Middleware for authentication
@@ -300,20 +322,59 @@ const base64ToBuffer = (base64) => {
 // API Routes
 app.post("/api/register", async (req, res) => {
   try {
-    const { email, password, phone, adminCode } = req.body;
+    const { 
+      email, 
+      password, 
+      phone, 
+      adminCode, 
+      firstName, 
+      lastName,
+      address,
+      company 
+    } = req.body;
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).send({ 
+        error: 'Email address is already registered. Please use a different email or try logging in.'
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const isAdmin = adminCode === process.env.ADMIN_CODE;
 
-    const user = new User({ email, password: hashedPassword, phone, isAdmin });
+    const user = new User({ 
+      email: email.toLowerCase(), // Store email in lowercase for consistency
+      password: hashedPassword, 
+      phone, 
+      isAdmin,
+      firstName,
+      lastName,
+      address: address || {},
+      company: company || ''
+    });
+
     await user.save();
 
     const token = jwt.sign(
       { userId: user._id, isAdmin: user.isAdmin },
       process.env.JWT_SECRET
     );
-    res.status(201).send({ user, token });
+
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.status(201).send({ user: userResponse, token });
   } catch (error) {
-    res.status(400).send(error);
+    // Check if the error is a MongoDB duplicate key error
+    if (error.code === 11000 && error.keyPattern?.email) {
+      return res.status(400).send({ 
+        error: 'Email address is already registered. Please use a different email or try logging in.'
+      });
+    }
+    res.status(400).send({ error: 'Registration failed. Please try again.' });
   }
 });
 
@@ -1422,57 +1483,57 @@ app.post("/api/orders", auth, async (req, res) => {
 });
 
 
-// Order routes
-app.get("/api/orders/:orderId/original-image/:fieldId", auth, async (req, res) => {
-  try {
-    const { orderId, fieldId } = req.params;
-    const productIndex = parseInt(req.query.productIndex);
+// // Order routes
+// app.get("/api/orders/:orderId/original-image/:fieldId", auth, async (req, res) => {
+//   try {
+//     const { orderId, fieldId } = req.params;
+//     const productIndex = parseInt(req.query.productIndex);
 
-    console.log('ORIGINAL IMAGE REQUEST:', {
-      orderId,
-      fieldId,
-      productIndex
-    });
+//     console.log('ORIGINAL IMAGE REQUEST:', {
+//       orderId,
+//       fieldId,
+//       productIndex
+//     });
 
-    // Verify order access
-    const order = await Order.findById(orderId);
-    if (!order) {
-      console.warn('ORDER NOT FOUND');
-      return res.status(404).send({ error: 'Order not found' });
-    }
+//     // Verify order access
+//     const order = await Order.findById(orderId);
+//     if (!order) {
+//       console.warn('ORDER NOT FOUND');
+//       return res.status(404).send({ error: 'Order not found' });
+//     }
 
-    if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
-      console.warn('UNAUTHORIZED ACCESS');
-      return res.status(403).send({ error: 'Not authorized' });
-    }
+//     if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
+//       console.warn('UNAUTHORIZED ACCESS');
+//       return res.status(403).send({ error: 'Not authorized' });
+//     }
 
-    // Find original image
-    const orderImage = await OrderImage.findOne({
-      orderId,
-      fieldId,
-      productIndex
-    });
+//     // Find original image
+//     const orderImage = await OrderImage.findOne({
+//       orderId,
+//       fieldId,
+//       productIndex
+//     });
 
-    console.log('FOUND ORDER IMAGE:', {
-      orderImageExists: !!orderImage,
-      contentType: orderImage?.originalImage?.contentType
-    });
+//     console.log('FOUND ORDER IMAGE:', {
+//       orderImageExists: !!orderImage,
+//       contentType: orderImage?.originalImage?.contentType
+//     });
 
-    if (!orderImage) {
-      console.warn('IMAGE NOT FOUND');
-      return res.status(404).send({ error: 'Original image not found' });
-    }
+//     if (!orderImage) {
+//       console.warn('IMAGE NOT FOUND');
+//       return res.status(404).send({ error: 'Original image not found' });
+//     }
 
-    // Send image
-    res.set('Content-Type', orderImage.originalImage.contentType || 'image/png');
-    res.set('Content-Disposition', `attachment; filename=${fieldId}_original.${orderImage.originalImage.contentType?.split('/')[1] || 'png'}`);
-    res.send(orderImage.originalImage.data);
+//     // Send image
+//     res.set('Content-Type', orderImage.originalImage.contentType || 'image/png');
+//     res.set('Content-Disposition', `attachment; filename=${fieldId}_original.${orderImage.originalImage.contentType?.split('/')[1] || 'png'}`);
+//     res.send(orderImage.originalImage.data);
 
-  } catch (error) {
-    console.error('Error downloading original image:', error);
-    res.status(500).send({ error: 'Error downloading original image' });
-  }
-});
+//   } catch (error) {
+//     console.error('Error downloading original image:', error);
+//     res.status(500).send({ error: 'Error downloading original image' });
+//   }
+// });
 
 // endpoint to get individual customization files
 app.get('/api/orders/:orderId/products/:productIndex/files/:fieldId', auth, async (req, res) => {
