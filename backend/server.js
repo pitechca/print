@@ -701,6 +701,7 @@ app.get("/api/categories/:id/image", async (req, res) => {
   }
 });
 
+
 app.post("/api/categories", auth, async (req, res) => {
   try {
     if (!req.user.isAdmin) {
