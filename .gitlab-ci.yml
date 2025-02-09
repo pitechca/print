@@ -1,0 +1,64 @@
+  stages:
+    - build
+    - deploy
+
+  variables:
+    DOCKER_COMPOSE_FILE: docker-compose.${CI_COMMIT_REF_SLUG}.yaml
+
+  # Build Frontend Only If Changed
+  build_frontend:
+    stage: build
+    rules:
+      - if: '$CI_COMMIT_REF_NAME == "dev" || $CI_COMMIT_REF_NAME == "main"'
+      - changes:
+          - frontend/**
+    services:
+      - docker:dind
+    tags:
+      - docker
+    script:
+      - docker-compose -f $DOCKER_COMPOSE_FILE build frontend
+
+  # Build Backend Only If Changed
+  build_backend:
+    stage: build
+    rules:
+      - if: '$CI_COMMIT_REF_NAME == "dev" || $CI_COMMIT_REF_NAME == "main"'
+      - changes:
+          - backend/**
+    services:
+      - docker:dind
+    tags:
+      - docker
+    script:
+      - docker-compose -f $DOCKER_COMPOSE_FILE build backend
+
+
+  # Deploy to Development
+  deploy_dev:
+    stage: deploy
+    only:
+      - dev
+    environment:
+      name: development
+    services:
+      - docker:dind
+    tags:
+      - docker
+    script:
+      - docker-compose -f $DOCKER_COMPOSE_FILE up -d --no-build
+
+  # Deploy to Production
+  deploy_prod:
+    stage: deploy
+    only:
+      - main
+    environment:
+      name: production
+    services:
+      - docker:dind
+    tags:
+      - docker
+    script:
+      - docker-compose -f $DOCKER_COMPOSE_FILE up -d --no-build
+      
