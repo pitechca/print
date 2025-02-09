@@ -1,0 +1,35 @@
+services:
+
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    env_file:
+      - backend/.env
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: backend
+    container_name: print-backend
+    restart: always
+    ports:
+      - "8001:5000"
+    depends_on:
+      - mongo
+    env_file:
+      - backend/.env
+
+  frontend:
+    build: frontend
+    container_name: print-frontend
+    restart: always
+    ports:
+      - "8000:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
