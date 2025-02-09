@@ -114,15 +114,22 @@ const AdminDashboard = () => {
         }
       }
       
-      else if (type === 'product') {
+      if (type === 'product') {
         const productData = {
           name: data.name,
           category: data.category,
-          basePrice: parseFloat(data.basePrice),
+          basePrice: !!data.basePrice,
           description: data.description,
           hasGST: !!data.hasGST,
           hasPST: !!data.hasPST,
-          images: data.images
+          images: data.images,
+          isFeatured: !!data.isFeatured,
+          inStock: !!data.inStock,
+          minimumOrder: data.minimumOrder || 1,
+          sku: data.sku,
+          pricingTiers: data.pricingTiers || [],
+          dimensions: data.dimensions || {},
+          metadata: data.metadata || {}
         };
       
         if (selectedItem) {

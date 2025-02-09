@@ -1,3 +1,4 @@
+
 // src/components/CheckoutForm.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +19,28 @@ const CheckoutForm = ({ selectedItems, quantities, total, coupon }) => {
     setError(null);
 
     try {
+
+        // Validate all items
+    const invalidItems = Array.from(selectedItems).map(index => {
+      const item = cart[index];
+      const quantity = quantities[index];
+
+      if (!item.product.inStock) {
+        return `${item.product.name} is out of stock`;
+      }
+
+      if (quantity < (item.product.minimumOrder || 1)) {
+        return `${item.product.name} requires a minimum order of ${item.product.minimumOrder}`;
+      }
+
+      return null;
+    }).filter(Boolean);
+
+    if (invalidItems.length > 0) {
+      throw new Error(invalidItems.join('\n'));
+    }
+
+    
       // Transform cart items to order structure
       const products = Array.from(selectedItems).map(index => {
         const item = cart[index];
@@ -125,6 +148,9 @@ const CheckoutForm = ({ selectedItems, quantities, total, coupon }) => {
 };
 
 export default CheckoutForm;
+
+
+
 
 
 

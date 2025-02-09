@@ -110,11 +110,25 @@ const ImageSchema = new mongoose.Schema({
   contentType: { type: String, required: true }
 });
 
+// const ProductSchema = new mongoose.Schema({
+//   name: { type: String, required: true },
+//   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+//   basePrice: { type: Number, required: true },
+//   images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }], 
+//   description: String,
+//   createdAt: { type: Date, default: Date.now },
+//   hasGST: { type: Boolean, default: false },
+//   hasPST: { type: Boolean, default: false },
+//   customizationOptions: {
+//     allowCustomImage: { type: Boolean, default: true },
+//     allowCustomText: { type: Boolean, default: true }
+//   }
+// });
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
   basePrice: { type: Number, required: true },
-  images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }], // Changed from templates to images
+  images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }],
   description: String,
   createdAt: { type: Date, default: Date.now },
   hasGST: { type: Boolean, default: false },
@@ -122,6 +136,26 @@ const ProductSchema = new mongoose.Schema({
   customizationOptions: {
     allowCustomImage: { type: Boolean, default: true },
     allowCustomText: { type: Boolean, default: true }
+  },
+  // New fields
+  isFeatured: { type: Boolean, default: false },
+  inStock: { type: Boolean, default: true },
+  minimumOrder: { type: Number, default: 1 },
+  sku: { type: String },
+  pricingTiers: [{
+    minQuantity: { type: Number, required: true },
+    maxQuantity: { type: Number },
+    price: { type: Number, required: true }
+  }],
+  weight: { type: Number }, // in grams
+  dimensions: {
+    length: { type: Number },
+    width: { type: Number },
+    height: { type: Number }
+  },
+  metadata: {
+    keywords: [String],
+    searchTags: [String]
   }
 });
 
@@ -386,7 +420,7 @@ app.post("/api/login", async (req, res) => {
 app.get("/api/products/basic", async (req, res) => {
   try {
     const products = await Product.find()
-      .select('_id name description basePrice category')
+      .select('_id name description basePrice category isFeatured inStock minimumOrder') // Added new basic fields
       .populate('category', 'name')
       .sort('-createdAt');
 
@@ -395,6 +429,18 @@ app.get("/api/products/basic", async (req, res) => {
     res.status(500).send(error);
   }
 });
+// app.get("/api/products/basic", async (req, res) => {
+//   try {
+//     const products = await Product.find()
+//       .select('_id name description basePrice category')
+//       .populate('category', 'name')
+//       .sort('-createdAt');
+
+//     res.send(products);
+//   } catch (error) {
+//     res.status(500).send(error);
+//   }
+// });
 
 // Get single product image
 app.get("/api/products/:id/image", async (req, res) => {
@@ -423,7 +469,12 @@ app.post("/api/products", auth, async (req, res) => {
       return res.status(403).send({ error: "Only admins can create products" });
     }
 
-    const { name, category, basePrice, description, images, hasGST, hasPST } = req.body;
+    const { 
+      name, category, basePrice, description, images, hasGST, hasPST,
+      // New fields
+      isFeatured, inStock, minimumOrder, sku, pricingTiers, 
+      weight, dimensions, metadata
+    } = req.body;
     
     // Save images as Image documents
     const imageIds = [];
@@ -442,15 +493,66 @@ app.post("/api/products", auth, async (req, res) => {
       images: imageIds,
       hasGST,
       hasPST,
+      // New fields
+      isFeatured: isFeatured || false,
+      inStock: inStock ?? true,
+      minimumOrder: minimumOrder || 1,
+      sku,
+      pricingTiers: pricingTiers || [],
+      weight,
+      dimensions,
+      metadata: {
+        keywords: metadata?.keywords || [],
+        searchTags: metadata?.searchTags || []
+      },
       createdAt: new Date()
     });
     
     await product.save();
     res.status(201).send(product);
   } catch (error) {
-    res.status(400).send(error);
+    console.error('Error creating product:', error);
+    res.status(400).send({
+      error: 'Error creating product',
+      details: error.message
+    });
   }
 });
+// app.post("/api/products", auth, async (req, res) => {
+//   try {
+//     if (!req.user.isAdmin) {
+//       return res.status(403).send({ error: "Only admins can create products" });
+//     }
+
+//     const { name, category, basePrice, description, images, hasGST, hasPST } = req.body;
+    
+//     // Save images as Image documents
+//     const imageIds = [];
+//     for (const image of images) {
+//       const { buffer, contentType } = base64ToBuffer(image);
+//       const newImage = new Image({ data: buffer, contentType });
+//       await newImage.save();
+//       imageIds.push(newImage._id);
+//     }
+
+//     const product = new Product({
+//       name,
+//       category,
+//       basePrice,
+//       description,
+//       images: imageIds,
+//       hasGST,
+//       hasPST,
+//       createdAt: new Date()
+//     });
+    
+//     await product.save();
+//     res.status(201).send(product);
+//   } catch (error) {
+//     res.status(400).send(error);
+//   }
+// });
+
 
 app.put("/api/products/:id", auth, async (req, res) => {
   try {
@@ -458,43 +560,36 @@ app.put("/api/products/:id", auth, async (req, res) => {
       return res.status(403).send({ error: "Only admins can update products" });
     }
 
-    console.log('Update request received for product:', req.params.id);
-    console.log('Update data:', req.body);
-
-    // First get existing product
     const existingProduct = await Product.findById(req.params.id);
     if (!existingProduct) {
       return res.status(404).send({ error: 'Product not found' });
     }
 
-    const { name, category, basePrice, description, images, hasGST, hasPST } = req.body;
+    const { 
+      name, category, basePrice, description, images, hasGST, hasPST,
+      // New fields
+      isFeatured, inStock, minimumOrder, sku, pricingTiers,
+      weight, dimensions, metadata
+    } = req.body;
 
-    // Start with existing image IDs
+    // Handle image updates
     let updatedImageIds = [...existingProduct.images];
-
-    // Handle image updates if provided
     if (images && Array.isArray(images)) {
       for (let i = 0; i < images.length; i++) {
         const image = images[i];
-        
         if (image && image.startsWith('data:')) {
-          // This is a new or updated image
           const { buffer, contentType } = base64ToBuffer(image);
-          
           if (i < updatedImageIds.length) {
-            // Update existing image
             await Image.findByIdAndUpdate(updatedImageIds[i], {
               data: buffer,
               contentType
             });
           } else {
-            // Add new image
             const newImage = new Image({ data: buffer, contentType });
             await newImage.save();
             updatedImageIds.push(newImage._id);
           }
         }
-        // If image is not a base64 string, keep the existing image at this index
       }
     }
 
@@ -506,12 +601,21 @@ app.put("/api/products/:id", auth, async (req, res) => {
       description,
       hasGST,
       hasPST,
-      images: updatedImageIds
+      images: updatedImageIds,
+      // New fields
+      isFeatured,
+      inStock,
+      minimumOrder,
+      sku,
+      pricingTiers,
+      weight,
+      dimensions,
+      metadata: {
+        keywords: metadata?.keywords || existingProduct.metadata?.keywords || [],
+        searchTags: metadata?.searchTags || existingProduct.metadata?.searchTags || []
+      }
     };
 
-    console.log('Final update data:', updateData);
-
-    // Perform update
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
       { $set: updateData },
@@ -545,6 +649,99 @@ app.put("/api/products/:id", auth, async (req, res) => {
     });
   }
 });
+// app.put("/api/products/:id", auth, async (req, res) => {
+//   try {
+//     if (!req.user.isAdmin) {
+//       return res.status(403).send({ error: "Only admins can update products" });
+//     }
+
+//     console.log('Update request received for product:', req.params.id);
+//     console.log('Update data:', req.body);
+
+//     // First get existing product
+//     const existingProduct = await Product.findById(req.params.id);
+//     if (!existingProduct) {
+//       return res.status(404).send({ error: 'Product not found' });
+//     }
+
+//     const { name, category, basePrice, description, images, hasGST, hasPST } = req.body;
+
+//     // Start with existing image IDs
+//     let updatedImageIds = [...existingProduct.images];
+
+//     // Handle image updates if provided
+//     if (images && Array.isArray(images)) {
+//       for (let i = 0; i < images.length; i++) {
+//         const image = images[i];
+        
+//         if (image && image.startsWith('data:')) {
+//           // This is a new or updated image
+//           const { buffer, contentType } = base64ToBuffer(image);
+          
+//           if (i < updatedImageIds.length) {
+//             // Update existing image
+//             await Image.findByIdAndUpdate(updatedImageIds[i], {
+//               data: buffer,
+//               contentType
+//             });
+//           } else {
+//             // Add new image
+//             const newImage = new Image({ data: buffer, contentType });
+//             await newImage.save();
+//             updatedImageIds.push(newImage._id);
+//           }
+//         }
+//         // If image is not a base64 string, keep the existing image at this index
+//       }
+//     }
+
+//     // Prepare update object
+//     const updateData = {
+//       name,
+//       category,
+//       basePrice,
+//       description,
+//       hasGST,
+//       hasPST,
+//       images: updatedImageIds
+//     };
+
+//     console.log('Final update data:', updateData);
+
+//     // Perform update
+//     const updatedProduct = await Product.findByIdAndUpdate(
+//       req.params.id,
+//       { $set: updateData },
+//       { new: true }
+//     ).populate('images').populate('category');
+
+//     if (!updatedProduct) {
+//       throw new Error('Failed to update product');
+//     }
+
+//     // Format response
+//     const response = {
+//       ...updatedProduct.toObject(),
+//       images: updatedProduct.images.map(image => ({
+//         _id: image._id,
+//         data: `data:${image.contentType};base64,${image.data.toString('base64')}`
+//       })),
+//       category: updatedProduct.category ? {
+//         _id: updatedProduct.category._id,
+//         name: updatedProduct.category.name,
+//         description: updatedProduct.category.description
+//       } : null
+//     };
+
+//     res.json(response);
+//   } catch (error) {
+//     console.error('Error updating product:', error);
+//     res.status(400).send({
+//       error: 'Error updating product',
+//       details: error.message
+//     });
+//   }
+// });
 
 app.delete("/api/products/:id", auth, async (req, res) => {
   try {
@@ -607,7 +804,7 @@ app.get("/api/products", async (req, res) => {
     const products = await Product.find()
       .populate('images')
       .populate('category')
-      .sort('-createdAt'); // Sort by creation date, newest first
+      .sort('-createdAt');
 
     const productsWithImages = products.map(product => {
       const images = product.images.map(image => ({
@@ -628,9 +825,39 @@ app.get("/api/products", async (req, res) => {
 
     res.send(productsWithImages);
   } catch (error) {
+    console.error('Error fetching products:', error);
     res.status(500).send(error);
   }
 });
+// app.get("/api/products", async (req, res) => {
+//   try {
+//     const products = await Product.find()
+//       .populate('images')
+//       .populate('category')
+//       .sort('-createdAt'); // Sort by creation date, newest first
+
+//     const productsWithImages = products.map(product => {
+//       const images = product.images.map(image => ({
+//         _id: image._id,
+//         data: `data:${image.contentType};base64,${image.data.toString('base64')}`
+//       }));
+
+//       return {
+//         ...product.toObject(),
+//         images,
+//         category: product.category ? {
+//           _id: product.category._id,
+//           name: product.category.name,
+//           description: product.category.description
+//         } : null
+//       };
+//     });
+
+//     res.send(productsWithImages);
+//   } catch (error) {
+//     res.status(500).send(error);
+//   }
+// });
 
 app.get("/api/products/:id", async (req, res) => {
   try {

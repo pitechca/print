@@ -85,6 +85,16 @@ export const CartProvider = ({ children }) => {
         throw new Error('Please log in to add items to cart');
       }
 
+         // Check stock status
+    if (!item.product.inStock) {
+      throw new Error(`${item.product.name} is currently out of stock`);
+    }
+
+    // Check minimum order
+    if (item.quantity < (item.product.minimumOrder || 1)) {
+      throw new Error(`Minimum order quantity for ${item.product.name} is ${item.product.minimumOrder}`);
+    }
+
       // Process customization data
       const customizationData = item.customization ? {
         template: item.customization.template || null,
@@ -120,6 +130,22 @@ export const CartProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
+
+
+      const item = cart[index];
+    
+      // Validate quantity update
+      if (updates.quantity) {
+        if (!item.product.inStock) {
+          throw new Error(`${item.product.name} is currently out of stock`);
+        }
+  
+        if (updates.quantity < (item.product.minimumOrder || 1)) {
+          throw new Error(`Minimum order quantity is ${item.product.minimumOrder}`);
+        }
+      }
+  
+
 
       let processedUpdates = { ...updates };
 
