@@ -1,4 +1,4 @@
-// src/components/CheckoutForm.js
+
 // src/components/CheckoutForm.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +19,28 @@ const CheckoutForm = ({ selectedItems, quantities, total, coupon }) => {
     setError(null);
 
     try {
+
+        // Validate all items
+    const invalidItems = Array.from(selectedItems).map(index => {
+      const item = cart[index];
+      const quantity = quantities[index];
+
+      if (!item.product.inStock) {
+        return `${item.product.name} is out of stock`;
+      }
+
+      if (quantity < (item.product.minimumOrder || 1)) {
+        return `${item.product.name} requires a minimum order of ${item.product.minimumOrder}`;
+      }
+
+      return null;
+    }).filter(Boolean);
+
+    if (invalidItems.length > 0) {
+      throw new Error(invalidItems.join('\n'));
+    }
+
+    
       // Transform cart items to order structure
       const products = Array.from(selectedItems).map(index => {
         const item = cart[index];
@@ -129,145 +151,7 @@ export default CheckoutForm;
 
 
 
-// //without stripe and coupon
-// // src/components/CheckoutForm.js
-// import React, { useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import { useCart } from '../context/CartContext';
-// import axios from 'axios';
-// import { Alert, AlertDescription } from './ui/alert';
-// import { AlertCircle } from 'lucide-react';
 
-// const CheckoutForm = ({ selectedItems, quantities }) => {
-//   const [processing, setProcessing] = useState(false);
-//   const [error, setError] = useState(null);
-//   const { cart, removeFromCart } = useCart();
-//   const navigate = useNavigate();
-
-//   const calculateTotal = () => {
-//     return Array.from(selectedItems).reduce(
-//       (sum, index) => sum + (cart[index].product.basePrice * quantities[index]),
-//       0
-//     );
-//   };
-
-//   const handleSubmit = async (event) => {
-//     event.preventDefault();
-//     setProcessing(true);
-//     setError(null);
-
-//     try {
-//       // Log the cart items for debugging
-//       console.log('Cart items:', cart);
-//       console.log('Selected items:', selectedItems);
-
-//       // Transform cart items to order structure
-//       const products = Array.from(selectedItems).map(index => {
-//         const item = cart[index];
-//         console.log('Processing cart item:', item);
-
-//         return {
-//           product: item.product._id,
-//           quantity: quantities[index],
-//           customization: {
-//             template: item.customization?.template?._id || null,
-//             preview: item.customization?.preview || null,
-//             description: item.customization?.description || '',
-//             customFields: item.customization?.customFields?.map(field => ({
-//               fieldId: field.fieldId,
-//               type: field.type,
-//               content: field.content,
-//               properties: {
-//                 fontSize: field.properties?.fontSize || null,
-//                 fontFamily: field.properties?.fontFamily || null,
-//                 fill: field.properties?.fill || null,
-//                 position: {
-//                   x: field.properties?.position?.x || 0,
-//                   y: field.properties?.position?.y || 0
-//                 },
-//                 scale: {
-//                   x: field.properties?.scale?.x || 1,
-//                   y: field.properties?.scale?.y || 1
-//                 }
-//               }
-//             })) || [],
-//             requiredFields: item.customization?.requiredFields?.map(field => ({
-//               fieldId: field.fieldId,
-//               type: field.type,
-//               value: field.value
-//             })) || []
-//           }
-//         };
-//       });
-
-//       const orderData = {
-//         products, // Using 'products' instead of 'items' to match server expectation
-//         totalAmount: calculateTotal(),
-//         status: 'completed',
-//         paymentMethod: 'test',
-//         paymentId: 'test_' + Date.now()
-//       };
-
-//       // Log the order data being sent
-//       console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
-
-//       // Create the order
-//       const response = await axios.post('/api/orders', orderData, {
-//         headers: {
-//           'Authorization': `Bearer ${localStorage.getItem('token')}`,
-//           'Content-Type': 'application/json'
-//         }
-//       });
-
-//       console.log('Order created successfully:', response.data);
-
-//       // Remove purchased items from cart
-//       for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
-//         await removeFromCart(index);
-//       }
-
-//       navigate('/orders');
-//     } catch (error) {
-//       console.error('Order creation error:', error);
-//       setError(
-//         error.response?.data?.error || 
-//         error.response?.data?.details || 
-//         error.message || 
-//         'An error occurred during checkout. Please try again.'
-//       );
-//     }
-
-//     setProcessing(false);
-//   };
-
-//   return (
-//     <form onSubmit={handleSubmit} className="mt-4">
-//       {error && (
-//         <Alert variant="destructive" className="mb-4">
-//           <AlertCircle className="h-4 w-4" />
-//           <AlertDescription>{error}</AlertDescription>
-//         </Alert>
-//       )}
-
-//       <button
-//         type="submit"
-//         disabled={processing}
-//         className={`w-full bg-blue-500 text-white px-6 py-3 rounded-md font-semibold
-//           ${processing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
-//       >
-//         {processing ? 'Processing...' : `Complete Order - $${calculateTotal().toFixed(2)}`}
-//       </button>
-
-//       <div className="mt-4 text-sm text-gray-600">
-//         <p>This is a test checkout that skips payment processing.</p>
-//         <p>Selected items: {selectedItems.size}</p>
-//         <p>Total items in cart: {cart.length}</p>
-//       </div>
-//     </form>
-//   );
-// };
-
-// export default CheckoutForm;
 
 
 
