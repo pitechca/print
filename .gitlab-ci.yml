@@ -20,7 +20,7 @@
       - changes:
           - frontend/**
     tags:
-      - docker
+      - shell
     script:
       - docker-compose -f $DOCKER_COMPOSE_FILE build $FRONTEND_SERVICE
 
@@ -39,7 +39,7 @@
       - changes:
           - backend/**
     tags:
-      - docker
+      - shell
     script:
       - docker-compose -f $DOCKER_COMPOSE_FILE build $BACKEND_SERVICE
 
@@ -51,10 +51,8 @@
       - dev
     environment:
       name: development
-    services:
-      - docker:dind
     tags:
-      - docker
+      - shell
     script:
       - docker-compose -f $DOCKER_COMPOSE_FILE up -d --no-build
 
@@ -65,10 +63,8 @@
       - main
     environment:
       name: production
-    services:
-      - docker:dind
     tags:
-      - docker
+      - shell
     script:
       - docker-compose -f $DOCKER_COMPOSE_FILE up -d --no-build
       
