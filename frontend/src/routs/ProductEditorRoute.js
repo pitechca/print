@@ -5,6 +5,7 @@ import ProductEditor from '../components/ProductEditor';
 import ProductEditorBags from '../components/ProductEditorBags';
 import axios from 'axios';
 
+
 const ProductEditorRoute = () => {
   const { productId } = useParams();
   const [isLoading, setIsLoading] = useState(true);

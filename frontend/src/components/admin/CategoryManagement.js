@@ -54,9 +54,10 @@ const compressImage = async (file, maxWidth = 800, maxHeight = 800) => {
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
+          // Clear canvas with transparent background
+          ctx.clearRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.7)); // Adjust quality here (0.7 = 70% quality)
-        };
+          resolve(canvas.toDataURL('image/png'));        };
       };
     });
   };
@@ -96,9 +97,10 @@ const compressImage = async (file, maxWidth = 800, maxHeight = 800) => {
       });
       setTimeout(() => setNotification(null), 3000);
     } catch (error) {
+      const errorMessage = error.response?.data?.error || 'Failed to delete category';
       setNotification({
         type: 'error',
-        message: error.response?.data?.error || 'Failed to delete category'
+        message: errorMessage
       });
       setTimeout(() => setNotification(null), 3000);
     }

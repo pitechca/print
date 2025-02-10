@@ -274,8 +274,12 @@ const Home = () => {
                   {product.description}
                 </p>
                 <div className="flex justify-between items-center">
-                  <span className="text-xl font-bold text-blue-600">
-                    ${product.basePrice.toFixed(2)}
+                  <span className="text-m font-bold text-blue-600">
+                    ${product.basePrice > 0 ? (
+                      product.basePrice.toFixed(2)
+                      ) : (
+                      "Bundle Pricing"
+                      )}
                   </span>
                   <div className="flex gap-3">
                     <button

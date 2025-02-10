@@ -27,6 +27,30 @@ const handleDownloadImage = async (imageData, fileName) => {
   }
 };
 
+const downloadOriginalImage = async (orderId, fieldId) => {
+  try {
+    const response = await axios.get(`/api/orders/${orderId}/original-image/${fieldId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      responseType: "blob"
+    });
+
+    const url = window.URL.createObjectURL(response.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${fieldId}_original.png`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error downloading original image:", error);
+    alert("Failed to download original image. Please try again.");
+  }
+};
+
+
+
+
 const ImageDownloadButton = ({ imageData, fileName, label }) => (
   <button
     onClick={() => handleDownloadImage(imageData, fileName)}
@@ -87,6 +111,13 @@ const CustomizationDetails = ({ customization, orderId, productIndex }) => {
                         fileName={`order-${orderId}-product-${productIndex}-custom-${idx}.png`}
                         label="Download Image"
                       />
+                  <button
+                    onClick={() => downloadOriginalImage(orderId, field.fieldId)}
+                    className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
+                  >
+                    🔽 Download Original Image
+                  </button>
+
                     </div>
                   )}
                   {field.properties && (
@@ -131,7 +162,7 @@ const CustomizationDetails = ({ customization, orderId, productIndex }) => {
                         imageData={field.value}
                         fileName={`order-${orderId}-product-${productIndex}-required-${idx}.png`}
                         label="Download Image"
-                      />
+                      />                     
                     </div>
                   )}
                 </div>

@@ -16,7 +16,7 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="text-xl font-bold">
            <img style={{maxHeight:100+'px'}}
-           src='./images/logoBagBox.png' />
+           src='../images/logoBagBox.png' />
             {/* BAG & BOX STORE */}
           </Link>
           <div className="flex items-center space-x-4">
@@ -25,17 +25,14 @@ const Navbar = () => {
                 Admin Dashboard
               </Link>
             )}
-         
-            <Link to="/orders">Orders</Link>
-            {/* {user?.isAdmin==false && (
-            <Link to="/profile">Profile</Link>)}             */}
             {user ? (
-              <button
-                onClick={logout}
-                className="hover:text-blue-600"
-              >
-                Logout
-              </button>
+               <Link to="/profile">Account</Link>  
+              // <button
+              //   onClick={logout}
+              //   className="hover:text-blue-600"
+              // >
+              //   Logout
+              // </button>
             ) : (
               <>
                 <Link to="/login" className="hover:text-blue-600">
@@ -46,6 +43,9 @@ const Navbar = () => {
                 </Link>
               </>
             )}
+            {/* {user?  (<Link to="/orders">Orders</Link>) : ("") }             */}
+            {user? (!user.isAdmin?  (<Link to="/orders">Orders</Link>) : ("") ) : ("")}            
+
             <span style={{lineHeight:5+"px"}}>
             <Link to="/cart" className="hover:text-blue-600">
               &nbsp; {cart.length} 
