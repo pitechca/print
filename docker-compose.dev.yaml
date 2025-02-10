@@ -6,8 +6,6 @@ services:
     restart: always
     ports:
       - "27018:27017"
-    env_file:
-      - backend/.env.dev
     volumes:
       - mongo_data_dev:/data/db
 
@@ -21,8 +19,6 @@ services:
       - "8003:5000"
     depends_on:
       - mongo-dev
-    env_file:
-      - backend/.env.dev
 
   frontend-dev:
     build:
