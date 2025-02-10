@@ -19,13 +19,8 @@
           FRONTEND_SERVICE: "frontend"
       - changes:
           - frontend/**
-    services:
-      - docker:dind
     variables:
-      DOCKER_HOST: tcp://docker:2375/
-      DOCKER_DRIVER: overlay2
-      # See https://github.com/docker-library/docker/pull/166
-      DOCKER_TLS_CERTDIR: ""
+      DOCKER_HOST: "unix:///var/run/docker.sock"
     tags:
       - docker
     script:
@@ -45,13 +40,8 @@
           BACKEND_SERVICE: "backend"
       - changes:
           - backend/**
-    services:
-      - docker:dind
     variables:
-      DOCKER_HOST: tcp://docker:2375/
-      DOCKER_DRIVER: overlay2
-      # See https://github.com/docker-library/docker/pull/166
-      DOCKER_TLS_CERTDIR: ""
+      DOCKER_HOST: "unix:///var/run/docker.sock"
     tags:
       - docker
     script:
