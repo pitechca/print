@@ -15,7 +15,7 @@
         variables:
           DOCKER_COMPOSE_FILE: "docker-compose.dev.yaml"
           FRONTEND_SERVICE: "frontend-dev"
-      - if: '$CI_COMMIT_REF_NAME == "main"'
+      - if: '$CI_COMMIT_REF_NAME == "production"'
         variables:
           DOCKER_COMPOSE_FILE: "docker-compose.yaml"
           FRONTEND_SERVICE: "frontend"
@@ -36,7 +36,7 @@
         variables:
           DOCKER_COMPOSE_FILE: "docker-compose.dev.yaml"
           BACKEND_SERVICE: "backend-dev"
-      - if: '$CI_COMMIT_REF_NAME == "main"'
+      - if: '$CI_COMMIT_REF_NAME == "production"'
         variables:
           DOCKER_COMPOSE_FILE: "docker-compose.yaml"
           BACKEND_SERVICE: "backend"
@@ -64,7 +64,7 @@
   deploy_prod:
     stage: deploy
     only:
-      - main
+      - production
     environment:
       name: production
     tags:
