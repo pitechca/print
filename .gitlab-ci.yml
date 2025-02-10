@@ -19,8 +19,6 @@
           FRONTEND_SERVICE: "frontend"
       - changes:
           - frontend/**
-    variables:
-      DOCKER_HOST: "unix:///var/run/docker.sock"
     tags:
       - docker
     script:
@@ -40,8 +38,6 @@
           BACKEND_SERVICE: "backend"
       - changes:
           - backend/**
-    variables:
-      DOCKER_HOST: "unix:///var/run/docker.sock"
     tags:
       - docker
     script:
