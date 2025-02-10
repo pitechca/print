@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { Eye, EyeOff } from 'lucide-react';
+
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -19,6 +21,8 @@ const Register = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+
 
   const sanitizeInput = (input) => {
     return input.trim().replace(/\s+/g, ' ');
@@ -184,14 +188,31 @@ const Register = () => {
 
             <div>
               <label className="block text-gray-700 text-sm font-medium mb-2">Password *</label>
-              <input
+              {/* <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
                 maxLength={128}
-              />
+              /> */}
+              <div className="relative">
+                <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                    maxLength={128}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+               </div>
               <p className="text-sm text-gray-500 mt-1">
                 At least 8 characters with uppercase, lowercase, number, and special character.
               </p>

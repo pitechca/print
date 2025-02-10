@@ -691,8 +691,13 @@ const handleObjectSelected = (event) => {
             <h2 className="text-xl font-bold">{selectedProduct?.name}</h2>
             <p className="text-gray-600 mt-2">{selectedProduct?.description}</p>
             <p className="text-lg font-semibold mt-2">
-              Price: ${selectedProduct?.basePrice || 0}
-              {(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
+              Price:
+              {selectedProduct?.pricingTiers.length !=null && selectedProduct?.pricingTiers.length > 0 ? (
+                  `From $${selectedProduct.pricingTiers[0]['price'].toFixed(2)}`
+                ) : (
+                  `$${selectedProduct?.basePrice.toFixed(2)}`
+                )}
+                {(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
                 <span className="text-sm font-normal text-gray-600 ml-2">
                   + {[
                     selectedProduct.hasGST && 'GST',
