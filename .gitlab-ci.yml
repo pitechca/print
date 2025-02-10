@@ -3,7 +3,7 @@
     - deploy
 
   variables:
-    DOCKER_COMPOSE_FILE: docker-compose.${CI_COMMIT_REF_SLUG}.yaml
+    DOCKER_COMPOSE_FILE: "docker-compose.yaml"
     FRONTEND_SERVICE: "frontend"
     BACKEND_SERVICE: "backend"
 
@@ -13,9 +13,11 @@
     rules:
       - if: '$CI_COMMIT_REF_NAME == "dev"'
         variables:
+          DOCKER_COMPOSE_FILE: "docker-compose.dev.yaml"
           FRONTEND_SERVICE: "frontend-dev"
       - if: '$CI_COMMIT_REF_NAME == "main"'
         variables:
+          DOCKER_COMPOSE_FILE: "docker-compose.yaml"
           FRONTEND_SERVICE: "frontend"
       - changes:
           - frontend/**
@@ -32,9 +34,11 @@
     rules:
       - if: '$CI_COMMIT_REF_NAME == "dev"'
         variables:
+          DOCKER_COMPOSE_FILE: "docker-compose.dev.yaml"
           BACKEND_SERVICE: "backend-dev"
       - if: '$CI_COMMIT_REF_NAME == "main"'
         variables:
+          DOCKER_COMPOSE_FILE: "docker-compose.yaml"
           BACKEND_SERVICE: "backend"
       - changes:
           - backend/**
@@ -54,7 +58,7 @@
     tags:
       - shell
     script:
-      - docker-compose -f $DOCKER_COMPOSE_FILE up -d --no-build
+      - docker-compose -f docker-compose.dev.yaml up -d --no-build
 
   # Deploy to Production
   deploy_prod:
@@ -66,5 +70,5 @@
     tags:
       - shell
     script:
-      - docker-compose -f $DOCKER_COMPOSE_FILE up -d --no-build
+      - docker-compose -f docker-compose.yaml up -d --no-build
       
