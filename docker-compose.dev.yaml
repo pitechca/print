@@ -1,0 +1,35 @@
+services:
+
+  mongo-dev:
+    image: mongo:6
+    container_name: mongo-dev
+    restart: always
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data_dev:/data/db
+
+  backend-dev:
+    build:
+      context: backend
+      dockerfile: Dockerfile.dev
+    container_name: print-backend-dev
+    restart: always
+    ports:
+      - "8003:5000"
+    depends_on:
+      - mongo-dev
+
+  frontend-dev:
+    build:
+      context: frontend
+      dockerfile: Dockerfile.dev
+    container_name: print-frontend-dev
+    restart: always
+    ports:
+      - "8002:80"
+    depends_on:
+      - backend-dev
+
+volumes:
+  mongo_data_dev:
