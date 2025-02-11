@@ -365,33 +365,74 @@ const Profile = () => {
           </div>
         );
 
-      // case 'coupons':
-      //   return (
-      //     <div className="space-y-4">
-      //       <h2 className="text-xl font-semibold mb-4">My Coupons</h2>
-      //       {coupons.length > 0 ? (
-      //         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      //           {coupons.map((coupon) => (
-      //             <div key={coupon._id} className="border rounded-lg p-4 bg-white shadow-sm">
-      //               <div className="flex justify-between items-start">
-      //                 <div>
-      //                   <h3 className="text-lg font-medium">{coupon.code}</h3>
-      //                   <p className="text-sm text-gray-600">
-      //                     {coupon.discountType === 'percentage' 
-      //                       ? `${coupon.discountValue}% off`
-      //                       : `$${coupon.discountValue} off`}
-      //                   </p>
-      //                 </div>
-      //                 <span className={`px-2 py-1 text-xs font-semibold rounded-full 
-      //                   ${new Date(coupon.endDate) > new Date() 
-      //                     ? 'bg-green-100 text-green-800' 
-      //                     : 'bg-red-100 text-red-800'}`}>
-      //                   {new Date(coupon.endDate) > new Date() ? 'Active' : 'Expired'}
-      //                 </span>
-      //               </div>
-      //               <div className="mt-2 text-sm text-gray-500">
-      //                 Valid until: {new Date(coupon.endDate).toLocaleDateString()}
-      //               </div>
+        case 'coupons':
+          return (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold mb-4">My Coupons</h2>
+              {coupons.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {coupons.map((coupon) => (
+                    <div key={coupon._id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Tag className="h-5 w-5 text-blue-600" />
+                            <h3 className="text-lg font-medium text-blue-600">{coupon.code}</h3>
+                          </div>
+                          <p className="text-2xl font-bold">
+                            {coupon.discountType === 'percentage' 
+                              ? `${coupon.discountValue}% OFF`
+                              : `$${coupon.discountValue} OFF`}
+                          </p>
+                          <div className="space-y-1">
+                            <p className="text-sm text-gray-600">
+                              Minimum purchase: ${coupon.minimumPurchase || 0}
+                            </p>
+                            {coupon.maxUsesPerUser > 0 && (
+                              <p className="text-sm text-gray-600">
+                                Uses remaining: {coupon.maxUsesPerUser - (coupon.userUsage?.usageCount || 0)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                          new Date(coupon.endDate) > new Date() 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {new Date(coupon.endDate) > new Date() ? 'Active' : 'Expired'}
+                        </span>
+                      </div>
+                      <div className="mt-4 pt-4 border-t">
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm text-gray-500">
+                            Valid until: {new Date(coupon.endDate).toLocaleDateString()}
+                          </div>
+                          <button 
+                            onClick={() => navigator.clipboard.writeText(coupon.code)}
+                            className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                          >
+                            Copy Code
+                          </button>
+                        </div>
+                        {coupon.conditions && (
+                          <p className="mt-2 text-sm text-gray-500">
+                            Conditions: {coupon.conditions}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900">No Coupons Available</h3>
+                  <p className="mt-2 text-gray-500">Check back later for new offers and discounts.</p>
+                </div>
+              )}
+            </div>
+          );
                    
       case 'payments':
         return (
