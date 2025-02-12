@@ -148,11 +148,11 @@ const compressImage = async (file, maxWidth = 800, maxHeight = 800) => {
                   Delete
                 </button> */}
                 <button
-  onClick={() => handleDelete(category._id)}
-  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
->
-  Delete
-</button>
+                  onClick={() => handleDelete(category._id)}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                >
+                  Delete
+                </button>
 
               </div>
             </div>
