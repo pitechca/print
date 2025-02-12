@@ -8,6 +8,8 @@ services:
       - "27018:27017"
     volumes:
       - mongo_data_dev:/data/db
+    networks:
+      - dev
 
   backend-dev:
     build:
@@ -19,6 +21,8 @@ services:
       - "8003:5000"
     depends_on:
       - mongo-dev
+    networks:
+      - dev
 
   frontend-dev:
     build:
@@ -30,6 +34,10 @@ services:
       - "8002:80"
     depends_on:
       - backend-dev
+    networks:
+      - dev
 
 volumes:
   mongo_data_dev:
+networks:
+  dev:
