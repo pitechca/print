@@ -7,6 +7,10 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    networks:
+      - prod
+    env_file:
+      - .env
 
   backend:
     build: backend
@@ -16,6 +20,10 @@ services:
       - "8001:5000"
     depends_on:
       - mongo
+    networks:
+      - prod
+    env_file:
+      - .env
 
   frontend:
     build: frontend
@@ -25,6 +33,10 @@ services:
       - "8000:80"
     depends_on:
       - backend
+    networks:
+      - prod
 
 volumes:
   mongo_data:
+networks:
+  prod:

@@ -1,4 +1,5 @@
   stages:
+    - prepare
     - build
     - deploy
 
@@ -6,6 +7,18 @@
     DOCKER_COMPOSE_FILE: "docker-compose.yaml"
     FRONTEND_SERVICE: "frontend"
     BACKEND_SERVICE: "backend"
+
+  generate_env_files:
+    stage: prepare
+    tags:
+      - shell
+    script:
+      - touch .env .env.dev && chmod 600 .env .env.dev
+    artifacts:
+      paths:
+        - .env
+        - .env.dev
+      expire_in: never
 
   # Build Frontend Only If Changed
   build_frontend:
@@ -25,7 +38,6 @@
       - shell
     script:
       - docker-compose -f $DOCKER_COMPOSE_FILE build $FRONTEND_SERVICE
-
 
 
   # Build Backend Only If Changed
@@ -59,8 +71,7 @@
       - shell
     script:
       - printenv | grep -E '^(MONGO_URI|JWT_SECRET|STRIPE_SECRET_KEY|ADMIN_CODE|REACT_APP_STRIPE_PUBLIC_KEY|REACT_APP_PAYPAL_CLIENT_ID|RECIPIENT_EMAIL|SMTP_HOST|SMTP_USER|SMTP_PASS|NOTEBOOK_TOKEN)=' > .env.dev
-      - chmod 600 .env.dev
-      - docker-compose -f docker-compose.dev.yaml --env-file .env.dev up -d --no-build
+      - docker-compose -f docker-compose.dev.yaml up -d --no-build
 
   # Deploy to Production
   deploy_prod:
@@ -73,6 +84,5 @@
       - shell
     script:
       - printenv | grep -E '^(MONGO_URI|JWT_SECRET|STRIPE_SECRET_KEY|ADMIN_CODE|REACT_APP_STRIPE_PUBLIC_KEY|REACT_APP_PAYPAL_CLIENT_ID|RECIPIENT_EMAIL|SMTP_HOST|SMTP_USER|SMTP_PASS|NOTEBOOK_TOKEN)=' > .env
-      - chmod 600 .env
-      - docker-compose -f docker-compose.yaml --env-file .env up -d --no-build
+      - docker-compose -f docker-compose.yaml up -d --no-build
       
