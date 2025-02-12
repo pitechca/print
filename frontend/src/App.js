@@ -25,8 +25,8 @@ import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import Cart from './pages/Cart';
 import AdminDashboard from './pages/AdminDashboard';
-import UserManagement from './components/admin/UserManagement';
-import SalesReport from './components/admin/SalesReport';
+import UserManagement from './pages/UserManagement';
+import SalesReport from './pages/SalesReport';
 
 
 
@@ -37,7 +37,7 @@ function App() {
         <Router>
           <ScrollToTop />
           <div className="min-h-screen bg-gray-50">
-            <Navbar />
+            <Navbar/>
             <main className="container mx-auto px-4 py-8" style={{minWidth:100 + "%", padding: 0}}>
               <Routes>
                 <Route path="/" element={<Home />} />

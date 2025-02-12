@@ -88,23 +88,27 @@ const compressImage = async (file, maxWidth = 800, maxHeight = 800) => {
     }
   };
 
-  const handleDelete = async (categoryId) => {
-    try {
-      await onDelete('categories', categoryId);
-      setNotification({
-        type: 'success',
-        message: 'Category deleted successfully!'
-      });
-      setTimeout(() => setNotification(null), 3000);
-    } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Failed to delete category';
-      setNotification({
-        type: 'error',
-        message: errorMessage
-      });
-      setTimeout(() => setNotification(null), 3000);
-    }
+  // const handleDelete = async (categoryId) => {
+  //   try {
+  //     await onDelete('categories', categoryId);
+  //     setNotification({
+  //       type: 'success',
+  //       message: 'Category deleted successfully!'
+  //     });
+  //     setTimeout(() => setNotification(null), 3000);
+  //   } catch (error) {
+  //     const errorMessage = error.response?.data?.error || 'Failed to delete category';
+  //     setNotification({
+  //       type: 'error',
+  //       message: errorMessage
+  //     });
+  //     setTimeout(() => setNotification(null), 3000);
+  //   }
+  // };
+  const handleDelete = (categoryId) => {
+    onDelete('categories', categoryId);
   };
+  
 
   return (
     <div>
@@ -137,12 +141,19 @@ const compressImage = async (file, maxWidth = 800, maxHeight = 800) => {
                 >
                   Edit
                 </button>
-                <button
+                {/* <button
                   onClick={() => handleDelete(category._id)}
                   className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                 >
                   Delete
-                </button>
+                </button> */}
+                <button
+  onClick={() => handleDelete(category._id)}
+  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+>
+  Delete
+</button>
+
               </div>
             </div>
           )}
