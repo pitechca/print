@@ -83,6 +83,50 @@ const base64ToBuffer = (base64) => {
 
 
 // MongoDB Models
+const NotificationSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  message: {
+    type: String,
+    required: true
+  },
+  type: {
+    type: String,
+    enum: ['order', 'inventory', 'feedback', 'system'],
+    required: true
+  },
+  isRead: {
+    type: Boolean,
+    default: false
+  },
+  link: String,
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Activity Log Schema for user management
+const ActivityLogSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  action: {
+    type: String,
+    required: true
+  },
+  details: mongoose.Schema.Types.Mixed,
+  ipAddress: String,
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const UserSchema = new mongoose.Schema({
   email: { 
     type: String, 
@@ -389,7 +433,8 @@ const Image = mongoose.model("Image", ImageSchema);
 const Product = mongoose.model("Product", ProductSchema);
 const Order = mongoose.model("Order", OrderSchema);
 const Coupon = mongoose.model('Coupon', CouponSchema);
-
+const Notification = mongoose.model('Notification', NotificationSchema);
+const ActivityLog = mongoose.model('ActivityLog', ActivityLogSchema);
 
 
 // API Routes
@@ -2215,6 +2260,261 @@ app.delete("/api/images/:id", auth, async (req, res) => {
   }
 });
 
+// Notification Routes
+app.get("/api/notifications", auth, async (req, res) => {
+  try {
+    const notifications = await Notification.find({ user: req.user._id })
+      .sort('-createdAt')
+      .limit(10);
+    
+    res.json(notifications);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching notifications' });
+  }
+});
+
+app.post("/api/notifications/mark-read", auth, async (req, res) => {
+  try {
+    const { notificationIds } = req.body;
+    
+    await Notification.updateMany(
+      { 
+        _id: { $in: notificationIds },
+        user: req.user._id 
+      },
+      { $set: { isRead: true } }
+    );
+    
+    res.json({ message: 'Notifications marked as read' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error updating notifications' });
+  }
+});
+
+// Sales Report Routes
+app.get("/api/reports/sales", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Only admins can access reports" });
+    }
+
+    const { startDate, endDate } = req.query;
+    const start = startDate ? new Date(startDate) : new Date(new Date().setMonth(new Date().getMonth() - 1));
+    const end = endDate ? new Date(endDate) : new Date();
+
+    // Fetch orders within date range
+    const orders = await Order.find({
+      createdAt: { $gte: start, $lte: end }
+    }).populate('user', 'email');
+
+    // Calculate various metrics
+    const salesData = {
+      totalRevenue: 0,
+      totalOrders: orders.length,
+      averageOrderValue: 0,
+      productsSold: 0,
+      dailyRevenue: {},
+      topProducts: {},
+      ordersByStatus: {
+        pending: 0,
+        processing: 0,
+        completed: 0,
+        cancelled: 0
+      }
+    };
+
+    // Process orders
+    orders.forEach(order => {
+      // Add to total revenue
+      salesData.totalRevenue += order.totalAmount;
+
+      // Count products sold
+      order.products.forEach(product => {
+        salesData.productsSold += product.quantity;
+        // Track top products
+        const productId = product.product.toString();
+        salesData.topProducts[productId] = (salesData.topProducts[productId] || 0) + product.quantity;
+      });
+
+      // Track daily revenue
+      const dateKey = order.createdAt.toISOString().split('T')[0];
+      salesData.dailyRevenue[dateKey] = (salesData.dailyRevenue[dateKey] || 0) + order.totalAmount;
+
+      // Count orders by status
+      salesData.ordersByStatus[order.status]++;
+    });
+
+    // Calculate average order value
+    salesData.averageOrderValue = salesData.totalRevenue / salesData.totalOrders;
+
+    // Get top products details
+    const topProductIds = Object.keys(salesData.topProducts);
+    const topProducts = await Product.find({
+      _id: { $in: topProductIds }
+    }, 'name basePrice');
+
+    // Format top products data
+    salesData.topProducts = topProductIds.map(id => ({
+      product: topProducts.find(p => p._id.toString() === id),
+      quantity: salesData.topProducts[id]
+    })).sort((a, b) => b.quantity - a.quantity).slice(0, 5);
+
+    res.json(salesData);
+  } catch (error) {
+    console.error('Error generating sales report:', error);
+    res.status(500).json({ error: 'Error generating sales report' });
+  }
+});
+
+// Generate PDF report
+app.get("/api/reports/sales/download", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Only admins can download reports" });
+    }
+
+    const { startDate, endDate } = req.query;
+    const start = startDate ? new Date(startDate) : new Date(new Date().setMonth(new Date().getMonth() - 1));
+    const end = endDate ? new Date(endDate) : new Date();
+
+    const orders = await Order.find({
+      createdAt: { $gte: start, $lte: end }
+    }).populate('user', 'email').populate('products.product', 'name basePrice');
+
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument();
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=sales-report-${start.toISOString().split('T')[0]}-to-${end.toISOString().split('T')[0]}.pdf`);
+
+    doc.pipe(res);
+
+    // Add content to PDF
+    doc.fontSize(20).text('Sales Report', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(12).text(`Period: ${start.toLocaleDateString()} to ${end.toLocaleDateString()}`);
+
+    // Add summary
+    const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    doc.moveDown();
+    doc.text(`Total Orders: ${orders.length}`);
+    doc.text(`Total Revenue: $${totalRevenue.toFixed(2)}`);
+    doc.text(`Average Order Value: $${(totalRevenue / orders.length).toFixed(2)}`);
+
+    // Add detailed order list
+    doc.moveDown();
+    doc.text('Order Details:', { underline: true });
+    orders.forEach(order => {
+      doc.moveDown();
+      doc.text(`Order ID: ${order._id}`);
+      doc.text(`Customer: ${order.user.email}`);
+      doc.text(`Amount: $${order.totalAmount.toFixed(2)}`);
+      doc.text(`Status: ${order.status}`);
+      doc.text('Products:');
+      order.products.forEach(item => {
+        doc.text(`  - ${item.product.name} (${item.quantity}x)`);
+      });
+    });
+
+    doc.end();
+  } catch (error) {
+    console.error('Error generating PDF report:', error);
+    res.status(500).json({ error: 'Error generating PDF report' });
+  }
+});
+
+// User Management Routes
+app.get("/api/admin/users", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Only admins can access user management" });
+    }
+
+    const { page = 1, limit = 10, search } = req.query;
+    const skip = (page - 1) * limit;
+
+    let query = {};
+    if (search) {
+      query = {
+        $or: [
+          { email: new RegExp(search, 'i') },
+          { firstName: new RegExp(search, 'i') },
+          { lastName: new RegExp(search, 'i') },
+          { phone: new RegExp(search, 'i') }
+        ]
+      };
+    }
+
+    const users = await User.find(query)
+      .select('-password')
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort('-createdAt');
+
+    const total = await User.countDocuments(query);
+
+    res.json({
+      users,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+app.get("/api/admin/users/:userId/activity", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Only admins can view user activity" });
+    }
+
+    const activities = await ActivityLog.find({ user: req.params.userId })
+      .sort('-createdAt')
+      .limit(50);
+
+    res.json(activities);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching user activity' });
+  }
+});
+
+
+
+// Helper function to create notifications
+const createNotification = async (userId, message, type, link = null) => {
+  try {
+    const notification = new Notification({
+      user: userId,
+      message,
+      type,
+      link
+    });
+    await notification.save();
+    return notification;
+  } catch (error) {
+    console.error('Error creating notification:', error);
+  }
+};
+
+// Helper function to log user activity
+const logActivity = async (userId, action, details, ipAddress) => {
+  try {
+    const activity = new ActivityLog({
+      user: userId,
+      action,
+      details,
+      ipAddress
+    });
+    await activity.save();
+    return activity;
+  } catch (error) {
+    console.error('Error logging activity:', error);
+  }
+};
+
+
 // Contact form validation and submission route
 app.post('/api/contact', contactLimiter, [
   // Validation middleware
@@ -2455,26 +2755,102 @@ app.use((err, req, res, next) => {
 
 // // MongoDB Models
 // const UserSchema = new mongoose.Schema({
-//   email: { type: String, required: true, unique: true },
-//   password: { type: String, required: true },
-//   firstName: { type: String, required: true },
-//   lastName: { type: String, required: true },
-//   phone: { type: String, required: true },
+//   email: { 
+//     type: String, 
+//     required: true, 
+//     unique: true,
+//     lowercase: true,
+//     trim: true
+//   },
+//   password: { 
+//     type: String, 
+//     required: true 
+//   },
+//   firstName: { 
+//     type: String, 
+//     required: true,
+//     trim: true
+//   },
+//   lastName: { 
+//     type: String, 
+//     required: true,
+//     trim: true
+//   },
+//   phone: { 
+//     type: String, 
+//     required: true,
+//     trim: true
+//   },
+//   company: { 
+//     type: String,
+//     trim: true
+//   },
 //   address: {
-//     street: { type: String },
-//     city: { type: String },
-//     state: { type: String },
-//     postalCode: { type: String },
-//     country: { type: String, required: true, default: 'Canada' }
+//     street: { 
+//       type: String,
+//       trim: true
+//     },
+//     city: { 
+//       type: String,
+//       trim: true
+//     },
+//     state: { 
+//       type: String,
+//       trim: true
+//     },
+//     postalCode: { 
+//       type: String,
+//       trim: true
+//     },
+//     country: { 
+//       type: String, 
+//       default: 'Canada',
+//       trim: true
+//     }
 //   },
-//   company: { type: String },
-//   isAdmin: { type: Boolean, default: false },
+//   isAdmin: { 
+//     type: Boolean, 
+//     default: false 
+//   },
 //   preferences: {
-//     newsletter: { type: Boolean, default: false },
-//     marketingEmails: { type: Boolean, default: false }
+//     newsletter: { 
+//       type: Boolean, 
+//       default: false 
+//     },
+//     marketingEmails: { 
+//       type: Boolean, 
+//       default: false 
+//     }
 //   },
-//   createdAt: { type: Date, default: Date.now }
+//   lastLogin: { 
+//     type: Date 
+//   },
+//   passwordResetToken: String,
+//   passwordResetExpires: Date,
+//   createdAt: { 
+//     type: Date, 
+//     default: Date.now 
+//   },
+//   updatedAt: { 
+//     type: Date 
+//   }
 // });
+
+// // Update timestamp on save
+// UserSchema.pre('save', function(next) {
+//   this.updatedAt = new Date();
+//   next();
+// });
+
+// // Add method to safely return user data without sensitive information
+// UserSchema.methods.toSafeObject = function() {
+//   const obj = this.toObject();
+//   delete obj.password;
+//   delete obj.passwordResetToken;
+//   delete obj.passwordResetExpires;
+//   return obj;
+// };
+
 
 // const ImageSchema = new mongoose.Schema({
 //   data: { type: Buffer, required: true },
@@ -4192,38 +4568,227 @@ app.use((err, req, res, next) => {
 
 // app.put("/api/users/profile", auth, async (req, res) => {
 //   try {
-//     const { email, phone } = req.body;
-    
-//     if (!email || !phone) {
-//       return res.status(400).send({ error: 'Email and phone are required' });
-//     }
+//     const {
+//       firstName,
+//       lastName,
+//       email,
+//       phone,
+//       company,
+//       currentPassword,
+//       newPassword,
+//       address,
+//       preferences
+//     } = req.body;
 
-//     const user = await User.findByIdAndUpdate(
-//       req.user._id,
-//       { email, phone },
-//       { new: true }
-//     );
-
+//     // Find the user
+//     const user = await User.findById(req.user._id);
 //     if (!user) {
-//       return res.status(404).send({ error: 'User not found' });
+//       return res.status(404).json({ error: 'User not found' });
 //     }
 
+//     // If changing password, verify current password
+//     if (currentPassword && newPassword) {
+//       const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+//       if (!isPasswordValid) {
+//         return res.status(400).json({ error: 'Current password is incorrect' });
+//       }
+//       // Hash new password
+//       user.password = await bcrypt.hash(newPassword, 10);
+//     }
+
+//     // Check if email is being changed and verify it's not taken
+//     if (email && email !== user.email) {
+//       const emailExists = await User.findOne({ 
+//         email: email.toLowerCase(),
+//         _id: { $ne: user._id } // Exclude current user
+//       });
+//       if (emailExists) {
+//         return res.status(400).json({ 
+//           error: 'Email address is already in use' 
+//         });
+//       }
+//     }
+
+//     // Update user fields
+//     user.firstName = firstName || user.firstName;
+//     user.lastName = lastName || user.lastName;
+//     user.email = email ? email.toLowerCase() : user.email;
+//     user.phone = phone || user.phone;
+//     user.company = company || user.company;
+    
+//     // Update address if provided
+//     if (address) {
+//       user.address = {
+//         street: address.street || user.address?.street,
+//         city: address.city || user.address?.city,
+//         state: address.state || user.address?.state,
+//         postalCode: address.postalCode || user.address?.postalCode,
+//         country: address.country || user.address?.country || 'Canada'
+//       };
+//     }
+
+//     // Update preferences if provided
+//     if (preferences) {
+//       user.preferences = {
+//         newsletter: preferences.newsletter !== undefined 
+//           ? preferences.newsletter 
+//           : user.preferences?.newsletter,
+//         marketingEmails: preferences.marketingEmails !== undefined 
+//           ? preferences.marketingEmails 
+//           : user.preferences?.marketingEmails
+//       };
+//     }
+
+//     await user.save();
+
+//     // Create new token
 //     const token = jwt.sign(
 //       { userId: user._id, isAdmin: user.isAdmin },
 //       process.env.JWT_SECRET
 //     );
 
+//     // Remove sensitive information before sending response
+//     const userResponse = user.toObject();
+//     delete userResponse.password;
+
 //     res.json({
-//       user: {
-//         _id: user._id,
-//         email: user.email,
-//         phone: user.phone,
-//         isAdmin: user.isAdmin
-//       },
+//       user: userResponse,
 //       token
 //     });
 //   } catch (error) {
-//     res.status(400).send({ error: error.message });
+//     console.error('Profile update error:', error);
+//     res.status(500).json({ 
+//       error: 'Error updating profile',
+//       details: process.env.NODE_ENV === 'development' ? error.message : undefined
+//     });
+//   }
+// });
+
+// // Delete user account
+// app.delete("/api/users/profile", auth, async (req, res) => {
+//   try {
+//     // Find user and related data
+//     const user = await User.findById(req.user._id);
+//     if (!user) {
+//       return res.status(404).json({ error: 'User not found' });
+//     }
+
+//     // Check for pending orders
+//     const pendingOrders = await Order.find({
+//       user: req.user._id,
+//       status: { $in: ['pending', 'processing'] }
+//     });
+
+//     if (pendingOrders.length > 0) {
+//       return res.status(400).json({
+//         error: 'Cannot delete account with pending orders. Please wait for orders to complete or contact support.'
+//       });
+//     }
+
+//     // Remove user's cart
+//     await Cart.findOneAndDelete({ user: req.user._id });
+
+//     // Anonymize completed orders instead of deleting them
+//     await Order.updateMany(
+//       { user: req.user._id },
+//       { 
+//         $set: { 
+//           user: null,
+//           anonymizedUser: {
+//             email: user.email,
+//             name: `${user.firstName} ${user.lastName}`,
+//             deletedAt: new Date()
+//           }
+//         } 
+//       }
+//     );
+
+//     // Delete user's auth tokens from localStorage
+//     // Note: This will be handled on the frontend after receiving successful response
+
+//     // Delete the user
+//     await User.findByIdAndDelete(req.user._id);
+
+//     res.json({ 
+//       message: 'Account deleted successfully',
+//       success: true 
+//     });
+//   } catch (error) {
+//     console.error('Account deletion error:', error);
+//     res.status(500).json({ 
+//       error: 'Error deleting account',
+//       details: process.env.NODE_ENV === 'development' ? error.message : undefined
+//     });
+//   }
+// });
+
+// // Get user's order history
+// app.get("/api/users/orders", auth, async (req, res) => {
+//   try {
+//     const orders = await Order.find({ user: req.user._id })
+//       .sort({ createdAt: -1 })
+//       .populate('products.product');
+    
+//     res.json(orders);
+//   } catch (error) {
+//     res.status(500).json({ error: 'Error fetching order history' });
+//   }
+// });
+
+// // Update user's password
+// app.put("/api/users/password", auth, async (req, res) => {
+//   try {
+//     const { currentPassword, newPassword } = req.body;
+
+//     // Validate input
+//     if (!currentPassword || !newPassword) {
+//       return res.status(400).json({ 
+//         error: 'Both current and new passwords are required' 
+//       });
+//     }
+
+//     // Find user
+//     const user = await User.findById(req.user._id);
+//     if (!user) {
+//       return res.status(404).json({ error: 'User not found' });
+//     }
+
+//     // Verify current password
+//     const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+//     if (!isPasswordValid) {
+//       return res.status(400).json({ error: 'Current password is incorrect' });
+//     }
+
+//     // Hash and update new password
+//     user.password = await bcrypt.hash(newPassword, 10);
+//     await user.save();
+
+//     res.json({ 
+//       message: 'Password updated successfully',
+//       success: true 
+//     });
+//   } catch (error) {
+//     res.status(500).json({ error: 'Error updating password' });
+//   }
+// });
+
+// // Get user's active coupons
+// app.get("/api/users/coupons", auth, async (req, res) => {
+//   try {
+//     const now = new Date();
+//     const coupons = await Coupon.find({
+//       $or: [
+//         { assignedUsers: req.user._id },
+//         { assignedUsers: { $size: 0 } }
+//       ],
+//       isActive: true,
+//       startDate: { $lte: now },
+//       endDate: { $gte: now }
+//     });
+
+//     res.json(coupons);
+//   } catch (error) {
+//     res.status(500).json({ error: 'Error fetching coupons' });
 //   }
 // });
 
@@ -4458,3 +5023,4 @@ app.use((err, req, res, next) => {
 //   console.error(err.stack);
 //   res.status(500).send('Something broke!');
 // });
+

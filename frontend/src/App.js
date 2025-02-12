@@ -25,6 +25,8 @@ import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import Cart from './pages/Cart';
 import AdminDashboard from './pages/AdminDashboard';
+import UserManagement from './pages/UserManagement';
+import SalesReport from './pages/SalesReport';
 
 
 
@@ -35,7 +37,7 @@ function App() {
         <Router>
           <ScrollToTop />
           <div className="min-h-screen bg-gray-50">
-            <Navbar />
+            <Navbar/>
             <main className="container mx-auto px-4 py-8" style={{minWidth:100 + "%", padding: 0}}>
               <Routes>
                 <Route path="/" element={<Home />} />
@@ -50,6 +52,8 @@ function App() {
                 <Route path="/aboutUs" element={<AboutUs />} />  
                 <Route path="/contactUs" element={<Contact/>} />
                 <Route path="/products" element={<Product/>} />
+                <Route path="/admin/users" element={<UserManagement />} />
+                <Route path="/admin/sales" element={<SalesReport />} />
               </Routes>
             </main>
             <Footer style={{}}/>
@@ -61,33 +65,3 @@ function App() {
 }
 
 export default App;
-
-
-
-
-
-// import logo from './logo.svg';
-// import './App.css';
-
-// function App() {
-//   return (
-//     <div className="App">
-//       <header className="App-header">
-//         <img src={logo} className="App-logo" alt="logo" />
-//         <p>
-//           Edit <code>src/App.js</code> and save to reload.
-//         </p>
-//         <a
-//           className="App-link"
-//           href="https://reactjs.org"
-//           target="_blank"
-//           rel="noopener noreferrer"
-//         >
-//           Learn React
-//         </a>
-//       </header>
-//     </div>
-//   );
-// }
-
-// export default App;
