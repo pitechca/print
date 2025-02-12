@@ -10,6 +10,11 @@ services:
       - mongo_data_dev:/data/db
     networks:
       - dev
+<<<<<<< HEAD
+=======
+    env_file:
+      - .env.dev
+>>>>>>> dev
 
   backend-dev:
     build:
@@ -23,6 +28,11 @@ services:
       - mongo-dev
     networks:
       - dev
+<<<<<<< HEAD
+=======
+    env_file:
+      - .env.dev
+>>>>>>> dev
 
   frontend-dev:
     build:
