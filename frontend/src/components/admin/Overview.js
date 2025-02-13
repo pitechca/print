@@ -48,6 +48,17 @@ const Overview = () => {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [newNote, setNewNote] = useState('');
+  const [todos, setTodos] = useState(() => {
+    const saved = localStorage.getItem('adminTodos');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [notes, setNotes] = useState(() => {
+    const saved = localStorage.getItem('adminNotes');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [newTodo, setNewTodo] = useState('');
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -203,6 +214,35 @@ const Overview = () => {
   };
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
+
+  const handleAddNote = () => {
+    if (!newNote.trim()) return;
+    const updatedNotes = [...notes, { id: Date.now(), text: newNote }];
+    setNotes(updatedNotes);
+    localStorage.setItem('adminNotes', JSON.stringify(updatedNotes));
+    setNewNote('');
+  };
+
+  const handleAddTodo = () => {
+    if (!newTodo.trim()) return;
+    const updatedTodos = [...todos, { id: Date.now(), text: newTodo, completed: false }];
+    setTodos(updatedTodos);
+    localStorage.setItem('adminTodos', JSON.stringify(updatedTodos));
+    setNewTodo('');
+  };
+
+  const toggleTodo = (id) => {
+    const updatedTodos = todos.filter(todo => todo.id !== id);
+    setTodos(updatedTodos);
+    localStorage.setItem('adminTodos', JSON.stringify(updatedTodos));
+  };
+
+  const deleteNote = (id) => {
+    const updatedNotes = notes.filter(note => note.id !== id);
+    setNotes(updatedNotes);
+    localStorage.setItem('adminNotes', JSON.stringify(updatedNotes));
+  };
+    
 
   if (loading) {
     return (
@@ -450,53 +490,131 @@ const Overview = () => {
       </div>
 
         {/* Notifications */}
-    <div className="bg-white p-6 rounded-lg shadow">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Recent Notifications</h3>
-        <button 
-          className="text-sm text-blue-600 hover:text-blue-800"
-          onClick={fetchNotifications}
-        >
-          Refresh
-        </button>
-      </div>
-      <div className="space-y-4">
-        {notificationsLoading ? (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-          </div>
-        ) : notifications.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No notifications</p>
-        ) : (
-          notifications.map(notification => (
-            <div key={notification.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-              <div className="flex items-center space-x-4">
-                <div className={`p-2 rounded-full ${
-                  notification.type === 'order' ? 'bg-blue-100 text-blue-600' :
-                  notification.type === 'inventory' ? 'bg-yellow-100 text-yellow-600' :
-                  'bg-green-100 text-green-600'
-                }`}>
-                  {notification.type === 'order' ? <ShoppingBag className="h-5 w-5" /> :
-                   notification.type === 'inventory' ? <Package className="h-5 w-5" /> :
-                   <Users className="h-5 w-5" />}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Recent Notifications</h3>
+          <button 
+            className="text-sm text-blue-600 hover:text-blue-800"
+            onClick={fetchNotifications}
+          >
+            Refresh
+          </button>
+        </div>
+        <div className="space-y-4">
+          {notificationsLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+            </div>
+          ) : notifications.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No notifications</p>
+          ) : (
+            notifications.map(notification => (
+              <div key={notification.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex items-center space-x-4">
+                  <div className={`p-2 rounded-full ${
+                    notification.type === 'order' ? 'bg-blue-100 text-blue-600' :
+                    notification.type === 'inventory' ? 'bg-yellow-100 text-yellow-600' :
+                    'bg-green-100 text-green-600'
+                  }`}>
+                    {notification.type === 'order' ? <ShoppingBag className="h-5 w-5" /> :
+                    notification.type === 'inventory' ? <Package className="h-5 w-5" /> :
+                    <Users className="h-5 w-5" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{notification.message}</p>
+                    <p className="text-xs text-gray-500">{notification.time}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{notification.message}</p>
-                  <p className="text-xs text-gray-500">{notification.time}</p>
+              <button 
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={() => handleDeleteNotification(notification.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              </div>
+              )
+            ))}
+          </div>
+        </div>
+      
+      {/* Notes and Todos */}
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         {/* Sticky Notes */}
+         <div className="bg-white p-6 rounded-lg shadow">
+           <h3 className="text-lg font-semibold mb-4">Quick Notes</h3>
+           <div className="flex mb-4">
+            <input
+              type="text"
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddNote()}
+              className="flex-1 p-2 border rounded-l"
+              placeholder="Add a note..."
+            />
+            <button
+              onClick={handleAddNote}
+              className="bg-blue-500 text-white px-4 rounded-r hover:bg-blue-600"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {notes.map(note => (
+              <div key={note.id} className="flex items-center justify-between bg-yellow-50 p-3 rounded">
+                <p className="text-sm">{note.text}</p>
+                <button
+                  onClick={() => deleteNote(note.id)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Todo List */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-semibold mb-4">Todo List</h3>
+          <div className="flex mb-4">
+            <input
+              type="text"
+              value={newTodo}
+              onChange={(e) => setNewTodo(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddTodo()}
+              className="flex-1 p-2 border rounded-l"
+              placeholder="Add a todo..."
+            />
+            <button
+              onClick={handleAddTodo}
+              className="bg-blue-500 text-white px-4 rounded-r hover:bg-blue-600"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {todos.map(todo => (
+              <div
+                key={todo.id}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded"
+              >
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={todo.completed}
+                    onChange={() => toggleTodo(todo.id)}
+                    className="mr-3"
+                  />
+                  <span className={todo.completed ? 'line-through text-gray-500' : ''}>
+                    {todo.text}
+                  </span>
                 </div>
               </div>
-             <button 
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              onClick={() => handleDeleteNotification(notification.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-            </div>
-            )
-          ))}
+            ))}
+          </div>
         </div>
       </div>
-      
+
     </div>
   );
 };

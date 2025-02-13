@@ -27,13 +27,43 @@ const handleDownloadImage = async (imageData, fileName) => {
   }
 };
 
+const DirectImageDownloadButton = ({ imageUrl, fileName, label }) => {
+  const handleDirectDownload = async () => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading image:", error);
+      alert("Failed to download the image. Please try again.");
+    }
+  };
+
+  return (
+    <button
+      onClick={handleDirectDownload}
+      className="text-xs bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded transition-colors"
+    >
+      {label}
+    </button>
+  );
+};
+
+
 const downloadOriginalImage = async (orderId, fieldId) => {
   try {
-    const response = await axios.get(`/api/orders/${orderId}/original-image/${fieldId}`, {
+    const response = await axios.get(`/api/orders/${orderId}/customization/${fieldId}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       responseType: "blob"
     });
-
     const url = window.URL.createObjectURL(response.data);
     const link = document.createElement("a");
     link.href = url;
@@ -47,9 +77,6 @@ const downloadOriginalImage = async (orderId, fieldId) => {
     alert("Failed to download original image. Please try again.");
   }
 };
-
-
-
 
 const ImageDownloadButton = ({ imageData, fileName, label }) => (
   <button
@@ -97,7 +124,7 @@ const CustomizationDetails = ({ customization, orderId, productIndex }) => {
               <div key={idx} className="bg-gray-50 p-3 rounded-lg">
                 <div className="text-sm">
                   <span className="font-medium">{field.type}:</span>
-                  {field.type === 'text' ? (
+                  {/* {field.type === 'text' ? (
                     <p className="mt-1 text-gray-600">{field.content}</p>
                   ) : (
                     <div className="mt-2 space-y-2">
@@ -111,15 +138,72 @@ const CustomizationDetails = ({ customization, orderId, productIndex }) => {
                         fileName={`order-${orderId}-product-${productIndex}-custom-${idx}.png`}
                         label="Download Image"
                       />
-                  <button
-                    onClick={() => downloadOriginalImage(orderId, field.fieldId)}
-                    className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
-                  >
-                    🔽 Download Original Image
-                  </button>
+                      <button
+                        onClick={() => downloadOriginalImage(orderId, field.fieldId)}
+                        className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
+                      >
+                        🔽 Download Original Image
+                      </button>
 
+                      
                     </div>
                   )}
+
+                  {field.imageUrl && (
+                    <div>
+                      <img src={field.imageUrl} alt={`Custom ${field.type}`} className="w-20 h-20 object-contain border rounded bg-white" />
+                      <DirectImageDownloadButton
+                        imageUrl={field.imageUrl}
+                        fileName={`order-${orderId}-product-${productIndex}-custom-${idx}.png`}
+                        label="⬇️ Download Image"
+                      />
+                    </div>
+                  )} */}
+
+
+                      {/* <img src={field.imageUrl}/> */}
+                      {field.type === 'text' ? (
+                  <p className="mt-1 text-gray-600">{field.content}</p>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    {/* If imageUrl exists, show this block */}
+                    {field.imageUrl ? (
+                      <div>
+                        <img
+                          src={field.imageUrl}
+                          alt={`Custom ${field.type}`}
+                          className="w-20 h-20 object-contain border rounded bg-white"
+                        />
+                        <DirectImageDownloadButton
+                          imageUrl={field.imageUrl}
+                          fileName={`order-${orderId}-product-${productIndex}-custom-${idx}.png`}
+                          label="⬇️ Download Image"
+                        />
+                      </div>
+                    ) : (
+                      /* Otherwise, show content block */
+                      <div>
+                        <img
+                          src={field.content}
+                          alt={`Custom ${field.type}`}
+                          className="w-20 h-20 object-contain border rounded bg-white"
+                        />
+                        <ImageDownloadButton
+                          imageData={field.content}
+                          fileName={`order-${orderId}-product-${productIndex}-custom-${idx}.png`}
+                          label="Download Image"
+                        />
+                        <button
+                          onClick={() => downloadOriginalImage(orderId, field.fieldId)}
+                          className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
+                        >
+                          🔽 Download Original Image
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                   {field.properties && (
                     <div className="mt-1 text-xs text-gray-500">
                       {field.properties.fontFamily && (

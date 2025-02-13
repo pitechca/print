@@ -12,7 +12,6 @@ const nodemailer = require('nodemailer');
 const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
 
-
 dotenv.config();
 
 const app = express();
@@ -20,6 +19,31 @@ app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 
 app.set('trust proxy', true);
+
+
+// At the top of server.js (after requiring multer, path, etc.)
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, path.join(__dirname, 'upload')); // Save files to backend/upload folder
+  },
+  filename: function(req, file, cb) {
+    const ext = path.extname(file.originalname);
+    // Use a timestamp and the field name in the filename
+    const filename = `${Date.now()}_${file.fieldname}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const upload = multer({ storage: storage, limits: { fileSize: 50000000 } });
+
+
+
+
+
+
+
+
+
 
 
 
@@ -62,11 +86,11 @@ const auth = async (req, res, next) => {
 };
 
 // File upload configuration
-const upload = multer({
-  limits: {
-    fileSize: 5000000 // 5MB limit
-  }
-});
+// const upload = multer({
+//   limits: {
+//     fileSize: 5000000 // 5MB limit
+//   }
+// });
 
 // Helper function to convert base64 to Buffer
 const base64ToBuffer = (base64) => {
@@ -301,6 +325,7 @@ const ProductSchema = new mongoose.Schema({
 const customFieldSchema = new mongoose.Schema({
   fieldId: { type: String, required: true },
   type: { type: String, required: true },
+  imageUrl: {type: String, default: null},
   content: { type: String, required: true },
   properties: {
     fontSize: { type: Number, default: null },
@@ -320,6 +345,7 @@ const customFieldSchema = new mongoose.Schema({
 const requiredFieldSchema = new mongoose.Schema({
   fieldId: { type: String, required: true },
   type: { type: String, required: true },
+  imageUrl: {type: String, default: null},
   value: { type: String, required: true }
 }, { _id: false });
 
@@ -1526,12 +1552,14 @@ app.get('/api/cart', auth, async (req, res) => {
           customFields: customization.customFields.map(field => ({
             fieldId: field.fieldId,
             type: field.type,
+            imageUrl: field.imageUrl,
             content: field.content,
             properties: field.properties
           })),
           requiredFields: customization.requiredFields.map(field => ({
             fieldId: field.fieldId,
             type: field.type,
+            imageUrl: field.imageUrl || null,
             value: field.value
           })),
           description: customization.description
@@ -1801,48 +1829,52 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
 app.get('/api/orders/:orderId/customization/:fieldId', auth, async (req, res) => {
   try {
     const { orderId, fieldId } = req.params;
-    
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).send({ error: 'Order not found' });
     }
-
     if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
       return res.status(403).send({ error: 'Not authorized' });
     }
-
-    // Find the field in all items
     let foundField = null;
-    order.items.forEach(item => {
+    // Iterate over order.products (not order.items)
+    order.products.forEach(item => {
       const customField = item.customization?.customFields?.find(f => f.fieldId === fieldId);
       const requiredField = item.customization?.requiredFields?.find(f => f.fieldId === fieldId);
       if (customField || requiredField) {
         foundField = customField || requiredField;
       }
     });
-
     if (!foundField) {
       return res.status(404).send({ error: 'Customization field not found' });
     }
-
-    // Return the field content based on type
     if (foundField.type === 'image' || foundField.type === 'logo') {
+      const imageData = foundField.content; // or foundField.value for required fields
+      if (!imageData) return res.status(404).send({ error: 'Image data not found' });
+      
+      // If the stored image data is a file reference (e.g. starts with "/upload/")
+      if (typeof imageData === 'string' && imageData.startsWith('/upload/')) {
+        const fullPath = path.join(__dirname, imageData);
+        return res.sendFile(fullPath);
+      }
+      
+      // Otherwise, assume it’s a data URL and decode it
+      const binary = Buffer.from(imageData.split(',')[1], 'base64');
       res.setHeader('Content-Type', 'image/png');
-      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.png`);
-      const imageData = foundField.content || foundField.value;
-      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      res.send(buffer);
+      res.setHeader('Content-Disposition', `attachment; filename=${fieldId}_original.png`);
+      return res.send(binary);
     } else {
       res.setHeader('Content-Type', 'text/plain');
       res.setHeader('Content-Disposition', `attachment; filename=${fieldId}.txt`);
-      res.send(foundField.content || foundField.value);
+      return res.send(foundField.content || foundField.value);
     }
   } catch (error) {
-    console.error('Error downloading customization file:', error);
-    res.status(500).send({ error: 'Error downloading customization file' });
+    console.error('Download error:', error);
+    res.status(500).send({ error: 'Server error' });
   }
 });
+
+
 
 // endpoint to include customization files
 app.get("/api/orders/:id/download", auth, async (req, res) => {
@@ -2597,6 +2629,39 @@ app.post('/api/contact', contactLimiter, [
   }
 });
 
+
+
+
+
+
+
+
+
+
+
+// Endpoint to save the full–resolution image
+app.post('/api/upload-image', auth, upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  // Respond with the file path relative to your public/static folder (adjust as needed)
+  res.json({ filePath: `/upload/${req.file.filename}` });
+});
+
+// Endpoint to save the thumbnail image
+app.post('/api/upload-thumbnail', auth, upload.single('thumbnail'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  res.json({ filePath: `/upload/${req.file.filename}` });
+});
+
+
+
+
+
+
+
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ 
@@ -2653,16 +2718,15 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
+// At the end of server.js
+app.use('/upload', express.static(path.join(__dirname, 'upload')));
 
 
-
-
-
-
-
-
-
-
+app.use('/upload', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Authorization');
+  next();
+}, express.static(path.join(__dirname, 'upload')));
 
 
 
@@ -2754,6 +2818,50 @@ app.use((err, req, res, next) => {
 
 
 // // MongoDB Models
+// const NotificationSchema = new mongoose.Schema({
+//   user: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: 'User',
+//     required: true
+//   },
+//   message: {
+//     type: String,
+//     required: true
+//   },
+//   type: {
+//     type: String,
+//     enum: ['order', 'inventory', 'feedback', 'system'],
+//     required: true
+//   },
+//   isRead: {
+//     type: Boolean,
+//     default: false
+//   },
+//   link: String,
+//   createdAt: {
+//     type: Date,
+//     default: Date.now
+//   }
+// });
+
+// // Activity Log Schema for user management
+// const ActivityLogSchema = new mongoose.Schema({
+//   user: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: 'User'
+//   },
+//   action: {
+//     type: String,
+//     required: true
+//   },
+//   details: mongoose.Schema.Types.Mixed,
+//   ipAddress: String,
+//   createdAt: {
+//     type: Date,
+//     default: Date.now
+//   }
+// });
+
 // const UserSchema = new mongoose.Schema({
 //   email: { 
 //     type: String, 
@@ -3060,7 +3168,8 @@ app.use((err, req, res, next) => {
 // const Product = mongoose.model("Product", ProductSchema);
 // const Order = mongoose.model("Order", OrderSchema);
 // const Coupon = mongoose.model('Coupon', CouponSchema);
-
+// const Notification = mongoose.model('Notification', NotificationSchema);
+// const ActivityLog = mongoose.model('ActivityLog', ActivityLogSchema);
 
 
 // // API Routes
@@ -4886,6 +4995,261 @@ app.use((err, req, res, next) => {
 //   }
 // });
 
+// // Notification Routes
+// app.get("/api/notifications", auth, async (req, res) => {
+//   try {
+//     const notifications = await Notification.find({ user: req.user._id })
+//       .sort('-createdAt')
+//       .limit(10);
+    
+//     res.json(notifications);
+//   } catch (error) {
+//     res.status(500).json({ error: 'Error fetching notifications' });
+//   }
+// });
+
+// app.post("/api/notifications/mark-read", auth, async (req, res) => {
+//   try {
+//     const { notificationIds } = req.body;
+    
+//     await Notification.updateMany(
+//       { 
+//         _id: { $in: notificationIds },
+//         user: req.user._id 
+//       },
+//       { $set: { isRead: true } }
+//     );
+    
+//     res.json({ message: 'Notifications marked as read' });
+//   } catch (error) {
+//     res.status(500).json({ error: 'Error updating notifications' });
+//   }
+// });
+
+// // Sales Report Routes
+// app.get("/api/reports/sales", auth, async (req, res) => {
+//   try {
+//     if (!req.user.isAdmin) {
+//       return res.status(403).json({ error: "Only admins can access reports" });
+//     }
+
+//     const { startDate, endDate } = req.query;
+//     const start = startDate ? new Date(startDate) : new Date(new Date().setMonth(new Date().getMonth() - 1));
+//     const end = endDate ? new Date(endDate) : new Date();
+
+//     // Fetch orders within date range
+//     const orders = await Order.find({
+//       createdAt: { $gte: start, $lte: end }
+//     }).populate('user', 'email');
+
+//     // Calculate various metrics
+//     const salesData = {
+//       totalRevenue: 0,
+//       totalOrders: orders.length,
+//       averageOrderValue: 0,
+//       productsSold: 0,
+//       dailyRevenue: {},
+//       topProducts: {},
+//       ordersByStatus: {
+//         pending: 0,
+//         processing: 0,
+//         completed: 0,
+//         cancelled: 0
+//       }
+//     };
+
+//     // Process orders
+//     orders.forEach(order => {
+//       // Add to total revenue
+//       salesData.totalRevenue += order.totalAmount;
+
+//       // Count products sold
+//       order.products.forEach(product => {
+//         salesData.productsSold += product.quantity;
+//         // Track top products
+//         const productId = product.product.toString();
+//         salesData.topProducts[productId] = (salesData.topProducts[productId] || 0) + product.quantity;
+//       });
+
+//       // Track daily revenue
+//       const dateKey = order.createdAt.toISOString().split('T')[0];
+//       salesData.dailyRevenue[dateKey] = (salesData.dailyRevenue[dateKey] || 0) + order.totalAmount;
+
+//       // Count orders by status
+//       salesData.ordersByStatus[order.status]++;
+//     });
+
+//     // Calculate average order value
+//     salesData.averageOrderValue = salesData.totalRevenue / salesData.totalOrders;
+
+//     // Get top products details
+//     const topProductIds = Object.keys(salesData.topProducts);
+//     const topProducts = await Product.find({
+//       _id: { $in: topProductIds }
+//     }, 'name basePrice');
+
+//     // Format top products data
+//     salesData.topProducts = topProductIds.map(id => ({
+//       product: topProducts.find(p => p._id.toString() === id),
+//       quantity: salesData.topProducts[id]
+//     })).sort((a, b) => b.quantity - a.quantity).slice(0, 5);
+
+//     res.json(salesData);
+//   } catch (error) {
+//     console.error('Error generating sales report:', error);
+//     res.status(500).json({ error: 'Error generating sales report' });
+//   }
+// });
+
+// // Generate PDF report
+// app.get("/api/reports/sales/download", auth, async (req, res) => {
+//   try {
+//     if (!req.user.isAdmin) {
+//       return res.status(403).json({ error: "Only admins can download reports" });
+//     }
+
+//     const { startDate, endDate } = req.query;
+//     const start = startDate ? new Date(startDate) : new Date(new Date().setMonth(new Date().getMonth() - 1));
+//     const end = endDate ? new Date(endDate) : new Date();
+
+//     const orders = await Order.find({
+//       createdAt: { $gte: start, $lte: end }
+//     }).populate('user', 'email').populate('products.product', 'name basePrice');
+
+//     const PDFDocument = require('pdfkit');
+//     const doc = new PDFDocument();
+
+//     res.setHeader('Content-Type', 'application/pdf');
+//     res.setHeader('Content-Disposition', `attachment; filename=sales-report-${start.toISOString().split('T')[0]}-to-${end.toISOString().split('T')[0]}.pdf`);
+
+//     doc.pipe(res);
+
+//     // Add content to PDF
+//     doc.fontSize(20).text('Sales Report', { align: 'center' });
+//     doc.moveDown();
+//     doc.fontSize(12).text(`Period: ${start.toLocaleDateString()} to ${end.toLocaleDateString()}`);
+
+//     // Add summary
+//     const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+//     doc.moveDown();
+//     doc.text(`Total Orders: ${orders.length}`);
+//     doc.text(`Total Revenue: $${totalRevenue.toFixed(2)}`);
+//     doc.text(`Average Order Value: $${(totalRevenue / orders.length).toFixed(2)}`);
+
+//     // Add detailed order list
+//     doc.moveDown();
+//     doc.text('Order Details:', { underline: true });
+//     orders.forEach(order => {
+//       doc.moveDown();
+//       doc.text(`Order ID: ${order._id}`);
+//       doc.text(`Customer: ${order.user.email}`);
+//       doc.text(`Amount: $${order.totalAmount.toFixed(2)}`);
+//       doc.text(`Status: ${order.status}`);
+//       doc.text('Products:');
+//       order.products.forEach(item => {
+//         doc.text(`  - ${item.product.name} (${item.quantity}x)`);
+//       });
+//     });
+
+//     doc.end();
+//   } catch (error) {
+//     console.error('Error generating PDF report:', error);
+//     res.status(500).json({ error: 'Error generating PDF report' });
+//   }
+// });
+
+// // User Management Routes
+// app.get("/api/admin/users", auth, async (req, res) => {
+//   try {
+//     if (!req.user.isAdmin) {
+//       return res.status(403).json({ error: "Only admins can access user management" });
+//     }
+
+//     const { page = 1, limit = 10, search } = req.query;
+//     const skip = (page - 1) * limit;
+
+//     let query = {};
+//     if (search) {
+//       query = {
+//         $or: [
+//           { email: new RegExp(search, 'i') },
+//           { firstName: new RegExp(search, 'i') },
+//           { lastName: new RegExp(search, 'i') },
+//           { phone: new RegExp(search, 'i') }
+//         ]
+//       };
+//     }
+
+//     const users = await User.find(query)
+//       .select('-password')
+//       .skip(skip)
+//       .limit(parseInt(limit))
+//       .sort('-createdAt');
+
+//     const total = await User.countDocuments(query);
+
+//     res.json({
+//       users,
+//       total,
+//       totalPages: Math.ceil(total / limit),
+//       currentPage: page
+//     });
+//   } catch (error) {
+//     res.status(500).json({ error: 'Error fetching users' });
+//   }
+// });
+
+// app.get("/api/admin/users/:userId/activity", auth, async (req, res) => {
+//   try {
+//     if (!req.user.isAdmin) {
+//       return res.status(403).json({ error: "Only admins can view user activity" });
+//     }
+
+//     const activities = await ActivityLog.find({ user: req.params.userId })
+//       .sort('-createdAt')
+//       .limit(50);
+
+//     res.json(activities);
+//   } catch (error) {
+//     res.status(500).json({ error: 'Error fetching user activity' });
+//   }
+// });
+
+
+
+// // Helper function to create notifications
+// const createNotification = async (userId, message, type, link = null) => {
+//   try {
+//     const notification = new Notification({
+//       user: userId,
+//       message,
+//       type,
+//       link
+//     });
+//     await notification.save();
+//     return notification;
+//   } catch (error) {
+//     console.error('Error creating notification:', error);
+//   }
+// };
+
+// // Helper function to log user activity
+// const logActivity = async (userId, action, details, ipAddress) => {
+//   try {
+//     const activity = new ActivityLog({
+//       user: userId,
+//       action,
+//       details,
+//       ipAddress
+//     });
+//     await activity.save();
+//     return activity;
+//   } catch (error) {
+//     console.error('Error logging activity:', error);
+//   }
+// };
+
+
 // // Contact form validation and submission route
 // app.post('/api/contact', contactLimiter, [
 //   // Validation middleware
@@ -5023,4 +5387,3 @@ app.use((err, req, res, next) => {
 //   console.error(err.stack);
 //   res.status(500).send('Something broke!');
 // });
-

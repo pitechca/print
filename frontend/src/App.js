@@ -25,8 +25,8 @@ import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import Cart from './pages/Cart';
 import AdminDashboard from './pages/AdminDashboard';
-import UserManagement from './components/admin/UserManagement';
-import SalesReport from './components/admin/SalesReport';
+import UserManagement from './pages/UserManagement';
+import SalesReport from './pages/SalesReport';
 
 
 
