@@ -27,6 +27,7 @@ import Cart from './pages/Cart';
 import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
 import SalesReport from './pages/SalesReport';
+import AdminSecurity from './pages/AdminSecurity';
 
 
 
@@ -54,6 +55,8 @@ function App() {
                 <Route path="/products" element={<Product/>} />
                 <Route path="/admin/users" element={<UserManagement />} />
                 <Route path="/admin/sales" element={<SalesReport />} />
+                <Route path="/admin/security" element={<AdminSecurity /> } />
+/>
               </Routes>
             </main>
             <Footer style={{}}/>

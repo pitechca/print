@@ -98,41 +98,14 @@ const NotificationSchema = new mongoose.Schema({
   createdAt: {type: Date, default: Date.now}
 });
 
-// Activity Log Schema for user management
-const ActivityLogSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User'},
-  action: { type: String, required: true},
-  details: mongoose.Schema.Types.Mixed,
-  ipAddress: String,
-  createdAt: {type: Date, default: Date.now }
+const LoginActivitySchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  ipAddress: { type: String },
+  location: { type: String },
+  device: { type: String },
+  timestamp: { type: Date, default: Date.now }
 });
 
-
-// const UserSchema = new mongoose.Schema({
-//   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-//   password: { type: String, required: true},
-//   firstName: { type: String, required: true, trim: true},
-//   lastName: { type: String, required: true, trim: true},
-//   phone: { type: String, required: true,trim: true},
-//   company: { type: String,trim: true},
-//   address: {
-//     street: { type: String, trim: true},
-//     city: { type: String,trim: true},
-//     state: { type: String,trim: true},
-//     postalCode: { type: String,trim: true },
-//     country: { type: String,default: 'Canada',trim: true}
-//   },
-//   isAdmin: { type: Boolean, default: false},
-//   preferences: {
-//     newsletter: {type: Boolean, default: false},
-//     marketingEmails: { type: Boolean, default: false}
-//   },
-//   lastLogin: { type: Date },
-//   passwordResetToken: String,
-//   passwordResetExpires: Date,
-//   createdAt: { type: Date, default: Date.now},
-//   updatedAt: { type: Date}
-// });
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
@@ -229,7 +202,6 @@ const ProductSchema = new mongoose.Schema({
     allowCustomImage: { type: Boolean, default: true },
     allowCustomText: { type: Boolean, default: true }
   },
-  // New fields
   isFeatured: { type: Boolean, default: false },
   inStock: { type: Boolean, default: true },
   minimumOrder: { type: Number, default: 1 },
@@ -389,7 +361,8 @@ const Product = mongoose.model("Product", ProductSchema);
 const Order = mongoose.model("Order", OrderSchema);
 const Coupon = mongoose.model('Coupon', CouponSchema);
 const Notification = mongoose.model('Notification', NotificationSchema);
-const ActivityLog = mongoose.model('ActivityLog', ActivityLogSchema);
+// const ActivityLog = mongoose.model('ActivityLog', ActivityLogSchema);
+const LoginActivity = mongoose.model('LoginActivity', LoginActivitySchema);
 
 
 // API Routes
@@ -465,11 +438,35 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
+// app.post("/api/login", async (req, res) => {
+//   try {
+//     const { identifier, password } = req.body; // identifier can be email or phone
+    
+//     // Find user by email or phone
+//     const user = await User.findOne({
+//       $or: [
+//         { email: identifier },
+//         { phone: identifier }
+//       ]
+//     });
+
+//     if (!user || !(await bcrypt.compare(password, user.password))) {
+//       throw new Error("Invalid login credentials");
+//     }
+
+//     const token = jwt.sign(
+//       { userId: user._id, isAdmin: user.isAdmin },
+//       process.env.JWT_SECRET
+//     );
+//     res.send({ user, token });
+//   } catch (error) {
+//     res.status(400).send(error);
+//   }
+// });
 app.post("/api/login", async (req, res) => {
   try {
-    const { identifier, password } = req.body; // identifier can be email or phone
+    const { identifier, password } = req.body;
     
-    // Find user by email or phone
     const user = await User.findOne({
       $or: [
         { email: identifier },
@@ -480,6 +477,18 @@ app.post("/api/login", async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new Error("Invalid login credentials");
     }
+
+    // Track login activity
+    const loginActivity = new LoginActivity({
+      user: user._id,
+      ipAddress: req.ip,
+      location: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      device: req.headers['user-agent']
+    });
+    await loginActivity.save();
+
+    user.lastLogin = new Date();
+    await user.save();
 
     const token = jwt.sign(
       { userId: user._id, isAdmin: user.isAdmin },
@@ -2225,7 +2234,307 @@ app.get("/api/users/coupons", auth, async (req, res) => {
   }
 });
 
-// Update the GET route in server.js
+app.get("/api/users/login-activity", auth, async (req, res) => {
+  try {
+    const activities = await LoginActivity.find({ user: req.user._id })
+      .sort('-timestamp')
+      .limit(10);
+    res.json(activities);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching login activity' });
+  }
+});
+
+app.put("/api/users/preferences", auth, async (req, res) => {
+  try {
+    const { preferences } = req.body;
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.preferences = {
+      ...user.preferences,
+      ...preferences
+    };
+
+    await user.save();
+    res.json({ preferences: user.preferences });
+  } catch (error) {
+    res.status(500).json({ error: 'Error updating preferences' });
+  }
+});
+
+
+//Admin Routs
+// Get all activity logs
+app.get("/api/admin/activity-logs", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const logs = await ActivityLog.find()
+      .populate('user', 'email')
+      .sort('-createdAt')
+      .limit(1000); // Limit to last 1000 activities for performance
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Error fetching activity logs:', error);
+    res.status(500).json({ error: 'Error fetching activity logs' });
+  }
+});
+
+// Get user list with security info
+// app.get("/api/admin/users", auth, async (req, res) => {
+//   try {
+//     if (!req.user.isAdmin) {
+//       return res.status(403).json({ error: "Admin access required" });
+//     }
+
+//     const users = await User.find({}, {
+//       email: 1,
+//       firstName: 1,
+//       lastName: 1,
+//       lastLogin: 1,
+//       createdAt: 1,
+//       updatedAt: 1
+//     }).sort('-createdAt');
+
+//     res.json(users);
+//   } catch (error) {
+//     console.error('Error fetching users:', error);
+//     res.status(500).json({ error: 'Error fetching users' });
+//   }
+// });
+// In your server.js
+app.get("/api/admin/users", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    
+    const query = {};
+    if (search) {
+      query.$or = [
+        { email: new RegExp(search, 'i') },
+        { firstName: new RegExp(search, 'i') },
+        { lastName: new RegExp(search, 'i') },
+        { phone: new RegExp(search, 'i') }
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select('email firstName lastName phone isAdmin createdAt')
+        .sort('-createdAt')
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(query)
+    ]);
+
+    res.json({
+      users,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+      total
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ 
+      error: 'Error fetching users',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+
+// Export security data
+app.get("/api/admin/security/export", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const activities = await ActivityLog.find()
+      .populate('user', 'email')
+      .sort('-createdAt')
+      .limit(5000);
+
+    // Convert to CSV
+    const createCsvStringifier = require('csv-writer').createObjectCsvStringifier;
+    const csvStringifier = createCsvStringifier({
+      header: [
+        { id: 'timestamp', title: 'Timestamp' },
+        { id: 'user', title: 'User' },
+        { id: 'action', title: 'Action' },
+        { id: 'type', title: 'Type' },
+        { id: 'details', title: 'Details' },
+        { id: 'ipAddress', title: 'IP Address' }
+      ]
+    });
+
+    const records = activities.map(activity => ({
+      timestamp: new Date(activity.createdAt).toISOString(),
+      user: activity.user?.email || 'System',
+      action: activity.action,
+      type: activity.type,
+      details: activity.details,
+      ipAddress: activity.ipAddress
+    }));
+
+    const csvString = csvStringifier.stringifyRecords(records);
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=security-log-${new Date().toISOString().split('T')[0]}.csv`);
+    res.send(csvString);
+  } catch (error) {
+    console.error('Error exporting security data:', error);
+    res.status(500).json({ error: 'Error exporting security data' });
+  }
+});
+
+// Get detailed user security info
+app.get("/api/admin/users/:userId/security", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const userId = req.params.userId;
+
+    // Get user's activity logs
+    const activityLogs = await ActivityLog.find({ user: userId })
+      .sort('-createdAt')
+      .limit(100);
+
+    // Get user's login history
+    const loginHistory = await LoginActivity.find({ user: userId })
+      .sort('-timestamp')
+      .limit(50);
+
+    // Get user's profile update history
+    const profileUpdates = await ActivityLog.find({
+      user: userId,
+      action: 'profile_update'
+    }).sort('-createdAt').limit(20);
+
+    // Get failed login attempts
+    const failedLogins = await ActivityLog.find({
+      user: userId,
+      action: 'login_failed'
+    }).sort('-createdAt').limit(20);
+
+    res.json({
+      activityLogs,
+      loginHistory,
+      profileUpdates,
+      failedLogins
+    });
+  } catch (error) {
+    console.error('Error fetching user security info:', error);
+    res.status(500).json({ error: 'Error fetching user security info' });
+  }
+});
+
+// Get security statistics
+app.get("/api/admin/security/stats", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const now = new Date();
+    const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalUsers,
+      activeUsers,
+      recentLogins,
+      failedLogins,
+      securityEvents,
+      profileUpdates
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ lastLogin: { $gte: oneDayAgo } }),
+      LoginActivity.countDocuments({ timestamp: { $gte: oneDayAgo } }),
+      ActivityLog.countDocuments({
+        action: 'login_failed',
+        createdAt: { $gte: sevenDaysAgo }
+      }),
+      ActivityLog.countDocuments({
+        type: 'security',
+        createdAt: { $gte: thirtyDaysAgo }
+      }),
+      ActivityLog.countDocuments({
+        action: 'profile_update',
+        createdAt: { $gte: thirtyDaysAgo }
+      })
+    ]);
+
+    res.json({
+      totalUsers,
+      activeUsers,
+      recentLogins,
+      failedLogins,
+      securityEvents,
+      profileUpdates
+    });
+  } catch (error) {
+    console.error('Error fetching security stats:', error);
+    res.status(500).json({ error: 'Error fetching security stats' });
+  }
+});
+
+// Log security event (internal function)
+const logSecurityEvent = async (userId, action, details, ipAddress) => {
+  try {
+    const log = new ActivityLog({
+      user: userId,
+      action,
+      type: 'security',
+      details,
+      ipAddress
+    });
+    await log.save();
+  } catch (error) {
+    console.error('Error logging security event:', error);
+  }
+};
+
+// Update user access tracking middleware
+const trackUserAccess = async (req, res, next) => {
+  try {
+    if (req.user) {
+      await User.findByIdAndUpdate(req.user._id, {
+        lastAccess: new Date(),
+        lastIp: req.ip
+      });
+    }
+    next();
+  } catch (error) {
+    console.error('Error tracking user access:', error);
+    next();
+  }
+};
+
+
+
+
+
+
+
+
 app.get("/api/images", auth, async (req, res) => {
   try {
     if (!req.user.isAdmin) {
@@ -2654,6 +2963,12 @@ app.post('/api/contact', contactLimiter, [
     });
   }
 });
+
+
+
+// Apply tracking middleware to all routes
+app.use(trackUserAccess);
+
 
 
 app.get('/api/config/maps', (req, res) => {
