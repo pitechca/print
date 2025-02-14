@@ -241,7 +241,41 @@ const Register = () => {
           <div className="mt-8 md:mt-0">
             <h3 className="text-lg font-medium mb-6">Shipping Address (Optional)</h3>
             <div className="space-y-6">
+
+              {/* Replace just this part in your Right Column - Shipping Address section */}
               <div>
+                <AddressAutocomplete 
+                  index={0} // Since registration only has one address
+                  address={{
+                    street: street,
+                    city: city,
+                    state: state,
+                    postalCode: postalCode,
+                    country: 'Canada'
+                  }}
+                  onAddressChange={(index, field, value) => {
+                    // Update the corresponding state based on the field
+                    switch (field) {
+                      case 'street':
+                        setStreet(value);
+                        break;
+                      case 'city':
+                        setCity(value);
+                        break;
+                      case 'state':
+                        setState(value);
+                        break;
+                      case 'postalCode':
+                        setPostalCode(value);
+                        break;
+                      default:
+                        break;
+                    }
+                  }}
+                />
+              </div>
+                            
+              {/* <div>
                 <label className="block text-gray-700 text-sm font-medium mb-2">Street Address</label>
                 <input
                   type="text"
@@ -250,7 +284,7 @@ const Register = () => {
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   maxLength={100}
                 />
-              </div>
+              </div> */}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
