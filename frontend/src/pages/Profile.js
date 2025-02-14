@@ -4,21 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import AddressAutocomplete from '../components/AddressAutocomplete';
-import { 
-  User, 
-  MapPin, 
-  CreditCard, 
-  Bell, 
-  Package, 
-  Tag, 
-  Lock,
-  Settings,
-  LogOut,
-  Loader2,
-  Save,
-  Eye,
-  EyeOff, Plus, Trash2
-} from 'lucide-react';
+import { User, MapPin, CreditCard, Bell, Package, Tag, Lock, Settings, LogOut, Loader2, Save, Eye, EyeOff, Plus, Trash2} from 'lucide-react';
 
 const Profile = () => {
   const { user, logout } = useAuth();
