@@ -767,7 +767,7 @@ const ProductEditor = () => {
               Price: 
               {/* ${selectedProduct?.basePrice || 0} */}
               {selectedProduct?.pricingTiers.length !=null && selectedProduct?.pricingTiers.length > 0 ? (
-                  `From $${selectedProduct.pricingTiers[0]['price'].toFixed(2)}`
+                  ` $${selectedProduct.pricingTiers[0]['price'].toFixed(2)} And Lower`
                 ) : (
                   `$${selectedProduct?.basePrice.toFixed(2)}`
                 )}
@@ -781,6 +781,90 @@ const ProductEditor = () => {
               )}
             </p>
           </div>
+
+
+            {/* Product Info */}
+            <div className="mt-4">
+            {/* <h2 className="text-xl font-bold">{selectedProduct?.name}</h2>
+            <p className="text-gray-600 mt-2">{selectedProduct?.description}</p> */}
+            
+            {/* Stock Status */}
+            {!selectedProduct?.inStock && (
+              <p className="text-red-600 font-medium mt-2">Out of Stock</p>
+            )}
+            
+            {/* Minimum Order */}
+            {selectedProduct?.minimumOrder > 1 && (
+              <p className="text-blue-600 mt-2">
+                Minimum Order: {selectedProduct.minimumOrder} units
+              </p>
+            )}
+            
+            {/* Price Tiers Display */}
+            {selectedProduct?.pricingTiers?.length > 0 && (
+              <div className="mt-2">
+                <p className="font-medium">Quantity Pricing:</p>
+                {selectedProduct.pricingTiers.map((tier, index) => (
+                  <p key={index} className={`text-sm ${
+                    quantity >= tier.minQuantity && (!tier.maxQuantity || quantity <= tier.maxQuantity)
+                      ? 'text-green-600 font-medium'
+                      : 'text-gray-600'
+                  }`}>
+                    {tier.minQuantity}{tier.maxQuantity ? ` - ${tier.maxQuantity}` : '+'} units: ${tier.price} each
+                  </p>
+                ))}
+              </div>
+            )}
+            
+            {/* Current Price */}
+            <p className="text-lg font-semibold mt-2">
+              Unit Price: ${currentUnitPrice}
+              <br />
+              Total: ${(currentUnitPrice * quantity).toFixed(2)}
+              {(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
+                <span className="text-sm font-normal text-gray-600 ml-2">
+                  + {[
+                    selectedProduct.hasGST && 'GST',
+                    selectedProduct.hasPST && 'PST'
+                  ].filter(Boolean).join(' + ')}
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Add to Cart Button */}
+          <button
+            onClick={handleAddToCart}
+            disabled={
+              (selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])) ||
+              !selectedProduct?.inStock ||
+              quantity < (selectedProduct?.minimumOrder || 1)
+            }
+            className={`w-full bg-green-500 text-white px-6 py-3 rounded-lg text-lg font-semibold
+              ${(
+                (selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])) ||
+                !selectedProduct?.inStock ||
+                quantity < (selectedProduct?.minimumOrder || 1)
+              )
+                ? 'opacity-50 cursor-not-allowed'
+                : 'hover:bg-green-600 transition-colors duration-200'
+              }`}
+          >
+            {!selectedProduct?.inStock 
+              ? 'Out of Stock'
+              : `Add to Cart - $${(currentUnitPrice * quantity).toFixed(2)}`}
+          </button>
+
+          {/* Tax Notice */}
+          {selectedProduct?.hasGST || selectedProduct?.hasPST ? (
+            <p className="text-sm text-gray-500 text-center">
+              *Final price will include applicable taxes ({[
+                selectedProduct.hasGST && 'GST',
+                selectedProduct.hasPST && 'PST'
+              ].filter(Boolean).join(' + ')})
+            </p>
+          ) : null}
+
         </div>
 
         {/* Design and Customization Column */}
@@ -923,87 +1007,7 @@ const ProductEditor = () => {
             </ul>
           </div>
 
-          {/* Product Info */}
-          <div className="mt-4">
-            <h2 className="text-xl font-bold">{selectedProduct?.name}</h2>
-            <p className="text-gray-600 mt-2">{selectedProduct?.description}</p>
-            
-            {/* Stock Status */}
-            {!selectedProduct?.inStock && (
-              <p className="text-red-600 font-medium mt-2">Out of Stock</p>
-            )}
-            
-            {/* Minimum Order */}
-            {selectedProduct?.minimumOrder > 1 && (
-              <p className="text-blue-600 mt-2">
-                Minimum Order: {selectedProduct.minimumOrder} units
-              </p>
-            )}
-            
-            {/* Price Tiers Display */}
-            {selectedProduct?.pricingTiers?.length > 0 && (
-              <div className="mt-2">
-                <p className="font-medium">Quantity Pricing:</p>
-                {selectedProduct.pricingTiers.map((tier, index) => (
-                  <p key={index} className={`text-sm ${
-                    quantity >= tier.minQuantity && (!tier.maxQuantity || quantity <= tier.maxQuantity)
-                      ? 'text-green-600 font-medium'
-                      : 'text-gray-600'
-                  }`}>
-                    {tier.minQuantity}{tier.maxQuantity ? ` - ${tier.maxQuantity}` : '+'} units: ${tier.price} each
-                  </p>
-                ))}
-              </div>
-            )}
-            
-            {/* Current Price */}
-            <p className="text-lg font-semibold mt-2">
-              Unit Price: ${currentUnitPrice}
-              <br />
-              Total: ${(currentUnitPrice * quantity).toFixed(2)}
-              {(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
-                <span className="text-sm font-normal text-gray-600 ml-2">
-                  + {[
-                    selectedProduct.hasGST && 'GST',
-                    selectedProduct.hasPST && 'PST'
-                  ].filter(Boolean).join(' + ')}
-                </span>
-              )}
-            </p>
-          </div>
-
-          {/* Add to Cart Button */}
-          <button
-            onClick={handleAddToCart}
-            disabled={
-              (selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])) ||
-              !selectedProduct?.inStock ||
-              quantity < (selectedProduct?.minimumOrder || 1)
-            }
-            className={`w-full bg-green-500 text-white px-6 py-3 rounded-lg text-lg font-semibold
-              ${(
-                (selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])) ||
-                !selectedProduct?.inStock ||
-                quantity < (selectedProduct?.minimumOrder || 1)
-              )
-                ? 'opacity-50 cursor-not-allowed'
-                : 'hover:bg-green-600 transition-colors duration-200'
-              }`}
-          >
-            {!selectedProduct?.inStock 
-              ? 'Out of Stock'
-              : `Add to Cart - $${(currentUnitPrice * quantity).toFixed(2)}`}
-          </button>
-
-          {/* Tax Notice */}
-          {selectedProduct?.hasGST || selectedProduct?.hasPST ? (
-            <p className="text-sm text-gray-500 text-center">
-              *Final price will include applicable taxes ({[
-                selectedProduct.hasGST && 'GST',
-                selectedProduct.hasPST && 'PST'
-              ].filter(Boolean).join(' + ')})
-            </p>
-          ) : null}
+  
 
         </div>
       </div>
