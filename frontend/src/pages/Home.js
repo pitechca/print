@@ -411,7 +411,7 @@ useEffect(() => {
           </div>
           <div className="md:w-1/2 flex justify-center pr-0">
             <img
-              src="/images/slideshow-3.jpg"
+              src="/images/logo-static.png"
               alt="Packaging"
               className="w-[500px] h-auto rounded-tl-[50px] shadow-lg -mr-10"
             />

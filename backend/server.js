@@ -1386,42 +1386,6 @@ app.delete("/api/coupons/:id", auth, async (req, res) => {
 });
 
 // Payment routes
-// app.post("/api/create-payment-intent", auth, async (req, res) => {
-//   try {
-//     const { amount } = req.body;
-    
-//     if (!amount || amount <= 0) {
-//       return res.status(400).json({ 
-//         error: 'Invalid amount provided' 
-//       });
-//     }
-
-//     console.log('Creating payment intent for amount:', amount); // Debug log
-
-//     const paymentIntent = await stripe.paymentIntents.create({
-//       amount: Math.round(amount * 100), // Convert to cents
-//       currency: 'cad',
-//       metadata: {
-//         integration_check: 'accept_a_payment',
-//       },
-//       payment_method_types: ['card'],
-//     });
-
-//     console.log('Payment intent created:', paymentIntent.id); // Debug log
-    
-//     res.json({
-//       clientSecret: paymentIntent.client_secret
-//     });
-//   } catch (error) {
-//     console.error('Stripe error:', error); // Debug log
-//     res.status(400).json({
-//       error: {
-//         message: error.message || 'An error occurred with the payment'
-//       }
-//     });
-//   }
-// });
-// In your server.js, update the create-payment-intent endpoint
 app.post("/api/create-payment-intent", auth, async (req, res) => {
   try {
     const { amount } = req.body;
@@ -1432,21 +1396,24 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
       });
     }
 
+    console.log('Creating payment intent for amount:', amount); // Debug log
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
       currency: 'cad',
-      payment_method_types: ['card'],
       metadata: {
-        userId: req.user._id.toString(),
         integration_check: 'accept_a_payment',
-      }
+      },
+      payment_method_types: ['card'],
     });
 
+    console.log('Payment intent created:', paymentIntent.id); // Debug log
+    
     res.json({
       clientSecret: paymentIntent.client_secret
     });
   } catch (error) {
-    console.error('Stripe error:', error);
+    console.error('Stripe error:', error); // Debug log
     res.status(400).json({
       error: {
         message: error.message || 'An error occurred with the payment'
@@ -1454,6 +1421,38 @@ app.post("/api/create-payment-intent", auth, async (req, res) => {
     });
   }
 });
+// app.post("/api/create-payment-intent", auth, async (req, res) => {
+//   try {
+//     const { amount } = req.body;
+    
+//     if (!amount || amount <= 0) {
+//       return res.status(400).json({ 
+//         error: 'Invalid amount provided' 
+//       });
+//     }
+
+//     const paymentIntent = await stripe.paymentIntents.create({
+//       amount: Math.round(amount * 100), // Convert to cents
+//       currency: 'cad',
+//       payment_method_types: ['card'],
+//       metadata: {
+//         userId: req.user._id.toString(),
+//         integration_check: 'accept_a_payment',
+//       }
+//     });
+
+//     res.json({
+//       clientSecret: paymentIntent.client_secret
+//     });
+//   } catch (error) {
+//     console.error('Stripe error:', error);
+//     res.status(400).json({
+//       error: {
+//         message: error.message || 'An error occurred with the payment'
+//       }
+//     });
+//   }
+// });
 
 // Cart routes
 app.get('/api/cart', auth, async (req, res) => {
@@ -1706,8 +1705,8 @@ app.post("/api/orders", auth, async (req, res) => {
     }
 
     // If a coupon was applied, validate it again
-    if (coupon) {
-      try {
+      if (coupon && coupon.code) { 
+    try {
         const couponValidation = await Coupon.findOne({ 
           code: coupon.code,
           isActive: true,
