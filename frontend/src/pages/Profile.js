@@ -478,7 +478,7 @@ useEffect(() => {
                             </p>
                             {coupon.maxUsesPerUser > 0 && (
                               <p className="text-sm text-gray-600">
-                                Uses remaining: {coupon.maxUsesPerUser - (coupon.userUsage?.usageCount || 0)}
+                                Max Uses: {coupon.maxUsesPerUser - (coupon.userUsage?.usageCount || 0)}
                               </p>
                             )}
                           </div>

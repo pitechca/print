@@ -252,10 +252,10 @@ useEffect(() => {
                          <button
                            onClick={() => {
                              const token = localStorage.getItem('token');
-                             if (!token) {
-                               window.location.href = '/login';
-                               return;
-                             }                  
+                            //  if (!token) {
+                            //    window.location.href = '/login';
+                            //    return;
+                            //  }                  
                              window.location.href = `/customize/${product._id}`;
                            }}
                          >
@@ -281,10 +281,10 @@ useEffect(() => {
                              <button
                                onClick={() => {
                                  const token = localStorage.getItem('token');
-                                 if (!token) {
-                                   window.location.href = '/login';
-                                   return;
-                                 }
+                                //  if (!token) {
+                                //    window.location.href = '/login';
+                                //    return;
+                                //  }
                                  window.location.href = `/customize/${product._id}`;
                                }}
                                className="bg-blue-600 text-white px-3 py-2 rounded flex items-center gap-2 hover:bg-blue-700 transition-colors"
@@ -403,7 +403,7 @@ useEffect(() => {
       {/* Static Section */}
       <div className="w-full mb-32 mt-16">
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-10 flex flex-col md:flex-row items-center shadow-xl">
-          <div className="md:w-1/2 mb-6 md:mb-0 pl-10 lg:pl-40">
+          <div className="md:w-1/2 mb-6 md:mb-0 pl-10 lg:pl-20 xl:pl-40">
             <h2 className="text-4xl font-bold mb-4">Discover Our Unique Packaging Solutions</h2>
             <p className="text-lg">
               Experience creativity and innovation in every design. Our custom packaging solutions are crafted to elevate your brand's presence and make a lasting impression.
@@ -449,10 +449,10 @@ useEffect(() => {
                 <button
                   onClick={() => {
                     const token = localStorage.getItem('token');
-                    if (!token) {
-                      window.location.href = '/login';
-                      return;
-                    }                  
+                    // if (!token) {
+                    //   window.location.href = '/login';
+                    //   return;
+                    // }                  
                     window.location.href = `/customize/${product._id}`;
                   }}
                 >
@@ -495,10 +495,10 @@ useEffect(() => {
                       <button
                         onClick={() => {
                           const token = localStorage.getItem('token');
-                          if (!token) {
-                            window.location.href = '/login';
-                            return;
-                          }
+                          // if (!token) {
+                          //   window.location.href = '/login';
+                          //   return;
+                          // }
                           window.location.href = `/customize/${product._id}`;
                         }}
                         className="bg-blue-600 text-white px-3 py-2 rounded flex items-center gap-2 hover:bg-blue-700 transition-colors"
