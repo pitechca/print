@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import axios from 'axios';
 import { Alert, AlertDescription } from './ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -13,6 +14,8 @@ const CheckoutForm = ({ selectedItems, quantities, total, coupon }) => {
   const { cart, removeFromCart } = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const stripe = useStripe();
+  const elements = useElements();
 
   const createOrderNotification = async (orderId) => {
     try {
@@ -35,8 +38,14 @@ const CheckoutForm = ({ selectedItems, quantities, total, coupon }) => {
     e.preventDefault();
     
     if (!user) {
-      navigate('/login', { state: { from: '/cart' },       replace: true
+      navigate('/login', { 
+        state: { from: '/cart' },
+        replace: true
       });
+      return;
+    }
+
+    if (!stripe || !elements) {
       return;
     }
 
@@ -64,75 +73,97 @@ const CheckoutForm = ({ selectedItems, quantities, total, coupon }) => {
         throw new Error(invalidItems.join('\n'));
       }
 
-      // Transform cart items to order structure
-      const products = Array.from(selectedItems).map(index => {
-        const item = cart[index];
-        return {
-          product: item.product._id,
-          quantity: quantities[index],
-          customization: {
-            template: item.customization?.template?._id || null,
-            preview: item.customization?.preview || null,
-            description: item.customization?.description || '',
-            customFields: item.customization?.customFields?.map(field => ({
-              fieldId: field.fieldId,
-              type: field.type,
-              imageUrl: field.imageUrl,
-              content: field.content,
-              properties: {
-                fontSize: field.properties?.fontSize || null,
-                fontFamily: field.properties?.fontFamily || null,
-                fill: field.properties?.fill || null,
-                position: {
-                  x: field.properties?.position?.x || 0,
-                  y: field.properties?.position?.y || 0
-                },
-                scale: {
-                  x: field.properties?.scale?.x || 1,
-                  y: field.properties?.scale?.y || 1
-                }
-              }
-            })) || [],
-            requiredFields: item.customization?.requiredFields?.map(field => ({
-              fieldId: field.fieldId,
-              type: field.type,
-              value: field.value
-            })) || []
-          }
-        };
-      });
-
-      const orderData = {
-        products,
-        totalAmount: total,
-        status: 'completed',
-        paymentMethod: 'test',
-        paymentId: 'test_' + Date.now(),
-        coupon: coupon ? {
-          code: coupon.code,
-          discountAmount: coupon.discountAmount,
-          discountType: coupon.details.discountType,
-          discountValue: coupon.details.discountValue
-        } : null
-      };
-
-      // Create the order
-      const response = await axios.post('/api/orders', orderData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
+      // Create payment intent
+      const { data: { clientSecret } } = await axios.post('/api/create-payment-intent', {
+        amount: total,
+      }, {
+        headers: { 
+          Authorization: `Bearer ${localStorage.getItem('token')}` 
         }
       });
 
-      // Create notification for the new order
-      await createOrderNotification(response.data._id);
+      // Confirm card payment
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement),
+        }
+      });
 
-      // Remove purchased items from cart
-      for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
-        await removeFromCart(index);
+      if (stripeError) {
+        throw new Error(stripeError.message);
       }
 
-      navigate('/orders');
+      if (paymentIntent.status === 'succeeded') {
+        // Transform cart items to order structure
+        const products = Array.from(selectedItems).map(index => {
+          const item = cart[index];
+          return {
+            product: item.product._id,
+            quantity: quantities[index],
+            customization: {
+              template: item.customization?.template?._id || null,
+              preview: item.customization?.preview || null,
+              description: item.customization?.description || '',
+              customFields: item.customization?.customFields?.map(field => ({
+                fieldId: field.fieldId,
+                type: field.type,
+                imageUrl: field.imageUrl,
+                content: field.content,
+                properties: {
+                  fontSize: field.properties?.fontSize || null,
+                  fontFamily: field.properties?.fontFamily || null,
+                  fill: field.properties?.fill || null,
+                  position: {
+                    x: field.properties?.position?.x || 0,
+                    y: field.properties?.position?.y || 0
+                  },
+                  scale: {
+                    x: field.properties?.scale?.x || 1,
+                    y: field.properties?.scale?.y || 1
+                  }
+                }
+              })) || [],
+              requiredFields: item.customization?.requiredFields?.map(field => ({
+                fieldId: field.fieldId,
+                type: field.type,
+                value: field.value
+              })) || []
+            }
+          };
+        });
+
+        const orderData = {
+          products,
+          totalAmount: total,
+          status: 'completed',
+          paymentMethod: 'stripe',
+          paymentId: paymentIntent.id,
+          coupon: coupon ? {
+            code: coupon.code,
+            discountAmount: coupon.discountAmount,
+            discountType: coupon.details.discountType,
+            discountValue: coupon.details.discountValue
+          } : null
+        };
+
+        // Create the order
+        const response = await axios.post('/api/orders', orderData, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        // Create notification for the new order
+        await createOrderNotification(response.data._id);
+
+        // Remove purchased items from cart
+        for (const index of Array.from(selectedItems).sort((a, b) => b - a)) {
+          await removeFromCart(index);
+        }
+
+        navigate('/orders');
+      }
     } catch (error) {
       console.error('Order creation error:', error);
       setError(
@@ -155,21 +186,40 @@ const CheckoutForm = ({ selectedItems, quantities, total, coupon }) => {
         </Alert>
       )}
 
+      <div className="mb-4 p-4 border rounded">
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#424770',
+                '::placeholder': {
+                  color: '#aab7c4',
+                },
+              },
+              invalid: {
+                color: '#9e2146',
+              },
+            },
+          }}
+        />
+      </div>
+
       <button
         type="submit"
-        disabled={processing}
+        disabled={!stripe || processing}
         className={`w-full bg-blue-500 text-white px-6 py-3 rounded-md font-semibold
-          ${processing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
+          ${(!stripe || processing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
       >
         {!user 
           ? 'Login to Complete Order' 
           : processing 
             ? 'Processing...' 
-            : `Complete Order - $${total.toFixed(2)}`}
+            : `Pay $${total.toFixed(2)}`}
       </button>
 
       <div className="mt-4 text-sm text-gray-600">
-        <p>This is a test checkout that skips payment processing.</p>
+        <p>Your payment information is processed securely by Stripe.</p>
         <p>Selected items: {selectedItems.size}</p>
         <p>Total items in cart: {cart.length}</p>
       </div>
@@ -183,7 +233,10 @@ export default CheckoutForm;
 
 
 
-//1 version of working with visore but with error
+
+
+
+// // work properyl with visitor mode but without stripe
 // // src/components/CheckoutForm.js
 // import React, { useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
@@ -214,24 +267,18 @@ export default CheckoutForm;
 //       });
 //     } catch (error) {
 //       console.error('Error creating notification:', error);
-//       // Don't throw the error as notification creation is not critical
 //     }
 //   };
 
-
-//   const handleCheckout = () => {
+//   const handleFormSubmit = async (e) => {
+//     e.preventDefault();
+    
 //     if (!user) {
-//       // Redirect to login with return path
-//       navigate('/login', { state: { from: '/cart' } });
+//       navigate('/login', { state: { from: '/cart' },       replace: true
+//       });
 //       return;
 //     }
-    
-//     // Proceed with normal checkout
-//     handleSubmit();
-//   };
 
-//   const handleSubmit = async (event) => {
-//     event.preventDefault();
 //     setProcessing(true);
 //     setError(null);
 
@@ -339,11 +386,7 @@ export default CheckoutForm;
 //   };
 
 //   return (
-//     //<form onSubmit={handleSubmit} className="mt-4">
-//     <form onSubmit={(e) => {
-//       e.preventDefault();
-//       handleCheckout();
-//     }} className="mt-4">
+//     <form onSubmit={handleFormSubmit} className="mt-4">
 //       {error && (
 //         <Alert variant="destructive" className="mb-4">
 //           <AlertCircle className="h-4 w-4" />
@@ -351,16 +394,7 @@ export default CheckoutForm;
 //         </Alert>
 //       )}
 
-//       {/* <button
-//         type="submit"
-//         disabled={processing}
-//         className={`w-full bg-blue-500 text-white px-6 py-3 rounded-md font-semibold
-//           ${processing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
-//       >
-//         {processing ? 'Processing...' : `Complete Order - $${total.toFixed(2)}`}
-//       </button> */}
-
-// <button
+//       <button
 //         type="submit"
 //         disabled={processing}
 //         className={`w-full bg-blue-500 text-white px-6 py-3 rounded-md font-semibold
@@ -383,6 +417,8 @@ export default CheckoutForm;
 // };
 
 // export default CheckoutForm;
+
+
 
 
 
