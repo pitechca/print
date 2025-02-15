@@ -3,7 +3,8 @@ import React, { useState, useEffect,  useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Search, ShoppingCart } from 'lucide-react';
 import LazyImage from '../components/LazyImage';
 import { useCart } from '../context/CartContext';
-
+import Lottie from 'lottie-react'; 
+import cartAnimation from '../assets/cartAnimation.json'; 
 
 // Slideshow Header Component
 const SlideshowHeader = () => {
@@ -229,11 +230,21 @@ return (
 
 
       {/* Cart Notification */}
-      {showCartNotification && (
+      {/* {showCartNotification && (
         <div className="fixed top-24 right-4 z-50 animate-slide-in">
           <div className="bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2">
             <ShoppingCart className="h-4 w-4" />
             <p>Item added to cart successfully!</p>
+          </div>
+        </div>
+      )} */}
+   {/* Cart Notification */}
+   {showCartNotification && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 transition-all duration-300 ease-in-out animate-notification">
+          <div className="bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex flex-col items-center space-y-4">
+            {/* Lottie animation for cart notification (bigger) */}
+            <Lottie animationData={cartAnimation} loop={false} className="h-24 w-24" />
+            <p className="text-xl">Item added to cart successfully!</p>
           </div>
         </div>
       )}
@@ -575,6 +586,8 @@ export default Product;
 
 
 
+
+// // without lottie
 // // src/pages/Product.js
 // import React, { useState, useEffect,  useCallback } from 'react';
 // import { ChevronLeft, ChevronRight, Search, ShoppingCart } from 'lucide-react';
@@ -672,8 +685,9 @@ export default Product;
 //   const [categories, setCategories] = useState([]);
 //   const [products, setProducts] = useState([]);
 //   const [selectedCategory, setSelectedCategory] = useState(null);
-//   const [searchTerm, setSearchTerm] = useState('');
-//   const [loading, setLoading] = useState(true);
+//   const [mainSearchTerm, setMainSearchTerm] = useState('');
+//   const [bagSearchTerm, setBagSearchTerm] = useState('');
+//   const [boxSearchTerm, setBoxSearchTerm] = useState('');  const [loading, setLoading] = useState(true);
 //   const [showCartNotification, setShowCartNotification] = useState(false);
 //   const { addToCart } = useCart();
 
@@ -741,29 +755,34 @@ export default Product;
 //     window.location.href = `/customize/${productId}`;
 //   };
 
-//   const filteredBagCategories = categories.filter(cat => 
+//   const filteredCategories = categories.filter(category =>
+//     category.name.toLowerCase().includes(mainSearchTerm.toLowerCase())
+//   );
+
+//   const filteredBagCategories = filteredCategories.filter(cat => 
 //     cat.name.toLowerCase().includes('bag')
 //   );
 
-//   const filteredBoxCategories = categories.filter(cat => 
+//   const filteredBoxCategories = filteredCategories.filter(cat => 
 //     cat.name.toLowerCase().includes('box')
 //   );
 
 //   const filteredProducts = selectedCategory
-//     ? products.filter(product => product.category._id === selectedCategory)
-//     : products;
+//   ? products.filter(product => 
+//       product.category._id === selectedCategory &&
+//       (product.name.toLowerCase().includes(mainSearchTerm.toLowerCase()) ||
+//        product.description.toLowerCase().includes(mainSearchTerm.toLowerCase()))
+//     )
+//   : products.filter(product =>
+//       product.name.toLowerCase().includes(mainSearchTerm.toLowerCase()) ||
+//       product.description.toLowerCase().includes(mainSearchTerm.toLowerCase())
+//     );
 
-//   const searchFilteredProducts = filteredProducts.filter(product =>
-//     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//     product.description.toLowerCase().includes(searchTerm.toLowerCase())
-//   );
-
-//   const getProductsByCategory = (categoryId) => {
+//   const getProductsByCategory = (categoryId, searchTerm = '') => {
 //     return products.filter(product => 
-//       product.category?._id === categoryId
-//     ).filter(product =>
-//       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//       product.description.toLowerCase().includes(searchTerm.toLowerCase())
+//       product.category?._id === categoryId &&
+//       (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+//         product.description.toLowerCase().includes(searchTerm.toLowerCase()))
 //     );
 //   };
 
@@ -811,36 +830,50 @@ export default Product;
 
 
 //       <div className="max-w-7xl mx-auto px-4 py-8">
-//         {/* Search Bar - remains exactly the same */}
+//         {/* Main Search Bar */}
 //         <div className="mb-12">
-//           <div className="max-w-xl mx-auto relative">
-//             <input
-//               type="text"
-//               placeholder="Search products..."
-//               value={searchTerm}
-//               onChange={(e) => setSearchTerm(e.target.value)}
-//               className="w-full px-4 py-3 pl-12 rounded-full border-2 border-blue-500 focus:outline-none focus:border-blue-600"
-//             />
-//             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+//           <div className="max-w-3xl mx-auto">
+//             <div className="relative">
+//               <input
+//                 type="text"
+//                 placeholder="Search between all categories..."
+//                 value={mainSearchTerm}
+//                 onChange={(e) => setMainSearchTerm(e.target.value)}
+//                 className="w-full px-4 py-4 pl-12 rounded-xl border-2 border-blue-500 focus:outline-none focus:border-blue-600 text-lg"
+//               />
+//               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={24} />
+//             </div>
 //           </div>
 //         </div>
 
-//         {/* Bags Section */}
-//         <div className="mb-16">
-//           <h2 className="text-3xl font-bold text-gray-900 mb-6">Shopping Bags</h2>
+//            {/* Bags Section */}
+//            <div className="mb-16">
+//           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+//             <h2 className="text-3xl font-bold text-gray-900">Shopping Bags</h2>
+//             <div className="relative w-full md:w-64">
+//               <input
+//                 type="text"
+//                 placeholder="Search bags..."
+//                 value={bagSearchTerm}
+//                 onChange={(e) => setBagSearchTerm(e.target.value)}
+//                 className="w-full px-4 py-2 pl-10 rounded-full border-2 border-blue-500 focus:outline-none focus:border-blue-600"
+//               />
+//               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+//             </div>
+//           </div>
           
 //           {/* Categories Slider */}
-//           <div className="relative mb-8">
+//           <div className="relative mb-12">
 //             <button
 //               onClick={() => scroll('left', bagSliderRef)}
 //               className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
 //             >
-//               <ChevronLeft size={24} />
+//               <ChevronLeft size={32} />
 //             </button>
             
 //             <div 
 //               ref={bagSliderRef}
-//               className="flex overflow-x-auto hide-scrollbar gap-8 px-12"
+//               className="flex overflow-x-auto hide-scrollbar gap-12 px-16 py-4"
 //               style={{paddingTop: 15+'px'}}
 //             >
 //               {filteredBagCategories.map((category) => (
@@ -851,7 +884,7 @@ export default Product;
 //                     selectedCategory === category._id ? 'scale-105' : ''
 //                   }`}
 //                 >
-//                   <div className={`w-32 h-32 rounded-full overflow-hidden border-4 mb-3 ${
+//                   <div className={`w-48 h-48 rounded-full overflow-hidden border-4 mb-4 ${
 //                     selectedCategory === category._id ? 'border-amber-500' : 'border-blue-500'
 //                   }`}>
 //                     <LazyImage
@@ -860,7 +893,7 @@ export default Product;
 //                       className="w-full h-full object-cover"
 //                     />
 //                   </div>
-//                   <p className="text-center font-medium text-gray-800" style={{maxWidth:120+'px'}}>{category.name}</p>
+//                   <p className="text-center font-medium text-gray-800 text-lg max-w-[180px] mx-auto">{category.name}</p>
 //                 </div>
 //               ))}
 //             </div>
@@ -869,15 +902,14 @@ export default Product;
 //               onClick={() => scroll('right', bagSliderRef)}
 //               className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
 //             >
-//               <ChevronRight size={24} />
+//               <ChevronRight size={32} />
 //             </button>
 //           </div>
 
 //           {/* Products Grid for Selected Bag Category */}
 //           {selectedCategory && filteredBagCategories.some(cat => cat._id === selectedCategory) && (
-//             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8"
-//             style={{marginLeft:30+'px',marginRight:30+'px'}}>
-//               {getProductsByCategory(selectedCategory).map((product) => (
+//             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8 mx-8">
+//               {getProductsByCategory(selectedCategory, bagSearchTerm).map((product) => (
 //                 <div 
 //                   key={product._id}
 //                   className="bg-white rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105"
@@ -951,22 +983,34 @@ export default Product;
 //           )}
 //         </div>
 
-//         {/* Boxes Section */}
-//         <div className="mb-16">
-//           <h2 className="text-3xl font-bold text-gray-900 mb-6">Packaging Boxes</h2>
+//        {/* Boxes Section */}
+//        <div className="mb-16">
+//           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+//             <h2 className="text-3xl font-bold text-gray-900">Packaging Boxes</h2>
+//             <div className="relative w-full md:w-64">
+//               <input
+//                 type="text"
+//                 placeholder="Search boxes..."
+//                 value={boxSearchTerm}
+//                 onChange={(e) => setBoxSearchTerm(e.target.value)}
+//                 className="w-full px-4 py-2 pl-10 rounded-full border-2 border-blue-500 focus:outline-none focus:border-blue-600"
+//               />
+//               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+//             </div>
+//           </div>
           
 //           {/* Categories Slider */}
-//           <div className="relative mb-8">
+//           <div className="relative mb-12">
 //             <button
 //               onClick={() => scroll('left', boxSliderRef)}
 //               className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
 //             >
-//               <ChevronLeft size={24} />
+//               <ChevronLeft size={32} />
 //             </button>
             
 //             <div 
 //               ref={boxSliderRef}
-//               className="flex overflow-x-auto hide-scrollbar gap-8 px-12"
+//               className="flex overflow-x-auto hide-scrollbar gap-12 px-16 py-4"
 //               style={{paddingTop: 15+'px'}}
 //             >
 //               {filteredBoxCategories.map((category) => (
@@ -977,7 +1021,7 @@ export default Product;
 //                     selectedCategory === category._id ? 'scale-105' : ''
 //                   }`}
 //                 >
-//                   <div className={`w-32 h-32 rounded-full overflow-hidden border-4 mb-3 ${
+//                   <div className={`w-48 h-48 rounded-full overflow-hidden border-4 mb-4 ${
 //                     selectedCategory === category._id ? 'border-amber-500' : 'border-blue-500'
 //                   }`}>
 //                     <LazyImage
@@ -995,16 +1039,15 @@ export default Product;
 //               onClick={() => scroll('right', boxSliderRef)}
 //               className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
 //             >
-//               <ChevronRight size={24} />
+//               <ChevronRight size={32} />
 //             </button>
 //           </div>
 
 //           {/* Products Grid for Selected Box Category */}
 //           {selectedCategory && filteredBoxCategories.some(cat => cat._id === selectedCategory) && (
-//             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8" 
-//             style={{marginLeft:20+'px',marginRight:20+'px'}}>
-//               {getProductsByCategory(selectedCategory).map((product) => (
-//                 <div 
+//             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8 mx-8">
+//               {getProductsByCategory(selectedCategory, boxSearchTerm).map((product) => (
+//                     <div 
 //                   key={product._id}
 //                   className="bg-white rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105"
 //                 >
@@ -1114,3 +1157,7 @@ export default Product;
 // };
 
 // export default Product;
+
+
+
+

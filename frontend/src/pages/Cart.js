@@ -301,7 +301,20 @@ const Cart = () => {
           </div>
         </div>
 
-        <Elements stripe={stripePromise}>
+        {/* <Elements stripe={stripePromise}>
+          <CheckoutForm 
+            selectedItems={selectedItems} 
+            quantities={quantities} 
+            total={total} 
+            coupon={appliedCoupon}
+          />
+        </Elements> */}
+         <Elements stripe={stripePromise} options={{
+          locale: 'en',
+          appearance: {
+            theme: 'stripe'
+          }
+        }}>
           <CheckoutForm 
             selectedItems={selectedItems} 
             quantities={quantities} 
@@ -332,165 +345,165 @@ const Cart = () => {
 
           <div className="space-y-4 mb-8">
            {cart.map((item, index) => (
-  <div key={index} className="bg-white rounded-lg shadow-md p-4">
-    <div className="flex flex-col lg:flex-row w-full"> {/* Changed to flex-col for mobile */}
-      <div className="flex items-start space-x-4 flex-1">
-        <Checkbox
-          checked={selectedItems.has(index)}
-          onCheckedChange={() => toggleItem(index)}
-          className="mt-2"
-        />
-        
-        {/* Image Section */}
-        <div className="w-full lg:w-1/3">
-          <img
-            src={item.customization?.preview || item.product?.images?.[0]?.data || item.customization?.customFields?.find(field => field.type === 'image')?.content}
-            alt={item.product?.name}
-            className="w-full h-48 object-contain rounded-lg"
-            onError={(e) => {
-              console.error('Image preview failed:', {
-                preview: item.customization?.preview,
-                customFields: item.customization?.customFields
-              });
-            }}
-          />
-        </div>
-
-        {/* Product Details Section */}
-        <div className="flex-1 space-y-4">
-          <h3 className="text-lg font-bold">{item.product?.name}</h3>
-          
-          {/* Quantity Controls */}
-          <div className="flex items-center space-x-2">
-            <button 
-              onClick={() => updateQuantity(index, quantities[index] - 1)}
-              className="px-2 py-1 border rounded"
-            >
-              -
-            </button>
-            <input
-              type="number"
-              value={quantities[index]}
-              onChange={(e) => updateQuantity(index, parseInt(e.target.value))}
-              className="w-16 text-center border rounded"
-              min={item.product?.minimumOrder || 1}
-              max="10000"
-            />
-            <button 
-              onClick={() => updateQuantity(index, quantities[index] + 1)}
-              className="px-2 py-1 border rounded"
-            >
-              +
-            </button>
-          </div>
-         
-          {item.product?.minimumOrder > 1 && (
-            <div>
-              Minimum order: {item.product.minimumOrder} units
-            </div>
-          )}
-          {/* Order Description */}
-          <div className="text-gray-800">
-            <p className="font-medium">Order Description:</p>
-            <p>{item.customization?.description || 'No Special Instruction'}</p>
-          </div>
-
-          {/* Customization Details Toggle */}
-          <button
-            onClick={() => toggleDetails(index)}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-          >
-            {expandedDetails.has(index) ? 'Hide Customization Details' : 'Show Customization Details'}
-          </button>
-
-          {/* Expanded Customization Details */}
-          {expandedDetails.has(index) && (
-            <div className="space-y-3">
-              {item.customization?.template && (
-                <p className="text-sm text-gray-600">
-                  Template Customization: {item.customization.template.name}
-                </p>
-              )}
-
-              {/* Required Fields */}
-              {item.customization?.requiredFields?.map((field, fieldIndex) => (
-                <div key={fieldIndex}>
-                  <p className="text-sm font-medium">{field.type}:</p>
-                  {field.type === 'text' ? (
-                    <p className="text-sm text-gray-600">{field.value}</p>
-                  ) : (
-                    <img 
-                      src={field.value} 
-                      alt={`${field.type} upload`}
-                      className="w-20 h-20 object-contain border rounded"
+            <div key={index} className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex flex-col lg:flex-row w-full"> {/* Changed to flex-col for mobile */}
+                <div className="flex items-start space-x-4 flex-1">
+                  <Checkbox
+                    checked={selectedItems.has(index)}
+                    onCheckedChange={() => toggleItem(index)}
+                    className="mt-2"
+                  />
+                  
+                  {/* Image Section */}
+                  <div className="w-full lg:w-1/3">
+                    <img
+                      src={item.customization?.preview || item.product?.images?.[0]?.data || item.customization?.customFields?.find(field => field.type === 'image')?.content}
+                      alt={item.product?.name}
+                      className="w-full h-48 object-contain rounded-lg"
+                      onError={(e) => {
+                        console.error('Image preview failed:', {
+                          preview: item.customization?.preview,
+                          customFields: item.customization?.customFields
+                        });
+                      }}
                     />
-                  )}
-                </div>
-              ))}
+                  </div>
 
-              {/* Custom Fields */}
-              {item.customization?.customFields?.map((field, fieldIndex) => (
-                <div key={fieldIndex}>
-                  <p className="text-sm font-medium">Custom {field.type}:</p>
-                  {field.type === 'text' ? (
-                    <p className="text-sm text-gray-600">{field.content}</p>
-                  ) : (
-                    <img 
-                      src={field.content} 
-                      alt="Custom upload"
-                      className="w-20 h-20 object-contain border rounded"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                  {/* Product Details Section */}
+                  <div className="flex-1 space-y-4">
+                    <h3 className="text-lg font-bold">{item.product?.name}</h3>
+                    
+                    {/* Quantity Controls */}
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        onClick={() => updateQuantity(index, quantities[index] - 1)}
+                        className="px-2 py-1 border rounded"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        value={quantities[index]}
+                        onChange={(e) => updateQuantity(index, parseInt(e.target.value))}
+                        className="w-16 text-center border rounded"
+                        min={item.product?.minimumOrder || 1}
+                        max="10000"
+                      />
+                      <button 
+                        onClick={() => updateQuantity(index, quantities[index] + 1)}
+                        className="px-2 py-1 border rounded"
+                      >
+                        +
+                      </button>
+                    </div>
+                  
+                    {item.product?.minimumOrder > 1 && (
+                      <div>
+                        Minimum order: {item.product.minimumOrder} units
+                      </div>
+                    )}
+                    {/* Order Description */}
+                    <div className="text-gray-800">
+                      <p className="font-medium">Order Description:</p>
+                      <p>{item.customization?.description || 'No Special Instruction'}</p>
+                    </div>
 
-        {/* Price and Remove Section */}
-        <div className="flex flex-col items-end space-y-2">
-          <button
-            onClick={() => removeFromCart(index)}
-            className="text-red-500 hover:text-red-700"
-          >
-            Remove
-          </button>
-          <div className="font-semibold text-right">
-            Price: ${calculateItemPrice(item, index)}
-            {item.product?.hasGST && <span className="text-sm">+ GST (5%)</span>}
-            {item.product?.hasPST && <span className="text-sm">+ PST (7%)</span>}
-          </div>
+                    {/* Customization Details Toggle */}
+                    <button
+                      onClick={() => toggleDetails(index)}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      {expandedDetails.has(index) ? 'Hide Customization Details' : 'Show Customization Details'}
+                    </button>
 
-                    {/* Stock Status & Minimum Order */}
-                    {!item.product?.inStock && (
-            <div className="text-red-600 font-medium">
-              This item is currently out of stock
-            </div>
-          )}
- 
-          {/* Price Tiers */}
-          {item.product?.pricingTiers?.length > 0 && (
-            <div>
-              <p className="font-medium text-sm">Quantity Pricing:</p>
-              {item.product.pricingTiers.map((tier, idx) => (
-                <p key={idx} className={`text-sm ${
-                  quantities[index] >= tier.minQuantity && 
-                  (!tier.maxQuantity || quantities[index] <= tier.maxQuantity)
-                    ? 'text-green-600 font-medium'
-                    : 'text-gray-600'
-                }`}>
-                  {tier.minQuantity}{tier.maxQuantity ? ` - ${tier.maxQuantity}` : '+'} units: 
-                  ${tier.price} each
-                </p>
-              ))}
-            </div>
-          )}
+                    {/* Expanded Customization Details */}
+                    {expandedDetails.has(index) && (
+                      <div className="space-y-3">
+                        {item.customization?.template && (
+                          <p className="text-sm text-gray-600">
+                            Template Customization: {item.customization.template.name}
+                          </p>
+                        )}
+
+                        {/* Required Fields */}
+                        {item.customization?.requiredFields?.map((field, fieldIndex) => (
+                          <div key={fieldIndex}>
+                            <p className="text-sm font-medium">{field.type}:</p>
+                            {field.type === 'text' ? (
+                              <p className="text-sm text-gray-600">{field.value}</p>
+                            ) : (
+                              <img 
+                                src={field.value} 
+                                alt={`${field.type} upload`}
+                                className="w-20 h-20 object-contain border rounded"
+                              />
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Custom Fields */}
+                        {item.customization?.customFields?.map((field, fieldIndex) => (
+                          <div key={fieldIndex}>
+                            <p className="text-sm font-medium">Custom {field.type}:</p>
+                            {field.type === 'text' ? (
+                              <p className="text-sm text-gray-600">{field.content}</p>
+                            ) : (
+                              <img 
+                                src={field.content} 
+                                alt="Custom upload"
+                                className="w-20 h-20 object-contain border rounded"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Price and Remove Section */}
+                  <div className="flex flex-col items-end space-y-2">
+                    <button
+                      onClick={() => removeFromCart(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                    <div className="font-semibold text-right">
+                      Price: ${calculateItemPrice(item, index)}
+                      {item.product?.hasGST && <span className="text-sm">+ GST (5%)</span>}
+                      {item.product?.hasPST && <span className="text-sm">+ PST (7%)</span>}
+                    </div>
+
+                              {/* Stock Status & Minimum Order */}
+                              {!item.product?.inStock && (
+                      <div className="text-red-600 font-medium">
+                        This item is currently out of stock
+                      </div>
+                    )}
           
-        </div>
-      </div>
-    </div>
-  </div>
-))}
+                    {/* Price Tiers */}
+                    {item.product?.pricingTiers?.length > 0 && (
+                      <div>
+                        <p className="font-medium text-sm">Quantity Pricing:</p>
+                        {item.product.pricingTiers.map((tier, idx) => (
+                          <p key={idx} className={`text-sm ${
+                            quantities[index] >= tier.minQuantity && 
+                            (!tier.maxQuantity || quantities[index] <= tier.maxQuantity)
+                              ? 'text-green-600 font-medium'
+                              : 'text-gray-600'
+                          }`}>
+                            {tier.minQuantity}{tier.maxQuantity ? ` - ${tier.maxQuantity}` : '+'} units: 
+                            ${tier.price} each
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
           </div>
 
           {selectedItems.size > 0 && (
@@ -522,9 +535,7 @@ export default Cart;
 
 
 
-
-
-
+// // work without stripe
 // // src/pages/Cart.js
 // import React, { useState, useEffect } from 'react'; 
 // import { useNavigate } from 'react-router-dom'; 
@@ -591,9 +602,25 @@ export default Cart;
 //   };
 
 //   const updateQuantity = async (index, newQuantity) => {
-//     if (newQuantity > 0 && newQuantity <= 100) {
+//     const item = cart[index];
+//     const minOrder = item.product.minimumOrder || 1;
+  
+//     // Check minimum order quantity
+//     if (newQuantity < minOrder) {
+//       setCouponError(`Minimum order quantity for ${item.product.name} is ${minOrder}`);
+//       return;
+//     }
+  
+//     // Check stock status
+//     if (!item.product.inStock) {
+//       setCouponError(`${item.product.name} is currently out of stock`);
+//       return;
+//     }
+  
+//     if (newQuantity > 0 && newQuantity <= 10000) {
 //       setQuantities({ ...quantities, [index]: newQuantity });
 //       await updateCartItem(index, { quantity: newQuantity });
+//       setCouponError(null);
 //     }
 //   };
 
@@ -641,41 +668,76 @@ export default Cart;
 //     setCouponError(null);
 //   };
 
+
+//   const calculateItemPrice = (item, index) => {
+//     const qty = quantities[index];
+    
+//     // Calculate unit price based on price tiers
+//     let unitPrice = item.product.basePrice;
+//     if (item.product.pricingTiers?.length > 0) {
+//       const applicableTier = item.product.pricingTiers
+//         .sort((a, b) => b.minQuantity - a.minQuantity)
+//         .find(tier => qty >= tier.minQuantity && 
+//           (!tier.maxQuantity || qty <= tier.maxQuantity));
+      
+//       if (applicableTier) {
+//         unitPrice = applicableTier.price;
+//       }
+//     }
+    
+//     return (unitPrice * qty).toFixed(2);
+//   };
+
 //   // Tax calculation function with coupon integration
 //   // Filter out invalid cart indices before calculations
-// const calculateTaxAndTotal = () => {
-//   // Get valid selected indices that exist in cart
-//   const validSelectedItems = Array.from(selectedItems).filter(index => index < cart.length);
+//   const calculateTaxAndTotal = () => {
+//     const validSelectedItems = Array.from(selectedItems).filter(index => index < cart.length);
+    
+//     const itemTotals = validSelectedItems.map(index => {
+//       const item = cart[index];
+//       const qty = quantities[index];
+      
+//       // Calculate unit price based on price tiers
+//       let unitPrice = item.product.basePrice;
+//       if (item.product.pricingTiers?.length > 0) {
+//         const applicableTier = item.product.pricingTiers
+//           .sort((a, b) => b.minQuantity - a.minQuantity)
+//           .find(tier => qty >= tier.minQuantity && 
+//             (!tier.maxQuantity || qty <= tier.maxQuantity));
+        
+//         if (applicableTier) {
+//           unitPrice = applicableTier.price;
+//         }
+//       }
+      
+//       return {
+//         subtotal: unitPrice * qty,
+//         hasGST: item.product.hasGST,
+//         hasPST: item.product.hasPST
+//       };
+//     });
   
-//   const subtotal = validSelectedItems.reduce((sum, index) => {
-//     const item = cart[index];
-//     const itemTotal = item.product.basePrice * quantities[index];
-//     return sum + itemTotal;
-//   }, 0);
-
-//   const gstTotal = validSelectedItems.reduce((sum, index) => {
-//     const item = cart[index];
-//     return item.product.hasGST ? sum + (subtotal * 0.05) : sum;
-//   }, 0);
-
-//   const pstTotal = validSelectedItems.reduce((sum, index) => {
-//     const item = cart[index];
-//     return item.product.hasPST ? sum + (subtotal * 0.07) : sum;
-//   }, 0);
-
-//   // Apply coupon discount if available
-//   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
-//   const discountedSubtotal = subtotal - discountAmount;
-
-//   return {
-//     subtotal,
-//     discountAmount,
-//     discountedSubtotal,
-//     gstTotal,
-//     pstTotal,
-//     total: discountedSubtotal + gstTotal + pstTotal
+  
+    
+//     const subtotal = itemTotals.reduce((sum, item) => sum + item.subtotal, 0);
+//     const gstTotal = itemTotals.reduce((sum, item) => 
+//       item.hasGST ? sum + (item.subtotal * 0.05) : sum, 0);
+//     const pstTotal = itemTotals.reduce((sum, item) => 
+//       item.hasPST ? sum + (item.subtotal * 0.07) : sum, 0);
+  
+//     const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+//     const discountedSubtotal = subtotal - discountAmount;
+  
+//     return {
+//       subtotal,
+//       discountAmount,
+//       discountedSubtotal,
+//       gstTotal,
+//       pstTotal,
+//       total: discountedSubtotal + gstTotal + pstTotal
+//     };
 //   };
-// };
+  
 
 //   const renderPaymentMethod = () => {
 //     const { subtotal, discountAmount, discountedSubtotal, gstTotal, pstTotal, total } = calculateTaxAndTotal();
@@ -805,20 +867,21 @@ export default Cart;
 //           </div>
 
 //           <div className="space-y-4 mb-8">
-//             {cart.map((item, index) => (
-//               <div key={index} className="bg-white rounded-lg shadow-md p-4">
-//                 <div className="flex items-start space-x-4">
+//            {cart.map((item, index) => (
+//             <div key={index} className="bg-white rounded-lg shadow-md p-4">
+//               <div className="flex flex-col lg:flex-row w-full"> {/* Changed to flex-col for mobile */}
+//                 <div className="flex items-start space-x-4 flex-1">
 //                   <Checkbox
 //                     checked={selectedItems.has(index)}
 //                     onCheckedChange={() => toggleItem(index)}
 //                     className="mt-2"
 //                   />
                   
-//                   <div className="w-1/3">
+//                   {/* Image Section */}
+//                   <div className="w-full lg:w-1/3">
 //                     <img
-//             //        src={item.customization?.preview || item.product.images?.[0]?.data}
-//                       src={item.customization?.preview || item.product.images?.[0]?.data || item.customization?.customFields?.find(field => field.type === 'image')?.content}
-//                       alt={item.product.name}
+//                       src={item.customization?.preview || item.product?.images?.[0]?.data || item.customization?.customFields?.find(field => field.type === 'image')?.content}
+//                       alt={item.product?.name}
 //                       className="w-full h-48 object-contain rounded-lg"
 //                       onError={(e) => {
 //                         console.error('Image preview failed:', {
@@ -828,10 +891,13 @@ export default Cart;
 //                       }}
 //                     />
 //                   </div>
-//                   <div className="flex-1" style={{maxWidth:400+'px', overflow:'hidden'}}>
-//                     <h3 className="text-lg font-bold">{item.product.name}</h3>
+
+//                   {/* Product Details Section */}
+//                   <div className="flex-1 space-y-4">
+//                     <h3 className="text-lg font-bold">{item.product?.name}</h3>
                     
-//                     <div className="flex items-center space-x-2 my-2">
+//                     {/* Quantity Controls */}
+//                     <div className="flex items-center space-x-2">
 //                       <button 
 //                         onClick={() => updateQuantity(index, quantities[index] - 1)}
 //                         className="px-2 py-1 border rounded"
@@ -843,8 +909,8 @@ export default Cart;
 //                         value={quantities[index]}
 //                         onChange={(e) => updateQuantity(index, parseInt(e.target.value))}
 //                         className="w-16 text-center border rounded"
-//                         min="1"
-//                         max="100"
+//                         min={item.product?.minimumOrder || 1}
+//                         max="10000"
 //                       />
 //                       <button 
 //                         onClick={() => updateQuantity(index, quantities[index] + 1)}
@@ -853,34 +919,38 @@ export default Cart;
 //                         +
 //                       </button>
 //                     </div>
+                  
+//                     {item.product?.minimumOrder > 1 && (
+//                       <div>
+//                         Minimum order: {item.product.minimumOrder} units
+//                       </div>
+//                     )}
+//                     {/* Order Description */}
+//                     <div className="text-gray-800">
+//                       <p className="font-medium">Order Description:</p>
+//                       <p>{item.customization?.description || 'No Special Instruction'}</p>
+//                     </div>
 
-//                     <div className="block text-gray-800">
-//                       <p
-//                       style={{paddingTop:20+'px'}}
-//                       >
-//                         <span className="font-medium">Order Description:</span><br/>                      
-//                         {item.customization?.description || 'No Special Instruction '}
-//                       </p>
-//                     </div>          
-          
+//                     {/* Customization Details Toggle */}
 //                     <button
 //                       onClick={() => toggleDetails(index)}
-//                       className="text-blue-600 hover:text-blue-800 text-sm font-medium mb-2"
-//                       style={{paddingTop:20+'px'}}
+//                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
 //                     >
 //                       {expandedDetails.has(index) ? 'Hide Customization Details' : 'Show Customization Details'}
 //                     </button>
 
+//                     {/* Expanded Customization Details */}
 //                     {expandedDetails.has(index) && (
-//                       <div className="mt-2 space-y-3">
+//                       <div className="space-y-3">
 //                         {item.customization?.template && (
 //                           <p className="text-sm text-gray-600">
 //                             Template Customization: {item.customization.template.name}
 //                           </p>
 //                         )}
 
+//                         {/* Required Fields */}
 //                         {item.customization?.requiredFields?.map((field, fieldIndex) => (
-//                           <div key={fieldIndex} className="mt-2">
+//                           <div key={fieldIndex}>
 //                             <p className="text-sm font-medium">{field.type}:</p>
 //                             {field.type === 'text' ? (
 //                               <p className="text-sm text-gray-600">{field.value}</p>
@@ -894,8 +964,9 @@ export default Cart;
 //                           </div>
 //                         ))}
 
+//                         {/* Custom Fields */}
 //                         {item.customization?.customFields?.map((field, fieldIndex) => (
-//                           <div key={fieldIndex} className="mt-2">
+//                           <div key={fieldIndex}>
 //                             <p className="text-sm font-medium">Custom {field.type}:</p>
 //                             {field.type === 'text' ? (
 //                               <p className="text-sm text-gray-600">{field.content}</p>
@@ -912,24 +983,50 @@ export default Cart;
 //                     )}
 //                   </div>
 
-//                   <div className="mt-4" style={{marginRight:20+'px',maxWidth:200+'px'}}>
+//                   {/* Price and Remove Section */}
+//                   <div className="flex flex-col items-end space-y-2">
 //                     <button
 //                       onClick={() => removeFromCart(index)}
 //                       className="text-red-500 hover:text-red-700"
-//                       style={{paddingBottom:20+'px'}}
 //                     >
 //                       Remove
 //                     </button>
-//                     <div className="block font-semibold mb-2">
-//                       Price: ${(item.product.basePrice * quantities[index]).toFixed(2)}
-//                       {item.product.hasGST && <span className="mr-2">+ GST (5%)</span>}
-//                       {item.product.hasPST && <span>+ PST (7%)</span>}
-//                     </div>                   
+//                     <div className="font-semibold text-right">
+//                       Price: ${calculateItemPrice(item, index)}
+//                       {item.product?.hasGST && <span className="text-sm">+ GST (5%)</span>}
+//                       {item.product?.hasPST && <span className="text-sm">+ PST (7%)</span>}
+//                     </div>
+
+//                               {/* Stock Status & Minimum Order */}
+//                               {!item.product?.inStock && (
+//                       <div className="text-red-600 font-medium">
+//                         This item is currently out of stock
+//                       </div>
+//                     )}
+          
+//                     {/* Price Tiers */}
+//                     {item.product?.pricingTiers?.length > 0 && (
+//                       <div>
+//                         <p className="font-medium text-sm">Quantity Pricing:</p>
+//                         {item.product.pricingTiers.map((tier, idx) => (
+//                           <p key={idx} className={`text-sm ${
+//                             quantities[index] >= tier.minQuantity && 
+//                             (!tier.maxQuantity || quantities[index] <= tier.maxQuantity)
+//                               ? 'text-green-600 font-medium'
+//                               : 'text-gray-600'
+//                           }`}>
+//                             {tier.minQuantity}{tier.maxQuantity ? ` - ${tier.maxQuantity}` : '+'} units: 
+//                             ${tier.price} each
+//                           </p>
+//                         ))}
+//                       </div>
+//                     )}
+                    
 //                   </div>
-                   
 //                 </div>
 //               </div>
-//             ))}
+//             </div>
+//           ))}
 //           </div>
 
 //           {selectedItems.size > 0 && (
@@ -944,6 +1041,10 @@ export default Cart;
 //             </div>
 //           )}
      
+
+
+
+
 //         </>
 //       )}
 //     </div>

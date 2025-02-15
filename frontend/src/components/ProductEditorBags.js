@@ -21,6 +21,7 @@ const ProductEditorBags = () => {
   const [categoryTemplates, setCategoryTemplates] = useState([]);
   const [selectedProductImage, setSelectedProductImage] = useState(0);
   const [currentUnitPrice, setCurrentUnitPrice] = useState(0);
+  const [fullImagePath,setFullImagePath] = useState(null);
 
   // Template field states
   const [requiredFields, setRequiredFields] = useState([]);
@@ -278,6 +279,7 @@ const handleObjectSelected = (event) => {
       ...prev,
       [obj.data.id]: {
         type: obj.data.type || 'text',
+        imageUrl: obj.data?.originalFilePath || null, // Include the image URL
         content: obj.type === 'i-text' || obj.type === 'text' ? obj.text : null,
         image: obj.type === 'image' ? obj.toDataURL() : null,
         properties: {
@@ -375,13 +377,119 @@ const handleObjectSelected = (event) => {
     updateCanvasVersion();
   };
 
-  const handleCustomImage = (e) => {
-    const file = e.target.files[0];
-    if (!file || !canvas) return;
+  // const handleCustomImage = (e) => {
+  //   const file = e.target.files[0];
+  //   if (!file || !canvas) return;
   
+
+  //    // Create FormData for full–size image upload
+  //    const fullImageData = new FormData();
+  //    fullImageData.append("image", file);
+   
+  //    axios.post('/api/upload-image', fullImageData, {
+  //      headers: { 
+  //        "Content-Type": "multipart/form-data",
+  //        "Authorization": `Bearer ${localStorage.getItem("token")}`
+  //      }
+  //    })
+  //    .then(res => {
+  //      let fullImagePath = res.data.filePath; // e.g., "/upload/161234567890_custom-image.png"
+  //      console.log(fullImagePath);
+
+  //   const reader = new FileReader();
+  //   reader.onload = (event) => {
+  //     fabric.Image.fromURL(event.target.result, (img) => {
+
+  //         // Store the file path in the object’s data so we can later use it in the cart
+  //         img.data = {
+  //           ...img.data,
+  //           type: 'custom-image',
+  //           id: `custom_${Date.now()}`,
+  //           originalFilePath: fullImagePath,
+  //         };
+
+  //       img.scaleToWidth(200);
+  //       img.set({
+  //         left: canvas.width / 2,
+  //         top: canvas.height / 2,
+  //         originX: 'center',
+  //         originY: 'center',
+  //         cornerSize: 12,
+  //         cornerColor: '#ffffff',
+  //         cornerStrokeColor: '#333333',
+  //         transparentCorners: false,
+  //         cornerStyle: 'circle',
+  //        // data: { type: 'custom-image', id: `custom_${Date.now()}` }
+  //        data: { 
+  //         type: 'custom-image', 
+  //         id: `custom_${Date.now()}`,
+  //         originalFilePath: fullImagePath // Store the path in the fabric object's data
+  //       }
+  //       });
+  
+  //       canvas.add(img);
+  //       canvas.setActiveObject(img);
+  //       canvas.renderAll();
+  //       handleObjectModified({ target: img });
+  //       updateCanvasVersion();
+  //         // Also generate and upload the thumbnail (if needed)
+  //         canvas.lowerCanvasEl.toBlob((blob) => {
+  //           const thumbData = new FormData();
+  //           thumbData.append("thumbnail", blob, `thumb_${file.name}`);
+  //           axios.post('/api/upload-thumbnail', thumbData, {
+  //             headers: { 
+  //               "Content-Type": "multipart/form-data",
+  //               "Authorization": `Bearer ${localStorage.getItem("token")}`
+  //             }
+  //           })
+  //           .then(res2 => {
+  //             const thumbPath = res2.data.filePath;
+  //             // Save the thumbnail file path as well
+  //             img.data.thumbnailPath = thumbPath;
+  //           })
+  //           .catch(err => {
+  //             console.error("Thumbnail upload failed:", err);
+  //           });
+  //         }, "image/png");
+  //       });
+  //     };
+  //     reader.readAsDataURL(file);
+  //   })
+  //   .catch(err => {
+  //     console.error("Full image upload failed:", err);
+  //   });
+  // };
+// Replace the handleCustomImage function in ProductEditorBags.js
+const handleCustomImage = async (e) => {
+  const file = e.target.files[0];
+  if (!file || !canvas) return;
+
+  try {
+    // Create form data for upload
+    const formData = new FormData();
+    formData.append("image", file);
+
+    // Upload image without requiring authentication
+    const response = await axios.post('/api/upload-image', formData, {
+      headers: { 
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    const { filePath } = response.data;
+
+    // Create preview and add to canvas
     const reader = new FileReader();
     reader.onload = (event) => {
       fabric.Image.fromURL(event.target.result, (img) => {
+        // Store the file path in the object's data
+        img.data = {
+          type: 'custom-image',
+          id: `custom_${Date.now()}`,
+          originalFilePath: filePath,
+        };
+
+        // Scale and position the image
         img.scaleToWidth(200);
         img.set({
           left: canvas.width / 2,
@@ -392,19 +500,42 @@ const handleObjectSelected = (event) => {
           cornerColor: '#ffffff',
           cornerStrokeColor: '#333333',
           transparentCorners: false,
-          cornerStyle: 'circle',
-          data: { type: 'custom-image', id: `custom_${Date.now()}` }
+          cornerStyle: 'circle'
         });
-  
+
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.renderAll();
         handleObjectModified({ target: img });
         updateCanvasVersion();
+
+        // Generate thumbnail if needed
+        canvas.lowerCanvasEl.toBlob((blob) => {
+          const thumbData = new FormData();
+          thumbData.append("thumbnail", blob, `thumb_${file.name}`);
+          
+          axios.post('/api/upload-thumbnail', thumbData, {
+            headers: { 
+              'Content-Type': 'multipart/form-data'
+            }
+          })
+          .then(res2 => {
+            const thumbPath = res2.data.filePath;
+            img.data.thumbnailPath = thumbPath;
+          })
+          .catch(err => {
+            console.error("Thumbnail upload failed:", err);
+            // Continue even if thumbnail fails
+          });
+        }, "image/png");
       });
     };
     reader.readAsDataURL(file);
-  };
+  } catch (error) {
+    console.error("Image upload failed:", error);
+    alert('Failed to upload image. Please try again.');
+  }
+};
 
   const updateSelectedObject = () => {
     if (!canvas || !selectedObject) return;
@@ -451,17 +582,17 @@ const handleObjectSelected = (event) => {
     if (!selectedProduct || !canvas) return;
   
 
-  if (!selectedProduct.inStock) {
-    alert('This product is currently out of stock');
-    return;
-  }
+      if (!selectedProduct.inStock) {
+        alert('This product is currently out of stock');
+        return;
+      }
 
-  if (quantity < (selectedProduct.minimumOrder || 1)) {
-    alert(`Minimum order quantity is ${selectedProduct.minimumOrder}`);
-    return;
-  }
+      if (quantity < (selectedProduct.minimumOrder || 1)) {
+        alert(`Minimum order quantity is ${selectedProduct.minimumOrder}`);
+        return;
+      }
 
-    try {
+      try {
       // Get all custom elements
       const customElements = canvas.getObjects().filter(obj => 
         obj !== canvas.backgroundImage
@@ -484,6 +615,7 @@ const handleObjectSelected = (event) => {
           return {
             fieldId: obj.data?.id || `custom_${Date.now()}`,
             type: 'image',
+            imageUrl: obj.data?.originalFilePath || fullImagePath || null, // Store the image URL
             content: obj.toDataURL('image/png'),
             properties: {
               fontSize: null,
@@ -527,6 +659,7 @@ const handleObjectSelected = (event) => {
         return {
           fieldId: obj.data?.id || `custom_${Date.now()}`,
           type: obj.type,
+          imageUrl: obj.data?.originalFilePath || fullImagePath || null,
           content: obj.toDataURL ? obj.toDataURL('image/png') : null,
           properties: {
             fontSize: null,
@@ -966,6 +1099,10 @@ export default ProductEditorBags;
 
 
 
+
+
+
+// // working without visitor
 // // src/components/ProductEditor.js
 // import React, { useEffect, useRef, useState } from "react";
 // import { fabric } from "fabric";
@@ -988,7 +1125,9 @@ export default ProductEditorBags;
 //   const [selectedTemplate, setSelectedTemplate] = useState(null);
 //   const [categoryTemplates, setCategoryTemplates] = useState([]);
 //   const [selectedProductImage, setSelectedProductImage] = useState(0);
-  
+//   const [currentUnitPrice, setCurrentUnitPrice] = useState(0);
+//   const [fullImagePath,setFullImagePath] = useState(null);
+
 //   // Template field states
 //   const [requiredFields, setRequiredFields] = useState([]);
 //   const [fieldInputs, setFieldInputs] = useState({});
@@ -1011,135 +1150,37 @@ export default ProductEditorBags;
 //     'Helvetica', 'Palatino', 'Garamond', 'Bookman', 'Tahoma'
 //   ];
 
-//   // useEffect(() => {
-//   //   const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-//   //     width: 500,
-//   //     height: 500,
-//   //     backgroundColor: '#ffffff'
-//   //   });
-     
-//   //   // Enable selection
-//   //   fabricCanvas.selection = true;
-//   //     // Add event listeners
-//   // fabricCanvas.on('mouse:down', function(opt) {
-//   //   const evt = opt.e;
-//   //   if (evt.altKey === true) {
-//   //     this.isDragging = true;
-//   //     this.selection = false;
-//   //     this.lastPosX = evt.clientX;
-//   //     this.lastPosY = evt.clientY;
-//   //   }
-//   // });
-
-//   //   // Make sure objects are selectable when added
-//   //   fabricCanvas.on('object:added', function(e) {
-//   //     const obj = e.target;
-//   //     obj.set({
-//   //       selectable: true,
-//   //       hasControls: true,
-//   //       hasBorders: true
-//   //     });
-//   //     updateCanvasVersion();
-//   //   });
-
-//   //   // Selection event handlers
-//   //   fabricCanvas.on('selection:created', function(e) {
-//   //     console.log('Selection created:', e.target);
-//   //     handleObjectSelected(e);
-//   //   });
-
-//   //   fabricCanvas.on('selection:updated', function(e) {
-//   //     console.log('Selection updated:', e.target);
-//   //     handleObjectSelected(e);
-//   //   });
-
-//   //   fabricCanvas.on('selection:cleared', function(e) {
-//   //     console.log('Selection cleared');
-//   //     handleSelectionCleared();
-//   //   });
-
-//   //   // Modification handlers
-//   //   fabricCanvas.on('object:modified', function(e) {
-//   //     handleObjectModified(e);
-//   //     updateCanvasVersion();
-//   //   });
-    
-//   //   // Add delete icon
-//   //   const deleteIcon = "data:image/svg+xml,%3Csvg height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='11' fill='white' stroke='red' stroke-width='2'/%3E%3Cpath d='M7 7 L17 17 M17 7 L7 17' stroke='red' stroke-width='2'/%3E%3C/svg%3E";
-//   //   const deleteImg = document.createElement('img');
-//   //   deleteImg.src = deleteIcon;
+//   const calculateUnitPrice = (qty) => {
+//     if (!selectedProduct?.pricingTiers?.length) {
+//       return selectedProduct?.basePrice || 0;
+//     }
   
-//   //   // Add delete control to fabric
-//   //   fabric.Object.prototype.controls.deleteControl = new fabric.Control({
-//   //     x: 0.5,
-//   //     y: -0.5,
-//   //     offsetY: -16,
-//   //     offsetX: 16,
-//   //     cursorStyle: 'pointer',
-//   //     mouseUpHandler: deleteObject,
-//   //     render: renderIcon,
-//   //     cornerSize: 24
-//   //   });
+//     const applicableTier = selectedProduct.pricingTiers
+//       .sort((a, b) => b.minQuantity - a.minQuantity)
+//       .find(tier => qty >= tier.minQuantity && 
+//         (!tier.maxQuantity || qty <= tier.maxQuantity));
   
-//   //   function renderIcon(ctx, left, top, styleOverride, fabricObject) {
-//   //     const size = this.cornerSize;
-//   //     ctx.save();
-//   //     ctx.translate(left, top);
-//   //     ctx.rotate(fabric.util.degreesToRadians(fabricObject.angle));
-//   //     ctx.drawImage(deleteImg, -size/2, -size/2, size, size);
-//   //     ctx.restore();
-//   //   }
+//     return applicableTier ? applicableTier.price : selectedProduct.basePrice;
+//   };
+
+//   const handleQuantityChange = (newQty) => {
+//     // Enforce minimum order
+//     const minOrder = selectedProduct?.minimumOrder || 1;
+//     if (newQty < minOrder) {
+//       alert(`Minimum order quantity is ${minOrder}`);
+//       newQty = minOrder;
+//     }
   
-//   //   function deleteObject(eventData, transform) {
-//   //     const target = transform.target;
-//   //     const canvas = target.canvas;
-      
-//   //     if (target.data?.required) {
-//   //       alert("Cannot delete required template elements");
-//   //       return false;
-//   //     }
-      
-//   //     if (target.data?.id) {
-//   //       setCustomizations(prev => {
-//   //         const newCustomizations = { ...prev };
-//   //         delete newCustomizations[target.data.id];
-//   //         return newCustomizations;
-//   //       });
-//   //     }
-      
-//   //     canvas.remove(target);
-//   //     canvas.requestRenderAll();
-//   //     handleSelectionCleared();
-//   //     updateCanvasVersion();
-//   //     return true;
-//   //   }
+//     // Check if product is in stock
+//     if (!selectedProduct?.inStock) {
+//       alert('This product is currently out of stock');
+//       return;
+//     }
   
-//   //   // Set up canvas event handlers with deletion support
-//   //   fabricCanvas.on('object:added', (e) => {
-//   //     const obj = e.target;
-//   //     if (!obj.data?.required) {
-//   //       obj.set({
-//   //         cornerSize: 12,
-//   //         cornerColor: '#ffffff',
-//   //         cornerStrokeColor: '#333333',
-//   //         transparentCorners: false,
-//   //         cornerStyle: 'circle'
-//   //       });
-//   //     }
-//   //     updateCanvasVersion();
-//   //   });
-  
-//   //   fabricCanvas.on('object:selected', handleObjectSelected);
-//   //   fabricCanvas.on('selection:cleared', handleSelectionCleared);
-//   //   fabricCanvas.on('object:modified', (e) => {
-//   //     handleObjectModified(e);
-//   //     updateCanvasVersion();
-//   //   });
-//   //   fabricCanvas.on('object:removed', updateCanvasVersion);
-    
-//   //   setCanvas(fabricCanvas);
-//   //   return () => fabricCanvas.dispose();
-//   // }, []);
+//     setQuantity(newQty);
+//     setCurrentUnitPrice(calculateUnitPrice(newQty));
+//   };
+
 //   useEffect(() => {
 //     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
 //       width: 500,
@@ -1343,6 +1384,7 @@ export default ProductEditorBags;
 //       ...prev,
 //       [obj.data.id]: {
 //         type: obj.data.type || 'text',
+//         imageUrl: obj.data?.originalFilePath || null, // Include the image URL
 //         content: obj.type === 'i-text' || obj.type === 'text' ? obj.text : null,
 //         image: obj.type === 'image' ? obj.toDataURL() : null,
 //         properties: {
@@ -1444,9 +1486,33 @@ export default ProductEditorBags;
 //     const file = e.target.files[0];
 //     if (!file || !canvas) return;
   
+
+//      // Create FormData for full–size image upload
+//      const fullImageData = new FormData();
+//      fullImageData.append("image", file);
+   
+//      axios.post('/api/upload-image', fullImageData, {
+//        headers: { 
+//          "Content-Type": "multipart/form-data",
+//          "Authorization": `Bearer ${localStorage.getItem("token")}`
+//        }
+//      })
+//      .then(res => {
+//        let fullImagePath = res.data.filePath; // e.g., "/upload/161234567890_custom-image.png"
+//        console.log(fullImagePath);
+
 //     const reader = new FileReader();
 //     reader.onload = (event) => {
 //       fabric.Image.fromURL(event.target.result, (img) => {
+
+//           // Store the file path in the object’s data so we can later use it in the cart
+//           img.data = {
+//             ...img.data,
+//             type: 'custom-image',
+//             id: `custom_${Date.now()}`,
+//             originalFilePath: fullImagePath,
+//           };
+
 //         img.scaleToWidth(200);
 //         img.set({
 //           left: canvas.width / 2,
@@ -1458,7 +1524,12 @@ export default ProductEditorBags;
 //           cornerStrokeColor: '#333333',
 //           transparentCorners: false,
 //           cornerStyle: 'circle',
-//           data: { type: 'custom-image', id: `custom_${Date.now()}` }
+//          // data: { type: 'custom-image', id: `custom_${Date.now()}` }
+//          data: { 
+//           type: 'custom-image', 
+//           id: `custom_${Date.now()}`,
+//           originalFilePath: fullImagePath // Store the path in the fabric object's data
+//         }
 //         });
   
 //         canvas.add(img);
@@ -1466,9 +1537,32 @@ export default ProductEditorBags;
 //         canvas.renderAll();
 //         handleObjectModified({ target: img });
 //         updateCanvasVersion();
-//       });
-//     };
-//     reader.readAsDataURL(file);
+//           // Also generate and upload the thumbnail (if needed)
+//           canvas.lowerCanvasEl.toBlob((blob) => {
+//             const thumbData = new FormData();
+//             thumbData.append("thumbnail", blob, `thumb_${file.name}`);
+//             axios.post('/api/upload-thumbnail', thumbData, {
+//               headers: { 
+//                 "Content-Type": "multipart/form-data",
+//                 "Authorization": `Bearer ${localStorage.getItem("token")}`
+//               }
+//             })
+//             .then(res2 => {
+//               const thumbPath = res2.data.filePath;
+//               // Save the thumbnail file path as well
+//               img.data.thumbnailPath = thumbPath;
+//             })
+//             .catch(err => {
+//               console.error("Thumbnail upload failed:", err);
+//             });
+//           }, "image/png");
+//         });
+//       };
+//       reader.readAsDataURL(file);
+//     })
+//     .catch(err => {
+//       console.error("Full image upload failed:", err);
+//     });
 //   };
 
 //   const updateSelectedObject = () => {
@@ -1515,7 +1609,18 @@ export default ProductEditorBags;
 //   const handleAddToCart = async () => {
 //     if (!selectedProduct || !canvas) return;
   
-//     try {
+
+//       if (!selectedProduct.inStock) {
+//         alert('This product is currently out of stock');
+//         return;
+//       }
+
+//       if (quantity < (selectedProduct.minimumOrder || 1)) {
+//         alert(`Minimum order quantity is ${selectedProduct.minimumOrder}`);
+//         return;
+//       }
+
+//       try {
 //       // Get all custom elements
 //       const customElements = canvas.getObjects().filter(obj => 
 //         obj !== canvas.backgroundImage
@@ -1538,6 +1643,7 @@ export default ProductEditorBags;
 //           return {
 //             fieldId: obj.data?.id || `custom_${Date.now()}`,
 //             type: 'image',
+//             imageUrl: obj.data?.originalFilePath || fullImagePath || null, // Store the image URL
 //             content: obj.toDataURL('image/png'),
 //             properties: {
 //               fontSize: null,
@@ -1581,6 +1687,7 @@ export default ProductEditorBags;
 //         return {
 //           fieldId: obj.data?.id || `custom_${Date.now()}`,
 //           type: obj.type,
+//           imageUrl: obj.data?.originalFilePath || fullImagePath || null,
 //           content: obj.toDataURL ? obj.toDataURL('image/png') : null,
 //           properties: {
 //             fontSize: null,
@@ -1745,8 +1852,13 @@ export default ProductEditorBags;
 //             <h2 className="text-xl font-bold">{selectedProduct?.name}</h2>
 //             <p className="text-gray-600 mt-2">{selectedProduct?.description}</p>
 //             <p className="text-lg font-semibold mt-2">
-//               Price: ${selectedProduct?.basePrice || 0}
-//               {(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
+//               Price:
+//               {selectedProduct?.pricingTiers.length !=null && selectedProduct?.pricingTiers.length > 0 ? (
+//                   `From $${selectedProduct.pricingTiers[0]['price'].toFixed(2)}`
+//                 ) : (
+//                   `$${selectedProduct?.basePrice.toFixed(2)}`
+//                 )}
+//                 {(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
 //                 <span className="text-sm font-normal text-gray-600 ml-2">
 //                   + {[
 //                     selectedProduct.hasGST && 'GST',
@@ -1868,14 +1980,32 @@ export default ProductEditorBags;
 //           <div className="space-y-4">
 //             <div>
 //               <label className="block font-medium mb-2">Quantity</label>
-//               <input
+//               {/* <input
 //                 type="number"
 //                 min="1"
 //                 max="100"
 //                 value={quantity}
 //                 onChange={(e) => setQuantity(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
 //                 className="w-full px-3 py-2 border rounded"
-//               />
+//               /> */}
+
+// <div className="flex items-center gap-2">
+//     <input
+//       type="number"
+//       min={selectedProduct?.minimumOrder || 1}
+//       max="10000"
+//       value={quantity}
+//       onChange={(e) => handleQuantityChange(parseInt(e.target.value) || selectedProduct?.minimumOrder || 1)}
+//       className="w-full px-3 py-2 border rounded"
+//       disabled={!selectedProduct?.inStock}
+//     />
+//     {selectedProduct?.pricingTiers?.length > 0 && (
+//       <span className="text-sm text-gray-500">
+//         Current price: ${currentUnitPrice}/unit
+//       </span>
+//     )}
+//   </div>
+
 //             </div>
 
 //             <div>
@@ -1903,17 +2033,76 @@ export default ProductEditorBags;
 //             </ul>
 //           </div>
 
+//           {/* Product Info */}
+//           <div className="mt-4">
+//             <h2 className="text-xl font-bold">{selectedProduct?.name}</h2>
+//             <p className="text-gray-600 mt-2">{selectedProduct?.description}</p>
+            
+//             {/* Stock Status */}
+//             {!selectedProduct?.inStock && (
+//               <p className="text-red-600 font-medium mt-2">Out of Stock</p>
+//             )}
+            
+//             {/* Minimum Order */}
+//             {selectedProduct?.minimumOrder > 1 && (
+//               <p className="text-blue-600 mt-2">
+//                 Minimum Order: {selectedProduct.minimumOrder} units
+//               </p>
+//             )}
+            
+//             {/* Price Tiers Display */}
+//             {selectedProduct?.pricingTiers?.length > 0 && (
+//               <div className="mt-2">
+//                 <p className="font-medium">Quantity Pricing:</p>
+//                 {selectedProduct.pricingTiers.map((tier, index) => (
+//                   <p key={index} className={`text-sm ${
+//                     quantity >= tier.minQuantity && (!tier.maxQuantity || quantity <= tier.maxQuantity)
+//                       ? 'text-green-600 font-medium'
+//                       : 'text-gray-600'
+//                   }`}>
+//                     {tier.minQuantity}{tier.maxQuantity ? ` - ${tier.maxQuantity}` : '+'} units: ${tier.price} each
+//                   </p>
+//                 ))}
+//               </div>
+//             )}
+            
+//             {/* Current Price */}
+//             <p className="text-lg font-semibold mt-2">
+//               Unit Price: ${currentUnitPrice}
+//               <br />
+//               Total: ${(currentUnitPrice * quantity).toFixed(2)}
+//               {(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
+//                 <span className="text-sm font-normal text-gray-600 ml-2">
+//                   + {[
+//                     selectedProduct.hasGST && 'GST',
+//                     selectedProduct.hasPST && 'PST'
+//                   ].filter(Boolean).join(' + ')}
+//                 </span>
+//               )}
+//             </p>
+//           </div>
+
 //           {/* Add to Cart Button */}
 //           <button
 //             onClick={handleAddToCart}
-//             disabled={selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])}
+//             disabled={
+//               (selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])) ||
+//               !selectedProduct?.inStock ||
+//               quantity < (selectedProduct?.minimumOrder || 1)
+//             }
 //             className={`w-full bg-green-500 text-white px-6 py-3 rounded-lg text-lg font-semibold
-//               ${selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])
+//               ${(
+//                 (selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])) ||
+//                 !selectedProduct?.inStock ||
+//                 quantity < (selectedProduct?.minimumOrder || 1)
+//               )
 //                 ? 'opacity-50 cursor-not-allowed'
 //                 : 'hover:bg-green-600 transition-colors duration-200'
 //               }`}
 //           >
-//             Add to Cart - ${((selectedProduct?.basePrice || 0) * quantity).toFixed(2)}
+//             {!selectedProduct?.inStock 
+//               ? 'Out of Stock'
+//               : `Add to Cart - $${(currentUnitPrice * quantity).toFixed(2)}`}
 //           </button>
 
 //           {/* Tax Notice */}

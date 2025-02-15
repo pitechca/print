@@ -315,8 +315,14 @@ const Overview = () => {
                 }}
               />
               <YAxis />
-              <Tooltip 
+              <Tooltip
                 formatter={(value) => [`$${value.toFixed(2)}`, 'Revenue']}
+                wrapperStyle={{
+                  borderRadius: '10px',                 
+                }}
+                contentStyle={{
+                  borderRadius: '10px',                 
+                }}
               />
               <Legend />
               <Line 
@@ -346,7 +352,13 @@ const Overview = () => {
                 }}
               />
               <YAxis />
-              <Tooltip />
+              <Tooltip 
+                wrapperStyle={{
+                  borderRadius: '10px',                 
+                }}
+                contentStyle={{
+                  borderRadius: '10px',                 
+                }}/>
               <Legend />
               <Bar 
                 dataKey="orders" 
