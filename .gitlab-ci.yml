@@ -70,7 +70,7 @@
     tags:
       - shell
     script:
-      - printenv | grep -E '^(MONGO_URI|JWT_SECRET|STRIPE_SECRET_KEY|ADMIN_CODE|REACT_APP_STRIPE_PUBLIC_KEY|REACT_APP_PAYPAL_CLIENT_ID|RECIPIENT_EMAIL|SMTP_HOST|SMTP_USER|SMTP_PASS|NOTEBOOK_TOKEN)=' > .env.dev
+      - env | sed -E '/^(BASH_FUNC|CI_|GITLAB_|PATH|HOME|PWD|SHLVL|_)=/d' > .env.dev
       - docker-compose -f docker-compose.dev.yaml up -d --no-build
 
   # Deploy to Production
@@ -83,6 +83,6 @@
     tags:
       - shell
     script:
-      - printenv | grep -E '^(MONGO_URI|JWT_SECRET|STRIPE_SECRET_KEY|ADMIN_CODE|REACT_APP_STRIPE_PUBLIC_KEY|REACT_APP_PAYPAL_CLIENT_ID|RECIPIENT_EMAIL|SMTP_HOST|SMTP_USER|SMTP_PASS|NOTEBOOK_TOKEN)=' > .env
+      - env | sed -E '/^(BASH_FUNC|CI_|GITLAB_|PATH|HOME|PWD|SHLVL|_)=/d' > .env
       - docker-compose -f docker-compose.yaml up -d --no-build
       
