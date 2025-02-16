@@ -72,7 +72,7 @@
     before_script:
       - cp ${ENV_DEV} .env.dev
     script:
-      - docker-compose -f docker-compose.dev.yaml up -d --no-build
+      - docker-compose -f docker-compose.dev.yaml up -d --no-build --force-recreate
 
   # Deploy to Production
   deploy_prod:
@@ -86,5 +86,5 @@
     before_script:
       - cp ${ENV_PROD} .env
     script:
-      - docker-compose -f docker-compose.yaml up -d --no-build
+      - docker-compose -f docker-compose.yaml up -d --no-build --force-recreate
       

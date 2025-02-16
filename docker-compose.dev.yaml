@@ -4,6 +4,7 @@ services:
     image: mongo:6
     container_name: mongo-dev
     restart: always
+    command: ["--auth"]
     ports:
       - "27018:27017"
     volumes:
