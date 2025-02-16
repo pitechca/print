@@ -3,6 +3,7 @@ services:
     image: mongo:6
     container_name: mongo
     restart: always
+    command: ["--auth"]
     ports:
       - "27017:27017"
     volumes:
