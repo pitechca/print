@@ -19,7 +19,7 @@ services:
     container_name: print-backend
     restart: always
     ports:
-      - "8001:5000"
+      - "8001:80"
     depends_on:
       - mongo
     networks:

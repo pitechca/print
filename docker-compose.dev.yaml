@@ -22,7 +22,7 @@ services:
     container_name: print-backend-dev
     restart: always
     ports:
-      - "8003:5000"
+      - "8003:80"
     depends_on:
       - mongo-dev
     networks:
