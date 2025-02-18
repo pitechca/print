@@ -10,17 +10,38 @@ const ProductViewTransformer = ({
   const canvasRef = useRef(null);
 
   useEffect(() => {
-    const canvas = new fabric.Canvas(canvasRef.current, {
-      width: 500,
-      height: 500,
+    // Determine if we're on mobile (breakpoint: 640px)
+    const isMobile = window.innerWidth < 640;
+    const desiredWidth = isMobile ? 400 : 500;
+    // Get the container's available width
+    const containerWidth = canvasRef.current.parentElement.offsetWidth;
+    // Use the smaller of the container's width or the desiredWidth
+    const canvasWidth = containerWidth < desiredWidth ? containerWidth : desiredWidth;
+    
+    const fabricCanvas = new fabric.Canvas(canvasRef.current, {
+      width: canvasWidth,
+      height: canvasWidth, // Keep it square
       backgroundColor: 'transparent',
       selection: false,
       interactive: false
     });
     
-    setRotatedCanvas(canvas);
-    return () => canvas.dispose();
+    setRotatedCanvas(fabricCanvas);
+    return () => fabricCanvas.dispose();
   }, []);
+  
+  // useEffect(() => {
+  //   const canvas = new fabric.Canvas(canvasRef.current, {
+  //     width: 500,
+  //     height: 500,
+  //     backgroundColor: 'transparent',
+  //     selection: false,
+  //     interactive: false
+  //   });
+    
+  //   setRotatedCanvas(canvas);
+  //   return () => canvas.dispose();
+  // }, []);
 
 
   const calculateTransform = (obj, width, height) => {
@@ -210,7 +231,9 @@ const ProductViewTransformer = ({
 
   return (
     <div className="w-full h-full">
-      <canvas ref={canvasRef} className="border rounded" />
+      {/* <canvas ref={canvasRef} className="border rounded" /> */}
+      <canvas ref={canvasRef} className="border rounded w-full" style={{ maxWidth: window.innerWidth < 640 ? '400px' : '500px' }} />
+
     </div>
   );
 };

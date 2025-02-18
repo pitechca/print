@@ -44,6 +44,12 @@ const ProductEditorBags = () => {
     'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana',
     'Helvetica', 'Palatino', 'Garamond', 'Bookman', 'Tahoma'
   ];
+  
+  // Reorder images: show the 2nd, 3rd, … images first, then the 1st image at the end
+  const reorderedImages =
+    selectedProduct?.images && selectedProduct.images.length > 1
+      ? [...selectedProduct.images.slice(1), selectedProduct.images[0]]
+      : selectedProduct?.images || [];
 
   const calculateUnitPrice = (qty) => {
     if (!selectedProduct?.pricingTiers?.length) {
@@ -76,17 +82,21 @@ const ProductEditorBags = () => {
     setCurrentUnitPrice(calculateUnitPrice(newQty));
   };
 
-  useEffect(() => {
+useEffect(() => {
+    // Get the container's width and choose the canvas width accordingly (max 500px)
+    const containerWidth = canvasRef.current.parentElement.offsetWidth;
+    const canvasWidth = containerWidth < 500 ? containerWidth : 500;
+    
     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-      width: 500,
-      height: 500,
+      width: canvasWidth - 50,
+      height: canvasWidth, // keep it square, adjust if needed
       backgroundColor: '#ffffff'
     });
     
     // Enable selection
     fabricCanvas.selection = true;
   
-    // Add event listeners
+    // Add event listeners (no changes here)
     fabricCanvas.on('mouse:down', function(opt) {
       const evt = opt.e;
       if (evt.altKey === true) {
@@ -96,8 +106,7 @@ const ProductEditorBags = () => {
         this.lastPosY = evt.clientY;
       }
     });
-  
-    // Make sure objects are selectable when added
+    
     fabricCanvas.on('object:added', function(e) {
       const obj = e.target;
       obj.set({
@@ -107,32 +116,88 @@ const ProductEditorBags = () => {
       });
       updateCanvasVersion();
     });
-  
-    // Selection event handlers
+    
     fabricCanvas.on('selection:created', function(e) {
       console.log('Selection created:', e.target);
       handleObjectSelected(e);
     });
-  
+    
     fabricCanvas.on('selection:updated', function(e) {
       console.log('Selection updated:', e.target);
       handleObjectSelected(e);
     });
-  
+    
     fabricCanvas.on('selection:cleared', function(e) {
       console.log('Selection cleared');
       handleSelectionCleared();
     });
-  
-    // Modification handlers
+    
     fabricCanvas.on('object:modified', function(e) {
       handleObjectModified(e);
       updateCanvasVersion();
     });
-  
+    
     setCanvas(fabricCanvas);
     return () => fabricCanvas.dispose();
   }, []);
+
+  // useEffect(() => {
+  //   const fabricCanvas = new fabric.Canvas(canvasRef.current, {
+  //     width: 500,
+  //     height: 500,
+  //     backgroundColor: '#ffffff'
+  //   });
+    
+  //   // Enable selection
+  //   fabricCanvas.selection = true;
+  
+  //   // Add event listeners
+  //   fabricCanvas.on('mouse:down', function(opt) {
+  //     const evt = opt.e;
+  //     if (evt.altKey === true) {
+  //       this.isDragging = true;
+  //       this.selection = false;
+  //       this.lastPosX = evt.clientX;
+  //       this.lastPosY = evt.clientY;
+  //     }
+  //   });
+  
+  //   // Make sure objects are selectable when added
+  //   fabricCanvas.on('object:added', function(e) {
+  //     const obj = e.target;
+  //     obj.set({
+  //       selectable: true,
+  //       hasControls: true,
+  //       hasBorders: true
+  //     });
+  //     updateCanvasVersion();
+  //   });
+  
+  //   // Selection event handlers
+  //   fabricCanvas.on('selection:created', function(e) {
+  //     console.log('Selection created:', e.target);
+  //     handleObjectSelected(e);
+  //   });
+  
+  //   fabricCanvas.on('selection:updated', function(e) {
+  //     console.log('Selection updated:', e.target);
+  //     handleObjectSelected(e);
+  //   });
+  
+  //   fabricCanvas.on('selection:cleared', function(e) {
+  //     console.log('Selection cleared');
+  //     handleSelectionCleared();
+  //   });
+  
+  //   // Modification handlers
+  //   fabricCanvas.on('object:modified', function(e) {
+  //     handleObjectModified(e);
+  //     updateCanvasVersion();
+  //   });
+  
+  //   setCanvas(fabricCanvas);
+  //   return () => fabricCanvas.dispose();
+  // }, []);
 
 
   useEffect(() => {
@@ -142,7 +207,12 @@ const ProductEditorBags = () => {
         setSelectedProduct(productRes.data);
         
         if (productRes.data.images && productRes.data.images.length > 0 && canvas) {
-          loadProductImage(productRes.data.images[0].data);
+          const defaultImageData = productRes.data.images[1]
+            ? productRes.data.images[1].data
+            : productRes.data.images[0].data;
+          loadProductImage(defaultImageData);
+          // //show the index0
+           //loadProductImage(productRes.data.images[0].data);
         }
         
         const templatesRes = await axios.get('/api/templates');
@@ -712,10 +782,35 @@ const handleCustomImage = async (e) => {
         {/* Front View Column */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h3 className="text-lg font-semibold mb-4">Design View</h3>
-          <canvas ref={canvasRef} className="border rounded-lg" />
+          <canvas ref={canvasRef} className="border rounded-lg w-full max-w-[500px]" />
+
+          {/* <canvas ref={canvasRef} className="border rounded-lg" /> */}
 
           {/* Product Images */}
           {selectedProduct?.images && selectedProduct.images.length > 0 && (
+            <div className="mt-4 grid grid-cols-6 gap-2">
+              {reorderedImages.map((image, index) => (
+                <div
+                  key={index}
+                  className={`cursor-pointer border-2 rounded ${
+                    selectedProductImage === index ? 'border-blue-500' : 'border-gray-200'
+                  }`}
+                  onClick={() => {
+                    setSelectedProductImage(index);
+                    loadProductImage(image.data);
+                  }}
+                >
+                  <img
+                    src={image.data}
+                    alt={`Product view ${index + 1}`}
+                    className="w-full h-16 object-cover rounded"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {/* old version showing img from index0 */}
+          {/* {selectedProduct?.images && selectedProduct.images.length > 0 && (
             <div className="mt-4 grid grid-cols-6 gap-2">
               {selectedProduct.images.map((image, index) => (
                 <div
@@ -736,7 +831,7 @@ const handleCustomImage = async (e) => {
                 </div>
               ))}
             </div>
-          )}
+          )} */}
 
           {/* Customization Controls */}
                {/* Customization Controls */}

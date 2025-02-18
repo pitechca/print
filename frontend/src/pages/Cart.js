@@ -418,7 +418,12 @@ const Cart = () => {
 
                     {/* Expanded Customization Details */}
                     {expandedDetails.has(index) && (
-                      <div className="space-y-3">
+                      <div className="space-y-3"
+                      style={{maxWidth: 200 +'px',
+                        overflowX: 'hidden',
+                     }}
+
+                      >
                         {item.customization?.template && (
                           <p className="text-sm text-gray-600">
                             Template Customization: {item.customization.template.name}

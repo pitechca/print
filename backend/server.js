@@ -1858,6 +1858,7 @@ app.get("/api/orders", auth, async (req, res) => {
   }
 });
 
+
 app.get("/api/orders/:id/download", auth, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
@@ -1872,44 +1873,164 @@ app.get("/api/orders/:id/download", auth, async (req, res) => {
       return res.status(403).send({ error: 'Not authorized' });
     }
 
-    // Generate PDF report
     const PDFDocument = require('pdfkit');
-    const doc = new PDFDocument();
-    
-    // Set response headers
+    const fs = require('fs');
+    const path = require('path');
+
+    // Create a new PDF document
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
+    // Set response headers for PDF download
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=order-${order._id}.pdf`);
-
     doc.pipe(res);
 
-    // Add content to PDF
-    doc.fontSize(20).text('Order Details', { align: 'center' });
+    // -- Header Section with Logo and Title --
+    // Adjust the path to your company logo
+    const logoPath = path.join(__dirname, 'logo.png');
+    if (fs.existsSync(logoPath)) {
+      // Place the logo at the top left
+      doc.image(logoPath, 50, 45, { width: 100 });
+    } else {
+      // Fallback: Company name text if logo is missing
+      doc.fontSize(20).text('Bag&Box Company', 50, 50);
+    }
+
+    // Draw a horizontal line under the header
+    doc.moveTo(50, 110).lineTo(545, 110).stroke();
+
+    // Title centered below the header
+    doc.fontSize(20)
+       .fillColor('#333')
+       .text('Order Details', { align: 'center', underline: true });
     doc.moveDown();
-    doc.fontSize(12).text(`Order ID: ${order._id}`);
-    doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`);
-    doc.text(`Customer: ${order.user.email}`);
-    doc.text(`Total Amount: $${order.totalAmount.toFixed(2)}`);
-    
+
+    // -- Order Meta Information --
+    doc.fontSize(12)
+       .fillColor('#000')
+       .text(`Order ID: ${order._id}`)
+       .text(`Order Date: ${new Date(order.createdAt).toLocaleString()}`)
+       .text(`Customer: ${order.user.email}`)
+       .text(`Payment Method: ${order.paymentMethod || 'N/A'}`);
+    if (order.paymentId) {
+      doc.text(`Payment ID: ${order.paymentId}`);
+    }
+    doc.text(`Order Status: ${order.status}`)
+       .text(`Total Amount: $${order.totalAmount.toFixed(2)}`);
     doc.moveDown();
-    doc.text('Products:', { underline: true });
-    
-    order.products.forEach(item => {
+
+    // -- Coupon Information (if applicable) --
+    if (order.coupon) {
+      doc.fillColor('green')
+         .fontSize(12)
+         .text(`Coupon Used: ${order.coupon.code}`, { underline: true });
+      doc.fillColor('#000');
+      if (order.coupon.discountType && order.coupon.discountValue) {
+        doc.text(`Discount Type: ${order.coupon.discountType}`)
+           .text(`Discount Value: ${order.coupon.discountValue}`)
+           .text(`Discount Amount: $${order.coupon.discountAmount.toFixed(2)}`);
+      }
       doc.moveDown();
-      doc.text(`Product: ${item.product.name}`);
+    }
+
+    // -- Divider --
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+    doc.moveDown();
+
+    // -- Products Section --
+    doc.fontSize(16)
+       .fillColor('#333')
+       .text('Products', { underline: true });
+    doc.moveDown();
+
+    order.products.forEach((item, index) => {
+      // Product Header
+      doc.fontSize(12)
+         .fillColor('#000')
+         .text(`Product ${index + 1}: ${item.product.name}`, { bold: true });
       doc.text(`Quantity: ${item.quantity}`);
-      if (item.customization?.customText) {
-        doc.text(`Custom Text: ${item.customization.customText}`);
+
+      // Customization details (if available)
+      if (item.customization) {
+        if (item.customization.customText) {
+          doc.text(`Custom Text: ${item.customization.customText}`);
+        }
+        if (item.customization.description) {
+          doc.text(`Description: ${item.customization.description}`);
+        }
       }
-      if (item.customization?.description) {
-        doc.text(`Description: ${item.customization.description}`);
-      }
+      doc.moveDown();
+
+      // Draw a light divider between products
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).dash(3, { space: 2 }).stroke().undash();
+      doc.moveDown();
     });
+
+    // -- Footer --
+    doc.moveDown(2);
+    doc.fontSize(10)
+       .fillColor('gray')
+       .text('Thank you for your purchase!', { align: 'center' });
 
     doc.end();
   } catch (error) {
-    res.status(500).send(error);
+    console.error('Download error:', error);
+    res.status(500).send({ error: 'Server error' });
   }
 });
+
+// app.get("/api/orders/:id/download", auth, async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id)
+//       .populate('user')
+//       .populate('products.product');
+
+//     if (!order) {
+//       return res.status(404).send({ error: 'Order not found' });
+//     }
+
+//     if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
+//       return res.status(403).send({ error: 'Not authorized' });
+//     }
+
+//     // Generate PDF report
+//     const PDFDocument = require('pdfkit');
+//     const doc = new PDFDocument();
+    
+//     // Set response headers
+//     res.setHeader('Content-Type', 'application/pdf');
+//     res.setHeader('Content-Disposition', `attachment; filename=order-${order._id}.pdf`);
+
+//     doc.pipe(res);
+
+//     // Add content to PDF
+//     doc.fontSize(20).text('Order Details', { align: 'center' });
+//     doc.moveDown();
+//     doc.fontSize(12).text(`Order ID: ${order._id}`);
+//     doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`);
+//     doc.text(`Customer: ${order.user.email}`);
+//     doc.text(`Total Amount: $${order.totalAmount.toFixed(2)}`);
+    
+//     doc.moveDown();
+//     doc.text('Products:', { underline: true });
+    
+//     order.products.forEach(item => {
+//       doc.moveDown();
+//       doc.text(`Product: ${item.product.name}`);
+//       doc.text(`Quantity: ${item.quantity}`);
+//       if (item.customization?.customText) {
+//         doc.text(`Custom Text: ${item.customization.customText}`);
+//       }
+//       if (item.customization?.description) {
+//         doc.text(`Description: ${item.customization.description}`);
+//       }
+//     });
+
+//     doc.end();
+//   } catch (error) {
+//     res.status(500).send(error);
+//   }
+// });
 
 app.get('/api/orders/:orderId/customization/:fieldId', auth, async (req, res) => {
   try {
