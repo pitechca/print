@@ -567,6 +567,7 @@ app.post("/api/forgot-password", async (req, res) => {
     if (user.email === identifier) {
       // Use your CLIENT_URL environment variable for the frontend URL
       const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+
       const mailOptions = {
         to: user.email,
         from: process.env.SMTP_USER,
