@@ -13,8 +13,6 @@ const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
 const fs = require('fs');
 
-
-
 dotenv.config();
 
 const app = express();
