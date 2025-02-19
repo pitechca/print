@@ -137,10 +137,21 @@ const Login = () => {
           Login
         </button>
       </form>
-
-      <div style={{marginTop: 20+'px'}}>
-        <p>Have not created an account yet? <a href='/register'>Click here</a></p>
+      <div className="mt-6 flex flex-col sm:flex-row justify-between items-center">
+        <a
+          href="/forgot-password"
+          className="text-sm text-blue-600 hover:text-blue-800 hover:underline mb-2 sm:mb-0"
+        >
+          Forgot your password?
+        </a>
+        <a
+          href="/register"
+          className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+        >
+          Don't have an account? Register now
+        </a>
       </div>
+
     </div>
   );
 };

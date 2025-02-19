@@ -12,6 +12,7 @@ const nodemailer = require('nodemailer');
 const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
 const fs = require('fs');
+const crypto = require ("crypto");
 
 dotenv.config();
 
@@ -535,6 +536,83 @@ app.post("/api/login", async (req, res) => {
     res.status(400).send(error);
   }
 });
+
+
+
+// Forgot Password Endpoint
+app.post("/api/forgot-password", async (req, res) => {
+  const { identifier } = req.body;
+  try {
+    const user = await User.findOne({ 
+      $or: [
+        { email: identifier },
+        { phone: identifier }
+      ]
+    });
+    
+    // Always respond with the same message to avoid user enumeration
+    if (!user) {
+      return res.status(200).send({
+        message: "If that account exists, a password reset link or code has been sent."
+      });
+    }
+    
+    // Generate a reset token and set its expiry (e.g., 1 hour)
+    const resetToken = crypto.randomBytes(20).toString('hex');
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpires = Date.now() + 3600000; // 1 hour in ms
+    await user.save();
+
+    // Send reset instructions via email if the identifier is an email
+    if (user.email === identifier) {
+      // Use your CLIENT_URL environment variable for the frontend URL
+      const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+      const mailOptions = {
+        to: user.email,
+        from: process.env.SMTP_USER,
+        subject: 'Password Reset',
+        text: `You are receiving this email because you (or someone else) have requested to reset your password.\n\n
+        Please click on the following link, or paste it into your browser to complete the process:\n\n
+        ${resetUrl}\n\n
+        If you did not request this, please ignore this email.\n`
+      };
+      await transporter.sendMail(mailOptions);
+    } else {
+      // For SMS: add your SMS sending logic here (for example, using Twilio)
+      // await sendSms(user.phone, `Reset your password using this token: ${resetToken}`);
+    }
+
+    res.status(200).send({
+      message: "If that account exists, a password reset link or code has been sent."
+    });
+  } catch (error) {
+    res.status(500).send({ error: "Server error" });
+  }
+});
+
+// Reset Password Endpoint
+app.post("/api/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body;
+  try {
+    const user = await User.findOne({ 
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+    if (!user) {
+      return res.status(400).send({ error: "Password reset token is invalid or has expired." });
+    }
+    // Hash the new password and update the user record
+    user.password = await bcrypt.hash(newPassword, 10);
+    // Clear reset token and expiry
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+    res.status(200).send({ message: "Password has been reset successfully." });
+  } catch (error) {
+    res.status(500).send({ error: "Server error" });
+  }
+});
+
 
 //Proudct routs
 // Lightweight product data without images

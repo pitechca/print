@@ -28,6 +28,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import UserManagement from "./pages/UserManagement";
 import SalesReport from "./pages/SalesReport";
 import AdminSecurity from "./pages/AdminSecurity";
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -60,7 +62,8 @@ function App() {
                 <Route path="/admin/users" element={<UserManagement />} />
                 <Route path="/admin/sales" element={<SalesReport />} />
                 <Route path="/admin/security" element={<AdminSecurity />} />
-                />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
               </Routes>
             </main>
             <Footer style={{}} />
