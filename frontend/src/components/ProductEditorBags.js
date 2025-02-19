@@ -5,6 +5,8 @@ import axios from "axios";
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import ProductViewTransformer from './ProductViewTransformer';
+import Lottie from "lottie-react"; 
+import cartAnimation from '../assets/cartAnimation.json';
 
 
 const ProductEditorBags = () => {
@@ -22,6 +24,7 @@ const ProductEditorBags = () => {
   const [selectedProductImage, setSelectedProductImage] = useState(0);
   const [currentUnitPrice, setCurrentUnitPrice] = useState(0);
   const [fullImagePath,setFullImagePath] = useState(null);
+  const [showCartNotification, setShowCartNotification] = useState(false);
 
   // Template field states
   const [requiredFields, setRequiredFields] = useState([]);
@@ -534,6 +537,20 @@ const handleCustomImage = async (e) => {
   const file = e.target.files[0];
   if (!file || !canvas) return;
 
+  // file validation
+  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+  if (!validTypes.includes(file.type)) {
+    alert('Please upload a valid image file (JPEG, PNG, GIF, WEBP, or SVG)');
+    return;
+  }
+
+  // size validation (e.g., 50MB limit)
+  const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+  if (file.size > maxSize) {
+    alert('File is too large. Please upload an image smaller than 50MB.');
+    return;
+  }
+  
   try {
     // Create form data for upload
     const formData = new FormData();
@@ -579,25 +596,25 @@ const handleCustomImage = async (e) => {
         handleObjectModified({ target: img });
         updateCanvasVersion();
 
-        // Generate thumbnail if needed
-        canvas.lowerCanvasEl.toBlob((blob) => {
-          const thumbData = new FormData();
-          thumbData.append("thumbnail", blob, `thumb_${file.name}`);
+        // // Generate thumbnail if needed
+        // canvas.lowerCanvasEl.toBlob((blob) => {
+        //   const thumbData = new FormData();
+        //   thumbData.append("thumbnail", blob, `thumb_${file.name}`);
           
-          axios.post('/api/upload-thumbnail', thumbData, {
-            headers: { 
-              'Content-Type': 'multipart/form-data'
-            }
-          })
-          .then(res2 => {
-            const thumbPath = res2.data.filePath;
-            img.data.thumbnailPath = thumbPath;
-          })
-          .catch(err => {
-            console.error("Thumbnail upload failed:", err);
-            // Continue even if thumbnail fails
-          });
-        }, "image/png");
+        //   axios.post('/api/upload-thumbnail', thumbData, {
+        //     headers: { 
+        //       'Content-Type': 'multipart/form-data'
+        //     }
+        //   })
+        //   .then(res2 => {
+        //     const thumbPath = res2.data.filePath;
+        //     img.data.thumbnailPath = thumbPath;
+        //   })
+        //   .catch(err => {
+        //     console.error("Thumbnail upload failed:", err);
+        //     // Continue even if thumbnail fails
+        //   });
+        // }, "image/png");
       });
     };
     reader.readAsDataURL(file);
@@ -769,7 +786,13 @@ const handleCustomImage = async (e) => {
         customization
       });
   
-      navigate('/cart');
+      // After successfully adding to cart:
+      setShowCartNotification(true);
+      setTimeout(() => {
+        setShowCartNotification(false);
+        navigate('/cart');
+      }, 3000);
+
     } catch (error) {
       console.error('Error adding to cart:', error);
       alert('Failed to add item to cart. Please try again.');
@@ -779,11 +802,20 @@ const handleCustomImage = async (e) => {
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+        {showCartNotification && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 transition-all duration-300 ease-in-out">
+            <div className="bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex flex-col items-center space-y-4">
+              <Lottie animationData={cartAnimation} loop={false} className="h-24 w-24" />
+              <p className="text-xl">Item added to cart successfully!</p>
+            </div>
+          </div>
+        )}
+
         {/* Front View Column */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h3 className="text-lg font-semibold mb-4">Design View</h3>
           <canvas ref={canvasRef} className="border rounded-lg w-full max-w-[500px]" />
-
           {/* <canvas ref={canvasRef} className="border rounded-lg" /> */}
 
           {/* Product Images */}

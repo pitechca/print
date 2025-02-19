@@ -4,6 +4,9 @@ import { fabric } from "fabric";
 import axios from "axios";
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import Lottie from "lottie-react"; 
+import cartAnimation from '../assets/cartAnimation.json';
+
 
 const ProductEditor = () => {
   const [canvas, setCanvas] = useState(null);
@@ -19,7 +22,8 @@ const ProductEditor = () => {
   const [selectedProductImage, setSelectedProductImage] = useState(0);
   const [currentUnitPrice, setCurrentUnitPrice] = useState(0);
   const [fullImagePath,setFullImagePath] = useState(null);
-  
+  const [showCartNotification, setShowCartNotification] = useState(false);
+
   // Template field states
   const [requiredFields, setRequiredFields] = useState([]);
   const [fieldInputs, setFieldInputs] = useState({});
@@ -572,6 +576,20 @@ const handleCustomImage = async (e) => {
   const file = e.target.files[0];
   if (!file || !canvas) return;
 
+  // file validation
+  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+  if (!validTypes.includes(file.type)) {
+    alert('Please upload a valid image file (JPEG, PNG, GIF, WEBP, or SVG)');
+    return;
+  }
+
+  // size validation (e.g., 50MB limit)
+  const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+  if (file.size > maxSize) {
+    alert('File is too large. Please upload an image smaller than 50MB.');
+    return;
+  }
+
   try {
     // Create form data
     const formData = new FormData();
@@ -623,6 +641,8 @@ const handleCustomImage = async (e) => {
     alert('Failed to upload image. Please try again.');
   }
 };
+
+
   const updateSelectedObject = () => {
     if (!canvas || !selectedObject) return;
 
@@ -767,12 +787,17 @@ const handleCustomImage = async (e) => {
         customization
       });
 
-      navigate('/cart');
-
-          } catch (error) {
-            console.error('Error adding to cart:', error);
-            alert('Failed to add item to cart. Please try again.');
-          }
+      // After successfully adding to cart:
+      setShowCartNotification(true);
+      setTimeout(() => {
+        setShowCartNotification(false);
+        navigate('/cart');
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert('Failed to add item to cart. Please try again.');
+    }
   };
 
   return (
@@ -783,6 +808,14 @@ const handleCustomImage = async (e) => {
           {/* <canvas ref={canvasRef} className="border rounded-lg" /> */}
           <canvas ref={canvasRef} className="border rounded-lg w-full max-w-[500px]" />
 
+          {showCartNotification && (
+            <div className="fixed inset-0 flex items-center justify-center z-50 transition-all duration-300 ease-in-out">
+              <div className="bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex flex-col items-center space-y-4">
+                <Lottie animationData={cartAnimation} loop={false} className="h-24 w-24" />
+                <p className="text-xl">Item added to cart successfully!</p>
+              </div>
+            </div>
+          )}
 
 
           {/* Product Images */}
