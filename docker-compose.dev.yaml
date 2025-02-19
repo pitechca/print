@@ -23,6 +23,8 @@ services:
     restart: always
     ports:
       - "8003:80"
+    volumes:
+      - bagbox_uploads_dev:/app/upload
     depends_on:
       - mongo-dev
     networks:
@@ -45,5 +47,6 @@ services:
 
 volumes:
   mongo_data_dev:
+  bagbox_uploads_dev:
 networks:
   dev:
