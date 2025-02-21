@@ -232,7 +232,7 @@ const SalesReport = () => {
           {/* Order Status */}
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-semibold mb-4">Orders by Status</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {Object.entries(reportData.ordersByStatus).map(([status, count]) => (
                 <div key={status} className="bg-gray-50 p-4 rounded-lg">
                   <div className="text-sm text-gray-500 capitalize">{status}</div>

@@ -24,6 +24,9 @@ const Home = () => {
   
 // New state to control how many products are visible for the selected category
 const [visibleCount, setVisibleCount] = useState(6);
+// new state at the top of your Home component (with your other useState calls)
+const [showCategoryModal, setShowCategoryModal] = useState(false);
+
 
 useEffect(() => {
   // Reset visible count when a new category is selected
@@ -275,7 +278,7 @@ useEffect(() => {
                                 <span className="text-m font-bold text-blue-600">
                                   ${product.basePrice > 0 ? product.basePrice.toFixed(2) : "Bundle Pricing"}
                                 </span>
-                                <div className="flex gap-3">
+                                {/* <div className="flex gap-3">
                                   <button
                                     onClick={() => {
                                       window.location.href = `/customize/${product._id}`;
@@ -287,7 +290,7 @@ useEffect(() => {
                                     </svg>
                                     <span>Customize</span>
                                   </button>
-                                </div>
+                                </div> */}
                               </div>
                             </div>
                           </div>

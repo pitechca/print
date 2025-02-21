@@ -8,6 +8,8 @@ import ProductEditorRoute from "./routs/ProductEditorRoute";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import Navbar from "./components/Navbar";
+import GlobalNotification from "./components/GlobalNotification";
+
 // import ProductEditor from './components/ProductEditor';
 
 //Context
@@ -38,6 +40,8 @@ function App() {
         <Router>
           <ScrollToTop />
           <div className="min-h-screen bg-gray-50">
+          <GlobalNotification />
+
             <Navbar />
             <main
               className="container mx-auto px-4 py-8"

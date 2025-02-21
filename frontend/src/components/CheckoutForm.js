@@ -135,7 +135,7 @@ const CheckoutForm = ({ selectedItems, quantities, total, coupon }) => {
         const orderData = {
           products,
           totalAmount: total,
-          status: 'completed',
+          status: 'processing',
           paymentMethod: 'stripe',
           paymentId: paymentIntent.id,
           coupon: coupon ? {

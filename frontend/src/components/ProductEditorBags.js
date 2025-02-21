@@ -25,6 +25,8 @@ const ProductEditorBags = () => {
   const [currentUnitPrice, setCurrentUnitPrice] = useState(0);
   const [fullImagePath,setFullImagePath] = useState(null);
   const [showCartNotification, setShowCartNotification] = useState(false);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [notifyContact, setNotifyContact] = useState({ email: "", phone: "" });
 
   // Template field states
   const [requiredFields, setRequiredFields] = useState([]);
@@ -54,6 +56,27 @@ const ProductEditorBags = () => {
       ? [...selectedProduct.images.slice(1), selectedProduct.images[0]]
       : selectedProduct?.images || [];
 
+  const handleRemindMe = async () => {
+    try {
+      const data = {};
+      // For logged-in users, the inputs are not needed.
+      if (!isUserLoggedIn) {
+        if (notifyContact.email) data.email = notifyContact.email;
+        if (notifyContact.phone) data.phone = notifyContact.phone;
+        if (!data.email && !data.phone) {
+          alert("Please enter your email and/or phone.");
+          return;
+        }
+      }
+      const headers = isUserLoggedIn ? { Authorization: `Bearer ${localStorage.getItem("token")}` } : {};
+      const response = await axios.post(`/api/products/${productId}/remind-me`, data, { headers });
+      alert(response.data.message);
+    } catch (error) {
+      console.error("Error setting reminder:", error);
+      alert("Failed to set reminder. Please try again.");
+    }
+  };
+
   const calculateUnitPrice = (qty) => {
     if (!selectedProduct?.pricingTiers?.length) {
       return selectedProduct?.basePrice || 0;
@@ -65,6 +88,24 @@ const ProductEditorBags = () => {
         (!tier.maxQuantity || qty <= tier.maxQuantity));
   
     return applicableTier ? applicableTier.price : selectedProduct.basePrice;
+  };
+
+  const getBundleOptions = () => {
+    if (!selectedProduct?.pricingTiers || selectedProduct.pricingTiers.length === 0) {
+      return [];
+    }
+    // Map each tier to its maxQuantity if exists, otherwise minQuantity
+    const options = selectedProduct.pricingTiers.map(tier =>
+      tier.maxQuantity ? tier.maxQuantity : tier.minQuantity
+    );
+    // Remove duplicates and sort options
+    const uniqueOptions = Array.from(new Set(options)).sort((a, b) => a - b);
+    // Always include 10000 if not already present
+    if (!uniqueOptions.includes(10000)) {
+      uniqueOptions.push(10000);
+      uniqueOptions.sort((a, b) => a - b);
+    }
+    return uniqueOptions;
   };
 
   const handleQuantityChange = (newQty) => {
@@ -986,7 +1027,7 @@ const handleCustomImage = async (e) => {
         <div className="bg-white p-6 rounded-lg shadow-md">
           {/* Template Selection */}
           <div>
-            <h3 className="text-lg font-semibold mb-3">Choose a Design Template</h3>
+            <h3 className="text-lg font-semibold mb-3">Design The Product</h3>
             <div className="grid grid-cols-2 gap-4">
               {categoryTemplates.map((template) => (
                 <div
@@ -1079,31 +1120,60 @@ const handleCustomImage = async (e) => {
           <div className="space-y-4">
             <div>
               <label className="block font-medium mb-2">Quantity</label>
-              {/* <input
-                type="number"
-                min="1"
-                max="100"
-                value={quantity}
-                onChange={(e) => setQuantity(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
-                className="w-full px-3 py-2 border rounded"
-              /> */}
-
-<div className="flex items-center gap-2">
-    <input
-      type="number"
-      min={selectedProduct?.minimumOrder || 1}
-      max="10000"
-      value={quantity}
-      onChange={(e) => handleQuantityChange(parseInt(e.target.value) || selectedProduct?.minimumOrder || 1)}
-      className="w-full px-3 py-2 border rounded"
-      disabled={!selectedProduct?.inStock}
-    />
-    {selectedProduct?.pricingTiers?.length > 0 && (
-      <span className="text-sm text-gray-500">
-        Current price: ${currentUnitPrice}/unit
-      </span>
-    )}
-  </div>
+              <div className="flex items-center gap-2">
+                {/* <input
+                  type="number"
+                  min={selectedProduct?.minimumOrder || 1}
+                  max="10000"
+                  value={quantity}
+                  onChange={(e) => handleQuantityChange(parseInt(e.target.value) || selectedProduct?.minimumOrder || 1)}
+                  className="w-full px-3 py-2 border rounded"
+                  disabled={!selectedProduct?.inStock}
+                /> */}
+                {selectedProduct?.pricingTiers?.length > 0 ? (
+                  <select
+                    value={quantity}
+                    onChange={(e) => handleQuantityChange(parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border rounded"
+                    disabled={!selectedProduct?.inStock}
+                  >
+                    {getBundleOptions().map(option => (
+                      <option key={option} value={option}>
+                      {option === 10000 ? `+${option}` : option}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="number"
+                    min={selectedProduct?.minimumOrder || 1}
+                    max="10000"
+                    value={quantity}
+                    onChange={(e) => handleQuantityChange(parseInt(e.target.value) || selectedProduct?.minimumOrder || 1)}
+                    className="w-full px-3 py-2 border rounded"
+                    disabled={!selectedProduct?.inStock}
+                  />
+                )}
+                {/* {selectedProduct?.pricingTiers?.length > 0 && (
+                  <span className="text-sm text-gray-500">
+                    Current price: ${currentUnitPrice}/unit
+                  </span>
+                )} */}
+                {selectedProduct?.pricingTiers?.length > 0 && (
+                  quantity === 10000 ? (
+                    <div style={{minWidth: 250+'px'}}>
+                      <div className="mt-2 p-4 bg-blue-100 border border-blue-300 text-blue-700 rounded-lg shadow-md">
+                        <p className="font-semibold text-lg">We'll Contact You</p>
+                        <p className="text-sm">To provide the best deal for you</p>
+                      </div>
+                      </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">
+                      Current price: ${currentUnitPrice}/unit
+                    </span>
+                  )
+                )}
+              </div>
 
             </div>
 
@@ -1167,6 +1237,23 @@ const handleCustomImage = async (e) => {
             
             {/* Current Price */}
             <p className="text-lg font-semibold mt-2">
+              {quantity === 10000 ? (
+                <div className="text-lg font-semibold mt-2">
+                </div>
+              ) : (
+                <p className="text-lg font-semibold mt-2">
+                  Unit Price: ${currentUnitPrice}
+                  <br />
+                  Total: ${(currentUnitPrice * quantity).toFixed(2)}
+                  {(selectedProduct?.hasGST || selectedProduct?.hasPST) && (
+                    <span className="text-sm font-normal text-gray-600 ml-2">
+                      + {[selectedProduct.hasGST && 'GST', selectedProduct.hasPST && 'PST'].filter(Boolean).join(' + ')}
+                    </span>
+                  )}
+                </p>
+              )}
+            </p>
+            {/* <p className="text-lg font-semibold mt-2">
               Unit Price: ${currentUnitPrice}
               <br />
               Total: ${(currentUnitPrice * quantity).toFixed(2)}
@@ -1178,11 +1265,11 @@ const handleCustomImage = async (e) => {
                   ].filter(Boolean).join(' + ')}
                 </span>
               )}
-            </p>
+            </p> */}
           </div>
 
           {/* Add to Cart Button */}
-          <button
+          {/* <button
             onClick={handleAddToCart}
             disabled={
               (selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])) ||
@@ -1201,8 +1288,87 @@ const handleCustomImage = async (e) => {
           >
             {!selectedProduct?.inStock 
               ? 'Out of Stock'
-              : `Add to Cart - $${(currentUnitPrice * quantity).toFixed(2)}`}
+              : quantity === 10000 
+                ? 'Add to Cart'
+                : `Add to Cart - $${(currentUnitPrice * quantity).toFixed(2)}`
+            }
+          </button> */}
+           {/* Add to cart, Stock and Notification Section */}
+<div className="mt-4 space-y-4">
+  {selectedProduct?.inStock ? (
+    // (Your existing Add to Cart button code remains unchanged)
+    <button
+      onClick={handleAddToCart}
+      disabled={
+        (selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])) ||
+        quantity < (selectedProduct?.minimumOrder || 1)
+      }
+      className={`w-full bg-green-500 text-white px-6 py-3 rounded-lg text-lg font-semibold
+        ${(
+          (selectedTemplate && requiredFields.some(field => !fieldInputs[field.id])) ||
+          quantity < (selectedProduct?.minimumOrder || 1)
+        )
+          ? 'opacity-50 cursor-not-allowed'
+          : 'hover:bg-green-600 transition-colors duration-200'
+        }`}
+    >
+      {quantity === 10000 
+        ? 'Add to Cart'
+        : `Add to Cart - $${(currentUnitPrice * quantity).toFixed(2)}`
+      }
+    </button>
+  ) : (
+    <>
+      <button className="w-full bg-gray-400 text-white px-6 py-3 rounded-lg text-lg font-semibold cursor-not-allowed">
+        Out of Stock
+      </button>
+      { !isUserLoggedIn ? (
+        <div className="p-4 border rounded-lg bg-blue-50">
+          <h4 className="text-xl font-semibold text-blue-800 mb-2">Get Notified</h4>
+          <p className="text-sm text-blue-700 mb-2">
+            Enter your email and/or phone number to receive a notification when this product becomes available.
+          </p>
+          <div className="space-y-2">
+            <input
+              type="email"
+              placeholder="Your Email"
+              value={notifyContact.email}
+              onChange={(e) => setNotifyContact(prev => ({ ...prev, email: e.target.value }))}
+              className="w-full px-3 py-2 border rounded"
+            />
+            <input
+              type="tel"
+              placeholder="Your Phone Number"
+              value={notifyContact.phone}
+              onChange={(e) => setNotifyContact(prev => ({ ...prev, phone: e.target.value }))}
+              className="w-full px-3 py-2 border rounded"
+            />
+            <button
+              onClick={handleRemindMe}
+              className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors duration-200"
+            >
+              Notify Me When Available
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 border rounded-lg bg-blue-50">
+          <h4 className="text-xl font-semibold text-blue-800 mb-2">Get Notified</h4>
+          <p className="text-sm text-blue-700 mb-2">
+            We will use your registered email and phone to notify you when this product becomes available.
+          </p>
+          <button
+            onClick={handleRemindMe}
+            className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors duration-200"
+          >
+            Notify Me When Available
           </button>
+        </div>
+      )}
+    </>
+  )}
+</div>
+
 
           {/* Tax Notice */}
           {selectedProduct?.hasGST || selectedProduct?.hasPST ? (

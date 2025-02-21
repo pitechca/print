@@ -385,7 +385,7 @@ const Cart = () => {
                         type="number"
                         value={quantities[index]}
                         onChange={(e) => updateQuantity(index, parseInt(e.target.value))}
-                        className="w-16 text-center border rounded"
+                        className="w-32 text-center border rounded"
                         min={item.product?.minimumOrder || 1}
                         max="10000"
                       />

@@ -13,6 +13,12 @@ const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
 const fs = require('fs');
 const crypto = require ("crypto");
+const twilio = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
+const twilioClient = require('twilio')(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
 
 dotenv.config();
 
@@ -122,17 +128,49 @@ const base64ToBuffer = (base64) => {
 
 
 // MongoDB Models
+// const NotificationSchema = new mongoose.Schema({
+//   user: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
+//   message: {type: String, required: true},
+//   type: {
+//     type: String,
+//     enum: ['order', 'inventory', 'feedback', 'system'],
+//     required: true
+//   },
+//   isRead: {type: Boolean, default: false},
+//   link: String,
+//   createdAt: {type: Date, default: Date.now}
+// });
 const NotificationSchema = new mongoose.Schema({
-  user: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
-  message: {type: String, required: true},
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // New field for the creator
+  message: { type: String, required: true },
   type: {
     type: String,
     enum: ['order', 'inventory', 'feedback', 'system'],
     required: true
   },
-  isRead: {type: Boolean, default: false},
+  isRead: { type: Boolean, default: false },
   link: String,
-  createdAt: {type: Date, default: Date.now}
+  active: { type: Boolean, default: true },
+  global: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+
+
+
+const ProductNotificationSchema = new mongoose.Schema({
+  product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // if logged in
+  email: { type: String },
+  phone: { type: String },
+  notified: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const ClientNoteSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  note: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
 });
 
 const LoginActivitySchema = new mongoose.Schema({
@@ -363,7 +401,7 @@ const OrderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'processing', 'completed', 'cancelled'],
+    enum: ['pending', 'processing', 'shipped', 'completed', 'cancelled'],
     default: 'pending'
   },
   paymentMethod: {
@@ -400,6 +438,8 @@ const Coupon = mongoose.model('Coupon', CouponSchema);
 const Notification = mongoose.model('Notification', NotificationSchema);
 // const ActivityLog = mongoose.model('ActivityLog', ActivityLogSchema);
 const LoginActivity = mongoose.model('LoginActivity', LoginActivitySchema);
+const ProductNotification = mongoose.model('ProductNotification', ProductNotificationSchema);
+const ClientNote = mongoose.model('ClientNote', ClientNoteSchema);
 
 
 // API Routes
@@ -707,6 +747,101 @@ app.post("/api/products", auth, async (req, res) => {
   }
 });
 
+// app.put("/api/products/:id", auth, async (req, res) => {
+//   try {
+//     if (!req.user.isAdmin) {
+//       return res.status(403).send({ error: "Only admins can update products" });
+//     }
+
+//     const existingProduct = await Product.findById(req.params.id);
+//     if (!existingProduct) {
+//       return res.status(404).send({ error: 'Product not found' });
+//     }
+
+//     const { 
+//       name, category, basePrice, description, images, hasGST, hasPST,
+//       // New fields
+//       isFeatured, inStock, minimumOrder, sku, pricingTiers,
+//       weight, dimensions, metadata
+//     } = req.body;
+
+//     // Handle image updates
+//     let updatedImageIds = [...existingProduct.images];
+//     if (images && Array.isArray(images)) {
+//       for (let i = 0; i < images.length; i++) {
+//         const image = images[i];
+//         if (image && image.startsWith('data:')) {
+//           const { buffer, contentType } = base64ToBuffer(image);
+//           if (i < updatedImageIds.length) {
+//             await Image.findByIdAndUpdate(updatedImageIds[i], {
+//               data: buffer,
+//               contentType
+//             });
+//           } else {
+//             const newImage = new Image({ data: buffer, contentType });
+//             await newImage.save();
+//             updatedImageIds.push(newImage._id);
+//           }
+//         }
+//       }
+//     }
+
+//     // Prepare update object
+//     const updateData = {
+//       name,
+//       category,
+//       basePrice,
+//       description,
+//       hasGST,
+//       hasPST,
+//       images: updatedImageIds,
+//       // New fields
+//       isFeatured,
+//       inStock,
+//       minimumOrder,
+//       sku,
+//       pricingTiers,
+//       weight,
+//       dimensions,
+//       metadata: {
+//         keywords: metadata?.keywords || existingProduct.metadata?.keywords || [],
+//         searchTags: metadata?.searchTags || existingProduct.metadata?.searchTags || []
+//       }
+//     };
+
+//     const updatedProduct = await Product.findByIdAndUpdate(
+//       req.params.id,
+//       { $set: updateData },
+//       { new: true }
+//     ).populate('images').populate('category');
+
+//     if (!updatedProduct) {
+//       throw new Error('Failed to update product');
+//     }
+
+//     // Format response
+//     const response = {
+//       ...updatedProduct.toObject(),
+//       images: updatedProduct.images.map(image => ({
+//         _id: image._id,
+//         data: `data:${image.contentType};base64,${image.data.toString('base64')}`
+//       })),
+//       category: updatedProduct.category ? {
+//         _id: updatedProduct.category._id,
+//         name: updatedProduct.category.name,
+//         description: updatedProduct.category.description
+//       } : null
+//     };
+
+//     res.json(response);
+//   } catch (error) {
+//     console.error('Error updating product:', error);
+//     res.status(400).send({
+//       error: 'Error updating product',
+//       details: error.message
+//     });
+//   }
+// });
 app.put("/api/products/:id", auth, async (req, res) => {
   try {
     if (!req.user.isAdmin) {
@@ -720,12 +855,10 @@ app.put("/api/products/:id", auth, async (req, res) => {
 
     const { 
       name, category, basePrice, description, images, hasGST, hasPST,
-      // New fields
       isFeatured, inStock, minimumOrder, sku, pricingTiers,
       weight, dimensions, metadata
     } = req.body;
 
-    // Handle image updates
     let updatedImageIds = [...existingProduct.images];
     if (images && Array.isArray(images)) {
       for (let i = 0; i < images.length; i++) {
@@ -746,7 +879,6 @@ app.put("/api/products/:id", auth, async (req, res) => {
       }
     }
 
-    // Prepare update object
     const updateData = {
       name,
       category,
@@ -755,7 +887,6 @@ app.put("/api/products/:id", auth, async (req, res) => {
       hasGST,
       hasPST,
       images: updatedImageIds,
-      // New fields
       isFeatured,
       inStock,
       minimumOrder,
@@ -775,11 +906,45 @@ app.put("/api/products/:id", auth, async (req, res) => {
       { new: true }
     ).populate('images').populate('category');
 
-    if (!updatedProduct) {
-      throw new Error('Failed to update product');
+    // NEW: If product was previously out-of-stock and now is in stock, send notifications.
+    if (!existingProduct.inStock && updatedProduct.inStock) {
+      const notifications = await ProductNotification.find({ product: req.params.id, notified: false });
+      notifications.forEach(async (notification) => {
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #0056b3;">Good News!</h2>
+            <p>The product <strong>${updatedProduct.name}</strong> is now back in stock.</p>
+            <p>Visit our website to check it out: <a href="${process.env.CLIENT_URL}/customize/${updatedProduct._id}" style="color: #1a73e8;">Click here</a></p>
+            <hr style="border: none; border-top: 1px solid #ccc;" />
+            <p style="font-size: 12px; color: #777;">Thank you for choosing us.</p>
+          </div>
+        `;
+        const smsMessage = `Good news! "${updatedProduct.name}" is now in stock. Visit ${process.env.CLIENT_URL}/products/${updatedProduct._id} for details.`;
+        if (notification.email) {
+          await transporter.sendMail({
+            to: notification.email,
+            from: process.env.SMTP_USER,
+            subject: 'Product Now Available',
+            html: emailHtml
+          });
+        }
+        if (notification.phone) {
+          try {
+            await twilio.messages.create({
+              body: smsMessage,
+              from: process.env.TWILIO_PHONE_NUMBER,
+              to: notification.phone
+            });
+          } catch (smsError) {
+            console.error('Error sending SMS:', smsError);
+          }
+        }
+        notification.notified = true;
+        await notification.save();
+      });
     }
 
-    // Format response
+
     const response = {
       ...updatedProduct.toObject(),
       images: updatedProduct.images.map(image => ({
@@ -802,6 +967,7 @@ app.put("/api/products/:id", auth, async (req, res) => {
     });
   }
 });
+
 
 app.delete("/api/products/:id", auth, async (req, res) => {
   try {
@@ -2794,7 +2960,185 @@ const trackUserAccess = async (req, res, next) => {
 };
 
 
+// Get all clients (users) with safe fields
+app.get("/api/admin/clients", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Admin access required" });
+    }
+    // Exclude sensitive fields
+    const clients = await User.find().select("-password -passwordResetToken -passwordResetExpires");
+    res.json(clients);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching clients" });
+  }
+});
 
+// Get detailed info for a specific client (plus their orders as an example)
+app.get("/api/admin/clients/:id", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Admin access required" });
+    }
+    const client = await User.findById(req.params.id).select("-password -passwordResetToken -passwordResetExpires");
+    if (!client) return res.status(404).send({ error: "Client not found" });
+    
+    const orders = await Order.find({ user: client._id });
+    const notes = await ClientNote.find({ user: client._id }).sort("-createdAt");
+    // For contacts, invoices, and files, return empty arrays as placeholders
+    res.json({ client, orders, notes, contacts: [], invoices: [], files: [] });
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching client details", details: error.message });
+  }
+});
+
+// New endpoint: Update client's admin status
+app.put("/api/admin/clients/:id/admin", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Admin access required" });
+    }
+    const { isAdmin } = req.body;
+    const client = await User.findByIdAndUpdate(req.params.id, { isAdmin }, { new: true });
+    if (!client) return res.status(404).send({ error: "Client not found" });
+    res.json({ message: "Client admin status updated", client: client.toSafeObject() });
+  } catch (error) {
+    res.status(500).json({ error: "Error updating client admin status" });
+  }
+});
+
+// New endpoint: Admin triggers reset password request for a client
+app.post("/api/admin/clients/:id/reset-password", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Admin access required" });
+    }
+    const client = await User.findById(req.params.id);
+    if (!client) return res.status(404).send({ error: "Client not found" });
+    
+    const resetToken = crypto.randomBytes(20).toString("hex");
+    client.passwordResetToken = resetToken;
+    client.passwordResetExpires = Date.now() + 3600000; // 1 hour expiry
+    await client.save();
+
+    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+    const mailOptions = {
+      to: client.email,
+      from: process.env.SMTP_USER || "your-email@example.com",
+      subject: "Password Reset Request",
+      text: `An admin has requested a password reset for your account. Please click the following link to reset your password:\n\n${resetUrl}\n\nIf you did not expect this, please contact support.`
+    };
+    await transporter.sendMail(mailOptions);
+    res.json({ message: "Reset password request sent successfully" });
+  } catch (error) {
+    console.error("Error in reset-password endpoint:", error);
+    res.status(500).json({ error: "Error sending reset password request", details: error.message });
+  }
+});
+
+app.post("/api/admin/clients/:id/notes", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    const { note } = req.body;
+    if (!note) {
+      return res.status(400).json({ error: "Note content is required" });
+    }
+    const client = await User.findById(req.params.id);
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+    const newNote = new ClientNote({ user: client._id, note });
+    await newNote.save();
+    res.json({ message: "Note added successfully", note: newNote });
+  } catch (error) {
+    console.error("Error adding note:", error);
+    res.status(500).json({ error: "Error adding note", details: error.message });
+  }
+});
+
+app.get("/api/admin/clients/:id/files", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      console.log("Admin access required.");
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    const clientId = req.params.id;
+    console.log("Fetching files for client:", clientId);
+    // Find orders belonging to the client
+    const orders = await Order.find({ user: clientId });
+    console.log(`Found ${orders.length} orders for client ${clientId}.`);
+    const files = [];
+    orders.forEach(order => {
+      console.log("Processing order:", order._id);
+      order.products.forEach(product => {
+        console.log("Processing product:", product.product);
+        const customization = product.customization;
+        if (customization) {
+          console.log("Found customization:", customization);
+          // Check customFields
+          if (Array.isArray(customization.customFields)) {
+            customization.customFields.forEach(field => {
+              console.log("Processing customField:", field);
+              if (field.type === "image" || field.type === "logo") {
+                let url = field.imageUrl || field.content;
+                console.log("Found potential image URL in customField:", url);
+                if (
+                  url &&
+                  typeof url === "string" &&
+                  (url.startsWith("/upload/") ||
+                    url.startsWith("http://") ||
+                    url.startsWith("https://"))
+                ) {
+                  console.log("Adding file from customField:", url);
+                  files.push({
+                    orderId: order._id,
+                    productId: product.product,
+                    fieldId: field.fieldId,
+                    url,
+                  });
+                }
+              }
+            });
+          }
+          // Check requiredFields
+          if (Array.isArray(customization.requiredFields)) {
+            customization.requiredFields.forEach(field => {
+              console.log("Processing requiredField:", field);
+              if (field.type === "image" || field.type === "logo") {
+                let url = field.imageUrl || field.value;
+                console.log("Found potential image URL in requiredField:", url);
+                if (
+                  url &&
+                  typeof url === "string" &&
+                  (url.startsWith("/upload/") ||
+                    url.startsWith("http://") ||
+                    url.startsWith("https://"))
+                ) {
+                  console.log("Adding file from requiredField:", url);
+                  files.push({
+                    orderId: order._id,
+                    productId: product.product,
+                    fieldId: field.fieldId,
+                    url,
+                  });
+                }
+              }
+            });
+          }
+        } else {
+          console.log("No customization for product:", product.product);
+        }
+      });
+    });
+    console.log("Files found:", files);
+    res.json(files);
+  } catch (error) {
+    console.error("Error fetching client files:", error);
+    res.status(500).json({ error: "Error fetching client files", details: error.message });
+  }
+});
 
 
 
@@ -2924,6 +3268,246 @@ app.post("/api/notifications/mark-read", auth, async (req, res) => {
   }
 });
 
+app.get("/api/test-sms", async (req, res) => {
+  try {
+    let phone = req.query.phone;
+    if (!phone) {
+      return res.status(400).json({
+        error: "Phone number is required as a query parameter in E.164 format, e.g., +1234567890.",
+      });
+    }
+    
+    // Trim and ensure phone number starts with '+'
+    phone = phone.trim();
+    if (!phone.startsWith("+")) {
+      phone = `+${phone}`;
+    }
+    
+    // Debug logs (mask sensitive parts)
+    console.debug("Test SMS endpoint invoked.");
+    console.debug(
+      "TWILIO_ACCOUNT_SID:",
+      process.env.TWILIO_ACCOUNT_SID ? process.env.TWILIO_ACCOUNT_SID.slice(0, 4) + "..." : "NOT SET"
+    );
+    console.debug("TWILIO_AUTH_TOKEN is", process.env.TWILIO_AUTH_TOKEN ? "SET" : "NOT SET");
+    console.debug("TWILIO_PHONE_NUMBER:", process.env.TWILIO_PHONE_NUMBER);
+    console.debug("Attempting to send SMS to:", phone);
+    
+    // Send a test SMS using the properly initialized twilioClient
+    const message = await twilioClient.messages.create({
+      body: "This is a test SMS from your application. [DEBUG]",
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: phone,
+    });
+    
+    console.debug("Twilio response:", message);
+    res.json({
+      message: "Test SMS sent successfully!",
+      sid: message.sid,
+    });
+  } catch (error) {
+    console.error("Error sending test SMS:", error);
+    res.status(500).json({
+      error: "Failed to send test SMS",
+      details: error.message,
+    });
+  }
+});
+
+
+
+
+// Endpoint to fetch notifications created by admin (e.g., global notifications)
+app.get("/api/admin/notifications/created", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    let { page, limit } = req.query;
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Fetch all notifications sorted from newest to oldest
+    const notifications = await Notification.find({})
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    
+    const totalCount = await Notification.countDocuments({});
+    res.json({
+      notifications,
+      totalPages: Math.ceil(totalCount / limit),
+      currentPage: page,
+    });
+  } catch (error) {
+    console.error("Error fetching admin notifications:", error);
+    res.status(500).json({ error: "Error fetching admin notifications" });
+  }
+});
+
+app.post("/api/admin/notifications/send", auth, async (req, res) => {
+  try {
+    // Only allow admin users
+    if (!req.user.isAdmin) {
+      return res.status(403).send({ error: "Admin access required" });
+    }
+
+    const { selectedUsers, filter, channels, messageContent } = req.body;
+    let targetUsers = [];
+
+    // Determine target users based on selection or filter.
+    if (selectedUsers && selectedUsers.length > 0) {
+      targetUsers = await User.find({ _id: { $in: selectedUsers } });
+    } else {
+      // As an example, if no custom selection is provided, target all users.
+      targetUsers = await User.find({});
+      // Alternatively, use your dynamic filter logic here.
+    }
+
+    // Loop through each user and send notifications via each channel.
+    for (const user of targetUsers) {
+      // Send SMS if channel is selected and user has a phone number.
+      if (channels.sms && user.phone) {
+        try {
+          // Make sure the phone number is in E.164 format (e.g., "+1234567890")
+          await twilio.messages.create({
+            body: messageContent.sms,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: user.phone,
+          });
+        } catch (smsError) {
+          console.error(`Error sending SMS to ${user.phone}:`, smsError);
+          // Optionally, you can collect failed SMS notifications here.
+        }
+      }
+
+      // Send Email if channel is selected and user has an email.
+      if (channels.email && user.email) {
+        try {
+          await transporter.sendMail({
+            to: user.email,
+            from: process.env.SMTP_USER,
+            subject: "Newsletter / Notification",
+            html: messageContent.email,
+          });
+        } catch (emailError) {
+          console.error(`Error sending email to ${user.email}:`, emailError);
+        }
+      }
+
+      // Create an in-app notification if that channel is selected.
+      if (channels.inApp) {
+        try {
+          const notification = new Notification({
+            user: user._id,
+            message: messageContent.inApp,
+            type: "system",
+          });
+          await notification.save();
+        } catch (inAppError) {
+          console.error(`Error creating in-app notification for ${user._id}:`, inAppError);
+        }
+      }
+    }
+
+    res.send({ message: "Notifications processed. Check server logs for any errors." });
+  } catch (error) {
+    console.error("Error in notifications send endpoint:", error);
+    res.status(500).send({ error: "Error sending notifications", details: error.message });
+  }
+});
+
+app.put("/api/admin/notifications/:id", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    const notificationId = req.params.id;
+    const { active } = req.body;
+    // Update the notification with the new active status
+    const updatedNotification = await Notification.findByIdAndUpdate(
+      notificationId,
+      { active },
+      { new: true }
+    );
+    if (!updatedNotification) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+    res.json(updatedNotification);
+  } catch (error) {
+    console.error("Error updating notification status:", error);
+    res.status(500).json({ error: "Error updating notification status" });
+  }
+});
+
+app.delete("/api/admin/notifications/:id", auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    const notificationId = req.params.id;
+    const deletedNotification = await Notification.findByIdAndDelete(notificationId);
+    if (!deletedNotification) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+    res.json({ message: "Notification deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting notification:", error);
+    res.status(500).json({ error: "Error deleting notification" });
+  }
+});
+
+
+
+
+
+
+
+app.post("/api/products/:id/remind-me", async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const { email, phone } = req.body;
+    let userId = null;
+    // If an authorization header is provided, verify token to set userId
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.replace("Bearer ", "");
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      userId = decoded.userId;
+    }
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    if (product.inStock) {
+      return res.status(400).json({ error: 'Product is already in stock' });
+    }
+    let finalEmail = email, finalPhone = phone;
+    if (userId) {
+      const user = await User.findById(userId);
+      if (user) {
+        if (!finalEmail) finalEmail = user.email;
+        if (!finalPhone) finalPhone = user.phone;
+      }
+    }
+    if (!finalEmail && !finalPhone) {
+      return res.status(400).json({ error: 'Email or phone number is required for notification' });
+    }
+    const notification = new ProductNotification({
+      product: productId,
+      user: userId,
+      email: finalEmail,
+      phone: finalPhone
+    });
+    await notification.save();
+    res.json({ message: 'Notification request saved. We will notify you when the product is available.' });
+  } catch (error) {
+    console.error('Error in remind-me:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 // Sales Report Routes
 app.get("/api/reports/sales", auth, async (req, res) => {
   try {
@@ -2951,6 +3535,7 @@ app.get("/api/reports/sales", auth, async (req, res) => {
       ordersByStatus: {
         pending: 0,
         processing: 0,
+        shipped:0,
         completed: 0,
         cancelled: 0
       }
