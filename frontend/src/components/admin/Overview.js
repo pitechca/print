@@ -9,6 +9,9 @@ import {
   Bell, Calendar, ArrowUp, ArrowDown, Activity
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import axios from "axios";
+
+
 
 const DashboardCard = ({ title, value, icon: Icon, trend, color }) => (
   <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
@@ -43,7 +46,8 @@ const Overview = () => {
       { name: 'Pending', value: 0 }
     ]
   });
-  
+  const [showNotifications, setShowNotifications] = useState(false);
+
   const [users, setUsers] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -165,11 +169,14 @@ const Overview = () => {
     try {
       setNotificationsLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/notifications', {
+      const response = await axios.get('/api/notifications', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const data = await response.json();
-      setNotifications(data);
+      // Sort notifications by date (newest first)
+      const sortedNotifications = response.data.sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      setNotifications(sortedNotifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
@@ -206,16 +213,17 @@ const Overview = () => {
   const handleDeleteNotification = async (notificationId) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`/api/notifications/${notificationId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+      await axios.delete(`/api/admin/notifications/${notificationId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setNotifications(notifications.filter(n => n.id !== notificationId));
+      // Update state to remove the deleted notification
+      setNotifications(notifications.filter(n => n._id !== notificationId));
     } catch (error) {
       console.error('Error deleting notification:', error);
+      alert('Failed to delete notification. Please try again.');
     }
   };
-
+   
   const COLORS = ['#A020F0', '#0088FE', '#00C49F', '#FFBB28', '#FF6347'];
 
   const handleAddNote = () => {
@@ -261,12 +269,24 @@ const Overview = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Dashboard Overview</h1>
         <div className="flex items-center space-x-4">
-          <button className="relative">
-            <Bell className="h-6 w-6 text-gray-600" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-              {notifications.length}
-            </span>
-          </button>
+        <button 
+          className="relative"
+          onClick={() => {
+            setShowNotifications(!showNotifications);
+            if (!showNotifications) {
+              fetchNotifications(); // Fetch notifications when opening the panel
+            }
+            window.scrollTo({
+              top: document.documentElement.scrollHeight,
+              behavior: 'smooth'
+            });
+          }}
+        >
+          <Bell className="h-6 w-6 text-gray-600" />
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+            {notifications.length}
+          </span>
+        </button>
           <span className="text-gray-600">{new Date().toLocaleDateString()}</span>
         </div>
       </div>
@@ -491,7 +511,12 @@ const Overview = () => {
         </button>
 
         <button 
-          onClick={fetchNotifications}
+          onClick={() => {
+            setShowNotifications(!showNotifications);
+            if (!showNotifications) {
+              fetchNotifications();
+            }
+          }}
           className="p-4 bg-white rounded-lg shadow hover:shadow-lg transition-all flex items-center space-x-3"
         >
           <div className="p-3 bg-orange-100 rounded-full">
@@ -504,8 +529,8 @@ const Overview = () => {
         </button>
       </div>
 
-        {/* Notifications */}
-      <div className="bg-white p-6 rounded-lg shadow">
+      {/* Notifications */}
+      {/* <div className="bg-white p-6 rounded-lg shadow">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Recent Notifications</h3>
           <button 
@@ -523,8 +548,9 @@ const Overview = () => {
           ) : notifications.length === 0 ? (
             <p className="text-gray-500 text-center py-4">No notifications</p>
           ) : (
-            notifications.map(notification => (
-              <div key={notification.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            // Only show the 5 most recent notifications
+            notifications.slice(0, 5).map(notification => (
+              <div key={notification._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                 <div className="flex items-center space-x-4">
                   <div className={`p-2 rounded-full ${
                     notification.type === 'order' ? 'bg-blue-100 text-blue-600' :
@@ -537,22 +563,84 @@ const Overview = () => {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-800">{notification.message}</p>
-                    <p className="text-xs text-gray-500">{notification.time}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </p>
                   </div>
                 </div>
-              <button 
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                onClick={() => handleDeleteNotification(notification.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+                <button 
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={() => handleDeleteNotification(notification._id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              )
-            ))}
+            ))
+          )}
+        </div>
+      </div> */}
+
+
+      {showNotifications && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Recent Notifications</h3>
+            <div className="flex items-center space-x-4">
+              <button 
+                className="text-sm text-blue-600 hover:text-blue-800"
+                onClick={fetchNotifications}
+              >
+                Refresh
+              </button>
+              <button 
+                className="text-sm text-gray-600 hover:text-gray-800"
+                onClick={() => setShowNotifications(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+          <div className="space-y-4">
+            {notificationsLoading ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+              </div>
+            ) : notifications.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No notifications</p>
+            ) : (
+              // Only show the 5 most recent notifications
+              notifications.slice(0, 5).map(notification => (
+                <div key={notification._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center space-x-4">
+                    <div className={`p-2 rounded-full ${
+                      notification.type === 'order' ? 'bg-blue-100 text-blue-600' :
+                      notification.type === 'inventory' ? 'bg-yellow-100 text-yellow-600' :
+                      'bg-green-100 text-green-600'
+                    }`}>
+                      {notification.type === 'order' ? <ShoppingBag className="h-5 w-5" /> :
+                      notification.type === 'inventory' ? <Package className="h-5 w-5" /> :
+                      <Users className="h-5 w-5" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{notification.message}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    onClick={() => handleDeleteNotification(notification._id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
       
-      {/* Notes and Todos */}
+           ) } {/* Notes and Todos */}
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
          {/* Sticky Notes */}
          <div className="bg-white p-6 rounded-lg shadow">

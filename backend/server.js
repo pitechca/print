@@ -618,11 +618,20 @@ app.post("/api/forgot-password", async (req, res) => {
         If you did not request this, please ignore this email.\n`
       };
       await transporter.sendMail(mailOptions);
-    } else {
-      // For SMS: add your SMS sending logic here (for example, using Twilio)
-      // await sendSms(user.phone, `Reset your password using this token: ${resetToken}`);
+    } else if (user.phone === identifier) {
+      const smsMessage = `Reset your password using this link:\n
+      /reset-password/${resetToken}`;
+      
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const client = require('twilio')(accountSid, authToken);
+      
+      await client.messages.create({
+        body: smsMessage,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: user.phone
+      });
     }
-
     res.status(200).send({
       message: "If that account exists, a password reset link or code has been sent."
     });
@@ -919,7 +928,7 @@ app.put("/api/products/:id", auth, async (req, res) => {
             <p style="font-size: 12px; color: #777;">Thank you for choosing us.</p>
           </div>
         `;
-        const smsMessage = `Good news! "${updatedProduct.name}" is now in stock. Visit ${process.env.CLIENT_URL}/products/${updatedProduct._id} for details.`;
+        let smsMessage = `Good news! "${updatedProduct.name}" is now in stock. Visit ${process.env.CLIENT_URL}/customize/${updatedProduct._id} for details.`;
         if (notification.email) {
           await transporter.sendMail({
             to: notification.email,
@@ -928,15 +937,38 @@ app.put("/api/products/:id", auth, async (req, res) => {
             html: emailHtml
           });
         }
+        // if (notification.phone) {
+        //   smsMessage = `Good news! "${updatedProduct.name}" is now in stock. Visit our website /customize/${updatedProduct._id} for details.`;
+
+        //   try {
+        //     await twilio.messages.create({
+        //       body: smsMessage,
+        //       from: process.env.TWILIO_PHONE_NUMBER,
+        //       to: notification.phone
+        //     });
+        //   } catch (smsError) {
+        //     console.error('Error sending SMS:', smsError);
+        //   }
+        // }
         if (notification.phone) {
           try {
-            await twilio.messages.create({
+            // Create message content
+            const smsMessage = `Good news! "${updatedProduct.name}" is now back in stock. Visit our website for details.`;
+            
+            // Get Twilio credentials exactly as used in reset password
+            const accountSid = process.env.TWILIO_ACCOUNT_SID;
+            const authToken = process.env.TWILIO_AUTH_TOKEN;
+            const client = require('twilio')(accountSid, authToken);
+            
+            await client.messages.create({
               body: smsMessage,
               from: process.env.TWILIO_PHONE_NUMBER,
               to: notification.phone
             });
+            
+            console.log(`SMS sent to ${notification.phone}`);
           } catch (smsError) {
-            console.error('Error sending SMS:', smsError);
+            console.error(`SMS send error to ${notification.phone}:`, smsError);
           }
         }
         notification.notified = true;
@@ -2042,6 +2074,113 @@ app.post("/api/orders", auth, async (req, res) => {
       error: 'Failed to create order',
       details: error.message
     });
+  }
+});
+
+app.put("/api/orders/:id/status", auth, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const { status } = req.body;
+    
+    // Validate the status
+    const validStatuses = ['pending', 'processing', 'shipped', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+    
+    // Only admins should be able to update order status
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: 'Only admins can update order status' });
+    }
+    
+    // Find and update the order
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId, 
+      { status }, 
+      { new: true }
+    ).populate('user');
+    
+    if (!updatedOrder) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    // Create a notification for the customer
+    const notification = new Notification({
+      user: updatedOrder.user._id,
+      message: `Your order #${orderId.slice(-6)} status has been updated to ${status}`,
+      type: 'order',
+      link: `/orders/${orderId}`
+    });
+    
+    await notification.save();
+    
+    // Send response
+    res.json({ 
+      message: 'Order status updated successfully',
+      order: updatedOrder
+    });
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put("/api/orders/:id/status", auth, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const { status } = req.body;
+    
+    // Validate the status
+    const validStatuses = ['pending', 'processing', 'shipped', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+    
+    // Only admins should be able to update order status
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: 'Only admins can update order status' });
+    }
+    
+    // Find the order
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    // Record the previous status for notification
+    const previousStatus = order.status;
+    
+    // Update the order status
+    order.status = status;
+    
+    // Set the updatedAt timestamp for metrics calculation
+    order.updatedAt = new Date();
+    
+    await order.save();
+    
+    // Create a notification for the customer
+    const notification = new Notification({
+      user: order.user,
+      message: `Your order #${orderId.slice(-6)} status has been updated from ${previousStatus} to ${status}`,
+      type: 'order',
+      link: `/orders/${orderId}`
+    });
+    
+    await notification.save();
+    
+    // Send response
+    res.json({ 
+      message: 'Order status updated successfully',
+      order: {
+        _id: order._id,
+        status: order.status,
+        updatedAt: order.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
   }
 });
 
@@ -3463,26 +3602,36 @@ app.delete("/api/admin/notifications/:id", auth, async (req, res) => {
 
 
 
-
 app.post("/api/products/:id/remind-me", async (req, res) => {
   try {
     const productId = req.params.id;
     const { email, phone } = req.body;
     let userId = null;
+    
     // If an authorization header is provided, verify token to set userId
     if (req.headers.authorization) {
-      const token = req.headers.authorization.replace("Bearer ", "");
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      userId = decoded.userId;
+      try {
+        const token = req.headers.authorization.replace("Bearer ", "");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.userId;
+      } catch (tokenError) {
+        console.log("Token verification failed:", tokenError);
+        // Continue without userId if token is invalid
+      }
     }
+    
     const product = await Product.findById(productId);
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
+    
     if (product.inStock) {
       return res.status(400).json({ error: 'Product is already in stock' });
     }
+    
+    // Determine final contact info
     let finalEmail = email, finalPhone = phone;
+    
     if (userId) {
       const user = await User.findById(userId);
       if (user) {
@@ -3490,20 +3639,106 @@ app.post("/api/products/:id/remind-me", async (req, res) => {
         if (!finalPhone) finalPhone = user.phone;
       }
     }
+    
     if (!finalEmail && !finalPhone) {
       return res.status(400).json({ error: 'Email or phone number is required for notification' });
     }
+    
+    // Format phone number for storage
+    if (finalPhone) {
+      try {
+        const confirmationMessage = `You will be notified when "${product.name}" is back in stock.`;
+        
+        // Initialize Twilio client same way as in password reset
+        const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken = process.env.TWILIO_AUTH_TOKEN;
+        const client = require('twilio')(accountSid, authToken);
+        
+        await client.messages.create({
+          body: confirmationMessage,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: finalPhone
+        });
+        
+        console.log(`Confirmation SMS sent to ${finalPhone}`);
+      } catch (smsError) {
+        console.error(`SMS send error to ${finalPhone}:`, smsError);
+        // Don't return error to user, just log it and continue
+      }
+    }
+    
+    // Check if notification already exists
+    const existingNotification = await ProductNotification.findOne({
+      product: productId,
+      $or: [
+        { email: finalEmail },
+        { phone: finalPhone }
+      ],
+      notified: false
+    });
+    
+    if (existingNotification) {
+      return res.json({ 
+        message: 'You\'re already on the notification list for this product.', 
+        existing: true 
+      });
+    }
+    
+    // Create new notification record
     const notification = new ProductNotification({
       product: productId,
       user: userId,
       email: finalEmail,
       phone: finalPhone
     });
+    
     await notification.save();
-    res.json({ message: 'Notification request saved. We will notify you when the product is available.' });
+    
+    // Send confirmation
+    if (finalEmail) {
+      try {
+        const confirmationEmail = `
+          <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #0056b3;">Back in Stock Notification Confirmed</h2>
+            <p>We've added you to the notification list for <strong>${product.name}</strong>.</p>
+            <p>You'll receive an email when this product becomes available.</p>
+            <hr style="border: none; border-top: 1px solid #ccc;" />
+            <p style="font-size: 12px; color: #777;">Thank you for your interest in our products.</p>
+          </div>
+        `;
+        
+        await transporter.sendMail({
+          to: finalEmail,
+          from: process.env.SMTP_USER,
+          subject: 'Back in Stock Notification Confirmed',
+          html: confirmationEmail
+        });
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+      }
+    }
+    
+    if (finalPhone) {
+      try {
+        const confirmationSMS = `You're on our notification list for "${product.name}". We'll text you when it's back in stock.`;
+        
+        await twilioClient.messages.create({
+          body: confirmationSMS,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: finalPhone
+        });
+      } catch (smsError) {
+        console.error('Error sending confirmation SMS:', smsError);
+      }
+    }
+    
+    res.json({ 
+      message: 'Notification request saved. We will notify you when the product is available.',
+      success: true
+    });
   } catch (error) {
     console.error('Error in remind-me:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error', details: error.message });
   }
 });
 
