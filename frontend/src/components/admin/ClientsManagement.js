@@ -384,8 +384,10 @@ const ClientsManagement = () => {
         {selectedClient ? (
           <>
             <div className="border-b mb-4">
-              <nav className="flex space-x-4">
-                {["info", "contacts", "invoices", "orders", "notes", "files"].map(tab => (
+              <nav className="flex space-x-2">
+                {["info",
+                //  "contacts", 
+                 "invoices", "orders", "notes", "files"].map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}

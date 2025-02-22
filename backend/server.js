@@ -937,19 +937,6 @@ app.put("/api/products/:id", auth, async (req, res) => {
             html: emailHtml
           });
         }
-        // if (notification.phone) {
-        //   smsMessage = `Good news! "${updatedProduct.name}" is now in stock. Visit our website /customize/${updatedProduct._id} for details.`;
-
-        //   try {
-        //     await twilio.messages.create({
-        //       body: smsMessage,
-        //       from: process.env.TWILIO_PHONE_NUMBER,
-        //       to: notification.phone
-        //     });
-        //   } catch (smsError) {
-        //     console.error('Error sending SMS:', smsError);
-        //   }
-        // }
         if (notification.phone) {
           try {
             // Create message content
@@ -3407,53 +3394,6 @@ app.post("/api/notifications/mark-read", auth, async (req, res) => {
   }
 });
 
-app.get("/api/test-sms", async (req, res) => {
-  try {
-    let phone = req.query.phone;
-    if (!phone) {
-      return res.status(400).json({
-        error: "Phone number is required as a query parameter in E.164 format, e.g., +1234567890.",
-      });
-    }
-    
-    // Trim and ensure phone number starts with '+'
-    phone = phone.trim();
-    if (!phone.startsWith("+")) {
-      phone = `+${phone}`;
-    }
-    
-    // Debug logs (mask sensitive parts)
-    console.debug("Test SMS endpoint invoked.");
-    console.debug(
-      "TWILIO_ACCOUNT_SID:",
-      process.env.TWILIO_ACCOUNT_SID ? process.env.TWILIO_ACCOUNT_SID.slice(0, 4) + "..." : "NOT SET"
-    );
-    console.debug("TWILIO_AUTH_TOKEN is", process.env.TWILIO_AUTH_TOKEN ? "SET" : "NOT SET");
-    console.debug("TWILIO_PHONE_NUMBER:", process.env.TWILIO_PHONE_NUMBER);
-    console.debug("Attempting to send SMS to:", phone);
-    
-    // Send a test SMS using the properly initialized twilioClient
-    const message = await twilioClient.messages.create({
-      body: "This is a test SMS from your application. [DEBUG]",
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: phone,
-    });
-    
-    console.debug("Twilio response:", message);
-    res.json({
-      message: "Test SMS sent successfully!",
-      sid: message.sid,
-    });
-  } catch (error) {
-    console.error("Error sending test SMS:", error);
-    res.status(500).json({
-      error: "Failed to send test SMS",
-      details: error.message,
-    });
-  }
-});
-
-
 
 
 // Endpoint to fetch notifications created by admin (e.g., global notifications)
@@ -3508,13 +3448,17 @@ app.post("/api/admin/notifications/send", auth, async (req, res) => {
     for (const user of targetUsers) {
       // Send SMS if channel is selected and user has a phone number.
       if (channels.sms && user.phone) {
-        try {
-          // Make sure the phone number is in E.164 format (e.g., "+1234567890")
-          await twilio.messages.create({
-            body: messageContent.sms,
+        try {          
+          const accountSid = process.env.TWILIO_ACCOUNT_SID;
+          const authToken = process.env.TWILIO_AUTH_TOKEN;
+          const client = require('twilio')(accountSid, authToken);
+          
+          await client.messages.create({
+            body:  messageContent.sms,
             from: process.env.TWILIO_PHONE_NUMBER,
-            to: user.phone,
+            to: user.phone
           });
+        
         } catch (smsError) {
           console.error(`Error sending SMS to ${user.phone}:`, smsError);
           // Optionally, you can collect failed SMS notifications here.

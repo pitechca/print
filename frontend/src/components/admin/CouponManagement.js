@@ -241,7 +241,8 @@ const CouponManagement = () => {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-white p-6 rounded-lg shadow"
+      style={{overflowX: "scroll"}}>
         <h3 className="text-xl font-bold mb-4">Existing Coupons</h3>
         <table className="w-full border-collapse">
           <thead>
