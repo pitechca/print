@@ -12,33 +12,32 @@ const ClientsManagement = () => {
   const [notification, setNotification] = useState("");
   const [newNote, setNewNote] = useState("");
 
+  const downloadFile = (url, fileName) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-    const downloadFile = (url, fileName) => {
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-    const handleDownloadImage = async (imageUrl, fileName) => {
-        try {
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', fileName);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('Error downloading image:', error);
-            alert('Failed to download the image. Please try again.');
-        }
-        };
-      
+  const handleDownloadImage = async (imageUrl, fileName) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      alert('Failed to download the image. Please try again.');
+    }
+  };
 
   // Fetch clients list on mount
   useEffect(() => {
@@ -308,38 +307,36 @@ const ClientsManagement = () => {
             )}
           </div>
         );
-        case "files":
-  return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Files</h2>
-      {clientDetails.files.length > 0 ? (
-        clientDetails.files.map((file, idx) => (
-          <div key={idx} className="border p-2 my-2 rounded flex items-center space-x-4">
-            <img 
-              src={file.url} 
-              alt={`Order ${file.orderId} - Field ${file.fieldId}`} 
-              className="w-32 h-32 object-contain border rounded bg-white"
-            />
-            <div>
-              <p className="text-sm">
-                Order: {file.orderId} <br /> Field: {file.fieldId}
-              </p>
-              <button
-                onClick={() => handleDownloadImage(file.url, `order-${file.orderId}-field-${file.fieldId}.png`)}
-                className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-xs"
-              >
-                Download
-              </button>
-            </div>
+      case "files":
+        return (
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Files</h2>
+            {clientDetails.files.length > 0 ? (
+              clientDetails.files.map((file, idx) => (
+                <div key={idx} className="border p-2 my-2 rounded flex items-center space-x-4">
+                  <img 
+                    src={file.url} 
+                    alt={`Order ${file.orderId} - Field ${file.fieldId}`} 
+                    className="w-20 sm:w-32 h-auto object-contain border rounded bg-white"
+                  />
+                  <div>
+                    <p className="text-sm">
+                      Order: {file.orderId} <br /> Field: {file.fieldId}
+                    </p>
+                    <button
+                      onClick={() => handleDownloadImage(file.url, `order-${file.orderId}-field-${file.fieldId}.png`)}
+                      className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-xs"
+                    >
+                      Download
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500">No files data available.</p>
+            )}
           </div>
-        ))
-      ) : (
-        <p className="text-gray-500">No files data available.</p>
-      )}
-    </div>
-  );
-
-          
+        );
       default:
         return null;
     }
@@ -347,7 +344,7 @@ const ClientsManagement = () => {
 
   return (
     <div className="flex flex-col md:flex-row bg-white shadow rounded p-4">
-      <div className="md:w-1/3 border-r pr-4">
+      <div className="w-full md:w-1/3 md:border-r md:pr-4">
         <h2 className="text-xl font-bold mb-4">Clients</h2>
         <input
           type="text"
@@ -380,14 +377,12 @@ const ClientsManagement = () => {
           </ul>
         )}
       </div>
-      <div className="md:w-2/3 pl-4 mt-4 md:mt-0">
+      <div className="w-full md:w-2/3 md:pl-4 mt-4 md:mt-0">
         {selectedClient ? (
           <>
             <div className="border-b mb-4">
-              <nav className="flex space-x-2">
-                {["info",
-                //  "contacts", 
-                 "invoices", "orders", "notes", "files"].map(tab => (
+              <nav className="flex space-x-2 overflow-x-auto whitespace-nowrap">
+                {["info", "invoices", "orders", "notes", "files"].map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
