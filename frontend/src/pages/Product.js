@@ -353,7 +353,10 @@ return (
                     />
                     </button>
                   </div>
-                  <div className="p-6">
+                  <div className="p-6 cursor-pointer" 
+                     onClick={() => {          
+                      navigateToProduct(product._id)
+                    }}>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">
                       {product.name}
                     </h3>
@@ -367,11 +370,11 @@ return (
                       <div className="flex gap-3">
                         <button
                           onClick={() => {
-                            const token = localStorage.getItem('token');
-                            if (!token) {
-                              window.location.href = '/login';
-                              return;
-                            }                  
+                            // const token = localStorage.getItem('token');
+                            // if (!token) {
+                            //   window.location.href = '/login';
+                            //   return;
+                            // }                  
                             navigateToProduct(product._id)
                           }}
                           className="text-gray-600 hover:text-blue-600 transition-colors"
@@ -381,7 +384,7 @@ return (
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
                         </button>
-                        <button
+                        {/* <button
                           onClick={() => handleAddToCart(product)}
                           className="text-gray-600 hover:text-green-600 transition-colors"
                           title="Add to Cart"
@@ -389,7 +392,7 @@ return (
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
-                        </button>
+                        </button> */}
                       </div>
                     </div>
                   </div>
@@ -490,7 +493,10 @@ return (
                     />
                     </button>
                   </div>
-                  <div className="p-6">
+                  <div className="p-6 cursor-pointer" 
+                     onClick={() => {          
+                      navigateToProduct(product._id)
+                    }}>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">
                       {product.name}
                     </h3>
@@ -504,11 +510,11 @@ return (
                       <div className="flex gap-3">
                         <button
                           onClick={() => {
-                            const token = localStorage.getItem('token');
-                            if (!token) {
-                              window.location.href = '/login';
-                              return;
-                            }                  
+                            // const token = localStorage.getItem('token');
+                            // if (!token) {
+                            //   window.location.href = '/login';
+                            //   return;
+                            // }                  
                             navigateToProduct(product._id)
                           }}
                           className="text-gray-600 hover:text-blue-600 transition-colors"
@@ -518,7 +524,7 @@ return (
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
                         </button>
-                        <button
+                        {/* <button
                           onClick={() => handleAddToCart(product)}
                           className="text-gray-600 hover:text-green-600 transition-colors"
                           title="Add to Cart"
@@ -526,7 +532,7 @@ return (
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
-                        </button>
+                        </button> */}
                       </div>
                     </div>
                   </div>

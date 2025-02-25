@@ -10,7 +10,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import Navbar from "./components/Navbar";
 import GlobalNotification from "./components/GlobalNotification";
 
-import ProductEditor from './components/ProductEditor';
+// import ProductEditor from './components/ProductEditor';
 
 //Context
 import { AuthProvider } from "./context/AuthContext";
@@ -32,6 +32,7 @@ import SalesReport from "./pages/SalesReport";
 import AdminSecurity from "./pages/AdminSecurity";
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ProductCustomization from "./pages/ProductCustomization";
 
 function App() {
   return (
@@ -49,11 +50,10 @@ function App() {
             >
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/customize/:productId" element={<ProductEditor />} />
-                {/* <Route
-                  path="/customize/:productId"
-                  element={<ProductEditorRoute />}
-                /> */}
+                
+                <Route path="/customize/:productId" element={<ProductCustomization />} />
+                {/* <Route path="/customize/:productId" element={<ProductEditor />} /> */}
+                {/* <Route path="/customize/:productId" element={<ProductEditorRoute />} /> */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/cart" element={<Cart />} />

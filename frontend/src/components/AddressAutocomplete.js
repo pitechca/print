@@ -45,37 +45,6 @@ const AddressAutocomplete = ({ index, address, onAddressChange }) => {
     }
   }, [apiKey]);
 
-// import React, { useState, useEffect, useRef } from 'react';
-// import { Loader2 } from 'lucide-react';
-
-// const GOOGLE_API_KEY = ''; 
-
-// const AddressAutocomplete = ({ index, address, onAddressChange }) => {
-//   const [suggestions, setSuggestions] = useState([]);
-//   const [showSuggestions, setShowSuggestions] = useState(false);
-//   const [isLoading, setIsLoading] = useState(false);
-//   const suggestionsRef = useRef(null);
-//   const autocompleteService = useRef(null);
-//   const placesService = useRef(null);
-
-//   // Load Google Maps JavaScript API
-//   useEffect(() => {
-//     // Only load if not already loaded
-//     if (!window.google) {
-//       const script = document.createElement('script');
-//       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&libraries=places`;
-//       script.async = true;
-//       script.defer = true;
-//       script.onload = () => {
-//         autocompleteService.current = new window.google.maps.places.AutocompleteService();
-//         placesService.current = new window.google.maps.places.PlacesService(document.createElement('div'));
-//       };
-//       document.head.appendChild(script);
-//     } else if (window.google?.maps?.places) {
-//       autocompleteService.current = new window.google.maps.places.AutocompleteService();
-//       placesService.current = new window.google.maps.places.PlacesService(document.createElement('div'));
-//     }
-//   }, []);
 
   const fetchAddressSuggestions = async (query) => {
     if (!query || query.length < 3 || !autocompleteService.current) return [];

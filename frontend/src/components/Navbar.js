@@ -79,7 +79,7 @@ const Navbar = () => {
                 </>
               )}
             </div>
-            {user ? (!user.isAdmin ? (<Link to="/orders">Orders</Link>) : ("")) : ("")}
+
             <span style={{ lineHeight: '5px', paddingRight: '20px' }}>
               <Link to="/cart" className="hover:text-blue-600">
                 &nbsp; {cart.length}

@@ -11,6 +11,7 @@ import CheckoutForm from '../components/CheckoutForm';
 import { Checkbox } from "../components/ui/checkbox";  
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext'; 
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 
@@ -20,6 +21,7 @@ const Cart = () => {
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [quantities, setQuantities] = useState({});
   const [expandedDetails, setExpandedDetails] = useState(new Set());
+  const { user } = useAuth(); 
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -206,6 +208,40 @@ const Cart = () => {
   const renderPaymentMethod = () => {
     const { subtotal, discountAmount, discountedSubtotal, gstTotal, pstTotal, total } = calculateTaxAndTotal();
     
+    if (!user) {
+      return (
+        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+          <div className="flex justify-between text-gray-600">
+            <span>Subtotal</span>
+            <span>${subtotal.toFixed(2)}</span>
+          </div>
+          {gstTotal > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <span>GST (5%)</span>
+              <span>${gstTotal.toFixed(2)}</span>
+            </div>
+          )}
+          {pstTotal > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <span>PST (7%)</span>
+              <span>${pstTotal.toFixed(2)}</span>
+            </div>
+          )}
+          <div className="h-px bg-gray-200 my-2"></div>
+          <div className="flex justify-between text-lg font-bold text-gray-900">
+            <span>Total</span>
+            <span>${total.toFixed(2)}</span>
+          </div>
+          <button
+            onClick={() => navigate('/login', { state: { from: '/cart' }, replace: true })}
+            className="w-full bg-blue-500 text-white px-6 py-3 rounded-md font-semibold mt-4 hover:bg-blue-600"
+          >
+            Continue
+          </button>
+        </div>
+      );
+    }
+    
     return (
       <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
 
@@ -346,7 +382,7 @@ const Cart = () => {
           <div className="space-y-4 mb-8">
            {cart.map((item, index) => (
             <div key={index} className="bg-white rounded-lg shadow-md p-4">
-              <div className="flex flex-col lg:flex-row w-full"> {/* Changed to flex-col for mobile */}
+              <div className="flex flex-col lg:flex-row w-full">
                 <div className="flex items-start space-x-4 flex-1">
                   <Checkbox
                     checked={selectedItems.has(index)}
@@ -355,8 +391,8 @@ const Cart = () => {
                   />
                   
                   {/* Image Section */}
-                  <div className="w-full lg:w-1/3">
-                    <img
+                  <div className="w-1/3 md:w-1/3 md:m-2 m-0">
+                   <img
                       src={item.customization?.preview || item.product?.images?.[0]?.data || item.customization?.customFields?.find(field => field.type === 'image')?.content}
                       alt={item.product?.name}
                       className="w-full h-48 object-contain rounded-lg"
@@ -409,12 +445,16 @@ const Cart = () => {
                     </div>
 
                     {/* Customization Details Toggle */}
+                    {(item.customization?.template || 
+                    (item.customization?.requiredFields && item.customization?.requiredFields.length > 0) || 
+                    (item.customization?.customFields && item.customization?.customFields.length > 0)) && (
+
                     <button
                       onClick={() => toggleDetails(index)}
                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                     >
                       {expandedDetails.has(index) ? 'Hide Customization Details' : 'Show Customization Details'}
-                    </button>
+                    </button> )}
 
                     {/* Expanded Customization Details */}
                     {expandedDetails.has(index) && (
@@ -488,21 +528,21 @@ const Cart = () => {
           
                     {/* Price Tiers */}
                     {item.product?.pricingTiers?.length > 0 && (
-                      <div>
+                      // <div className="w-full mt-2 md:w-auto">
+                          <div className="w-full mt-2 md:w-auto hidden md:block">
+
                         <p className="font-medium text-sm">Quantity Pricing:</p>
                         {item.product.pricingTiers.map((tier, idx) => (
-                          <p key={idx} className={`text-sm ${
-                            quantities[index] >= tier.minQuantity && 
-                            (!tier.maxQuantity || quantities[index] <= tier.maxQuantity)
+                          <p key={idx} className={`text-sm ${quantities[index] >= tier.minQuantity && (!tier.maxQuantity || quantities[index] <= tier.maxQuantity)
                               ? 'text-green-600 font-medium'
-                              : 'text-gray-600'
-                          }`}>
+                              : 'text-gray-600'}`}>
                             {tier.minQuantity}{tier.maxQuantity ? ` - ${tier.maxQuantity}` : '+'} units: 
                             ${tier.price} each
                           </p>
                         ))}
                       </div>
                     )}
+
                     
                   </div>
                 </div>

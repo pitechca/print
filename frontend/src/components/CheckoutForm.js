@@ -212,7 +212,7 @@ const CheckoutForm = ({ selectedItems, quantities, total, coupon }) => {
           ${(!stripe || processing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
       >
         {!user 
-          ? 'Login to Complete Order' 
+          ? 'Continue ' 
           : processing 
             ? 'Processing...' 
             : `Pay $${total.toFixed(2)}`}

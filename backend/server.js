@@ -443,7 +443,130 @@ const ClientNote = mongoose.model('ClientNote', ClientNoteSchema);
 
 
 // API Routes
-// Update the registration endpoint in server.js
+
+
+//heleper functions for register email & sms
+// Function to send welcome email
+const sendWelcomeEmail = async (user) => {
+  const emailHtml = `
+    <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to Bag&Box</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+          }
+          .header {
+            background-color: #4a6ee0;
+            padding: 30px 20px;
+            text-align: center;
+          }
+          .header img {
+            max-width: 180px;
+          }
+          .content {
+            padding: 30px 20px;
+            background-color: #ffffff;
+          }
+          .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            background-color: #f5f5f5;
+          }
+          h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 28px;
+          }
+          .button {
+            display: inline-block;
+            background-color: #4a6ee0;
+            color: #ffffff !important; /* Force white text color */
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-weight: bold;
+            transition: all 0.3s ease; /* Smooth transition for hover effects */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+          }
+          /* Since email clients may not support hover, we're adding it just in case */
+          .button:hover {
+            background-color: #3a5bc0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transform: translateY(-2px);
+          }
+          .greeting {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Welcome to Bag&Box</h1>
+          </div>
+          <div class="content">
+            <p class="greeting">Hello ${user.firstName},</p>
+            <p>Thank you for creating an account with us. We're excited to have you join our community!</p>
+            <p>With your new account, you can:</p>
+            <ul>
+              <li>Browse our extensive product catalog</li>
+              <li>Save your favorite items</li>
+              <li>Track your orders easily</li>
+              <li>Access exclusive promotions</li>
+            </ul>
+            <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+            <div style="text-align: center;">
+              <a href="${process.env.WEBSITE_URL}" class="button">Visit Our Website</a>
+            </div>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Bag&Box. All rights reserved.</p>
+            <p>02-1127 14th St W, North Vancouver, BC, V7P 1J9</p>
+          </div>
+        </div>
+      </body>
+      </html>
+  `;
+
+  const mailOptions = {
+    from: `"Bag&Box" <${process.env.EMAIL_USER}>`,
+    to: user.email,
+    subject: `Welcome to Bag&Box, ${user.firstName}!`,
+    html: emailHtml
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+// Function to send welcome SMS
+const sendWelcomeSMS = async (user) => {
+  const message = `Hi ${user.firstName}! Welcome to Bag&Box. Thank you for creating an account with us. If you have any questions, please contact our support team.`;
+  
+  return twilioClient.messages.create({
+    body: message,
+    from: process.env.TWILIO_PHONE_NUMBER,
+    to: user.phone
+  });
+};
+
+//register endpoint
 app.post("/api/register", async (req, res) => {
   try {
     const { 
@@ -503,6 +626,20 @@ app.post("/api/register", async (req, res) => {
     const userResponse = user.toObject();
     delete userResponse.password;
 
+    try {
+      sendWelcomeEmail(userResponse)
+        .catch(err => console.error('Error sending welcome email:', err));
+      
+      // Only send SMS if a valid phone number is provided
+      if (phone && phone.trim()) {
+        sendWelcomeSMS(userResponse)
+          .catch(err => console.error('Error sending welcome SMS:', err));
+      }
+    } catch (messageError) {
+      // Log the error but don't fail registration
+      console.error('Error sending welcome messages:', messageError);
+    }
+
     res.status(201).send({ user: userResponse, token });
   } catch (error) {
     console.error('Registration error:', error); // Add logging
@@ -551,9 +688,13 @@ app.post("/api/login", async (req, res) => {
       ]
     });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      throw new Error("Invalid login credentials");
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    if (user && !(await bcrypt.compare(password, user.password))) {
+      throw new Error("Invalid login credentials");
+    }  
 
     // Track login activity
     const loginActivity = new LoginActivity({

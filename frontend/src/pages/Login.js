@@ -46,14 +46,59 @@ const Login = () => {
     return true;
   };
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setError('');
+
+  //   if (!validateInput()) {
+  //     return;
+  //   }
+
+  //   try {
+  //     const cleanIdentifier = sanitizeInput(identifier);
+  //     const { data } = await axios.post('/api/login', {
+  //       identifier: cleanIdentifier,
+  //       password: password // Never trim passwords as spaces might be intentional
+  //     }, {
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       }
+  //     });
+      
+  //     await login(data.user, data.token);
+
+  //     // Check if there are items in local cart
+  //     const localCart = JSON.parse(localStorage.getItem('localCart') || '[]');
+  //     const hasLocalCartItems = localCart.length > 0;
+
+
+  //       // Determine redirect path
+  //   const redirectPath = location.state?.from || '/cart';
+  //   console.log('Redirecting to:', redirectPath);
+
+  //   // Navigate with replace to prevent back-button issues
+  //   navigate(redirectPath, { replace: true });
+
+  //     // Navigate based on redirect location or cart status
+  //     if (location.state?.from === '/cart' || hasLocalCartItems) {
+  //       navigate('/cart');
+        
+  //     } else {
+  //       navigate(location.state?.from || '/');
+  //     }
+  //   } catch (error) {
+  //     // Generic error message to prevent user enumeration
+  //     setError('Invalid credentials');
+  //   }
+  // };
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
+  
     if (!validateInput()) {
       return;
     }
-
+  
     try {
       const cleanIdentifier = sanitizeInput(identifier);
       const { data } = await axios.post('/api/login', {
@@ -66,19 +111,18 @@ const Login = () => {
       });
       
       await login(data.user, data.token);
-
+  
       // Check if there are items in local cart
       const localCart = JSON.parse(localStorage.getItem('localCart') || '[]');
       const hasLocalCartItems = localCart.length > 0;
-
-
-        // Determine redirect path
-    const redirectPath = location.state?.from || '/cart';
-    console.log('Redirecting to:', redirectPath);
-
-    // Navigate with replace to prevent back-button issues
-    navigate(redirectPath, { replace: true });
-
+  
+      // Determine redirect path
+      const redirectPath = location.state?.from || '/cart';
+      console.log('Redirecting to:', redirectPath);
+  
+      // Navigate with replace to prevent back-button issues
+      navigate(redirectPath, { replace: true });
+  
       // Navigate based on redirect location or cart status
       if (location.state?.from === '/cart' || hasLocalCartItems) {
         navigate('/cart');
@@ -87,8 +131,19 @@ const Login = () => {
         navigate(location.state?.from || '/');
       }
     } catch (error) {
-      // Generic error message to prevent user enumeration
-      setError('Invalid credentials');
+      // Check if the error is about user not existing
+      if (error.response && 
+          error.response.status === 404 && 
+          error.response.data && 
+          error.response.data.message === 'User not found') {
+        
+        // Navigate to register page with the identifier pre-filled
+        const cleanIdentifier = sanitizeInput(identifier);
+        navigate(`/register?identifier=${encodeURIComponent(cleanIdentifier)}`);
+      } else {
+        // Generic error message for other errors
+        setError('Invalid credentials');
+      }
     }
   };
 
