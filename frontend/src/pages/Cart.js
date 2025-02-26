@@ -510,6 +510,14 @@ const Cart = () => {
                     <button
                       onClick={() => removeFromCart(index)}
                       className="text-red-500 hover:text-red-700"
+                      style={{ 
+                        boxShadow: 'none', 
+                        border: 'none', 
+                        background: 'transparent',
+                        transform: 'none',
+                        padding: 0,
+                        overflow: 'visible'
+                      }}
                     >
                       Remove
                     </button>

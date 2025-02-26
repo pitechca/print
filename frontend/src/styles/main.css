@@ -3,3 +3,314 @@
 @tailwind utilities;
 
 .z-50 { z-index: 50; }
+
+* {
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+/* 1. Button styles with smooth hover/focus effects */
+button {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(0);
+}
+
+button:hover, button:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%, -50%);
+  transform-origin: 50% 50%;
+}
+
+button:focus:not(:active)::after {
+  animation: ripple 0.8s ease-out;
+}
+
+/* 2. Click animation and loading effect */
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(100, 100);
+    opacity: 0;
+  }
+}
+
+/* Click loading indicator */
+.loading-indicator {
+  display: inline-block;
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+
+button.loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button.loading::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: calc(50% - 8px);
+  left: calc(50% - 8px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+  z-index: 10;
+}
+
+/* 3. Page loading animation */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+body.page-loading::after {
+  opacity: 1;
+  pointer-events: all;
+}
+
+body.page-loading::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #333;
+  animation: spin 1s linear infinite;
+  z-index: 10000;
+}
+
+/* REMOVE THE JAVASCRIPT CODE THAT WAS HERE */
+
+/* Spin animation for loaders */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 4. Custom alerts */
+/* Replace default browser alerts with custom ones */
+@keyframes slideIn {
+  0% { transform: translateY(-20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-20px); opacity: 0; }
+}
+
+.alert-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  max-width: 400px;
+  z-index: 9999;
+}
+
+.alert-box {
+  padding: 15px 20px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  animation: slideIn 0.3s forwards;
+  background: white;
+  border-left: 4px solid #333;
+}
+
+.alert-box.closing {
+  animation: slideOut 0.3s forwards;
+}
+
+.alert-box.success {
+  border-left-color: #10B981;
+}
+
+.alert-box.error {
+  border-left-color: #EF4444;
+}
+
+.alert-box.warning {
+  border-left-color: #F59E0B;
+}
+
+.alert-box.info {
+  border-left-color: #3B82F6;
+}
+
+/* 5. Input styling */
+input, textarea, select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  background-color: #F9FAFB;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: #A5B4FC;
+  box-shadow: 0 0 0 3px rgba(165, 180, 252, 0.2);
+  background-color: white;
+}
+
+input::placeholder, textarea::placeholder {
+  opacity: 0.6;
+}
+
+/* Input validation states */
+input:invalid, textarea:invalid, select:invalid {
+  border-color: #F87171;
+}
+
+input:invalid:focus, textarea:invalid:focus, select:invalid:focus {
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.2);
+}
+
+/* 6. File upload button styling */
+input[type="file"] {
+  position: relative;
+  padding: 0;
+  height: 0;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+input[type="file"] + label {
+  position: relative;
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px dashed #D1D5DB;
+  background-color: #F3F4F6;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+input[type="file"] + label:hover {
+  background-color: #E5E7EB;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+input[type="file"] + label::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(120deg, transparent 0%, transparent 50%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  transition: background-position 0.5s ease;
+}
+
+input[type="file"] + label:hover::before {
+  background-position: 0 0;
+}
+
+input[type="file"] + label::after {
+  content: '↑';
+  margin-left: 5px;
+  font-size: 1.2em;
+  vertical-align: middle;
+}
+
+/* File upload drag and drop area */
+.file-drop-area {
+  position: relative;
+  padding: 2rem;
+  border: 2px dashed #D1D5DB;
+  border-radius: 8px;
+  background-color: #F9FAFB;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.file-drop-area.drag-over {
+  background-color: #E5E7EB;
+  border-color: #9CA3AF;
+}
+
+/* Utility to add loading state to buttons */
+.js-loading-button {
+  position: relative;
+}
+
+.js-loading-button.loading {
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.js-loading-button.loading::after {
+  content: '';
+  position: absolute;
+  top: calc(50% - 8px);
+  left: calc(50% - 8px);
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+}

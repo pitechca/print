@@ -1,9 +1,9 @@
 // src/pages/AdminSecurity.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { Users, Clock, Shield, Activity, AlertTriangle,Search,ChevronDown, ChevronUp, Filter, Download, Loader2} from 'lucide-react';
-import { Alert,  AlertDescription,} from "../components/ui/alert";
+import { Alert,  AlertDescription,} from "../../components/ui/alert";
 
 const AdminSecurity = () => {
   const navigate = useNavigate();

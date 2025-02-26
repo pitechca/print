@@ -1,5 +1,7 @@
 // src/components/admin/ClientsManagement.js
 import React, { useState, useEffect } from "react";
+import {ImageIcon} from "lucide-react";
+import { useNavigate } from 'react-router-dom'; 
 
 const ClientsManagement = () => {
   const [clients, setClients] = useState([]);
@@ -11,6 +13,7 @@ const ClientsManagement = () => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [notification, setNotification] = useState("");
   const [newNote, setNewNote] = useState("");
+  const navigate = useNavigate(); 
 
   const downloadFile = (url, fileName) => {
     const link = document.createElement("a");
@@ -343,75 +346,91 @@ const ClientsManagement = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row bg-white shadow rounded p-4">
-      <div className="w-full md:w-1/3 md:border-r md:pr-4">
-        <h2 className="text-xl font-bold mb-4">Clients</h2>
-        <input
-          type="text"
-          placeholder="Search clients..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-3 py-2 border rounded mb-4"
-        />
-        {loading ? (
-          <div>Loading...</div>
-        ) : (
-          <ul className="space-y-2">
-            {filteredClients.map(client => (
-              <li key={client._id}>
-                <button
-                  onClick={() => {
-                    setSelectedClient(client);
-                    setActiveTab("info");
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded ${
-                    selectedClient && selectedClient._id === client._id
-                      ? 'bg-blue-500 text-white'
-                      : 'hover:bg-gray-100'
-                  }`}
-                >
-                  {client.firstName} {client.lastName}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className="w-full md:w-2/3 md:pl-4 mt-4 md:mt-0">
-        {selectedClient ? (
-          <>
-            <div className="border-b mb-4">
-              <nav className="flex space-x-2 overflow-x-auto whitespace-nowrap">
-                {["info", "invoices", "orders", "notes", "files"].map(tab => (
+    <div>
+     <h2 className="text-2xl font-bold mb-6">Clients</h2>
+
+      <div className="flex flex-col md:flex-row bg-white shadow rounded p-4">
+        <div className="w-full md:w-1/3 md:border-r md:pr-4">
+          <input
+            type="text"
+            placeholder="Search clients..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3 py-2 border rounded mb-4"
+          />
+          {loading ? (
+            <div>Loading...</div>
+          ) : (
+            <ul className="space-y-2">
+              {filteredClients.map(client => (
+                <li key={client._id}>
                   <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-3 py-2 font-medium ${
-                      activeTab === tab
-                        ? 'border-b-2 border-blue-500 text-blue-600'
-                        : 'text-gray-600 hover:text-blue-600'
+                    onClick={() => {
+                      setSelectedClient(client);
+                      setActiveTab("info");
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded ${
+                      selectedClient && selectedClient._id === client._id
+                        ? 'bg-blue-500 text-white'
+                        : 'hover:bg-gray-100'
                     }`}
                   >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    {client.firstName} {client.lastName}
                   </button>
-                ))}
-              </nav>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="w-full md:w-2/3 md:pl-4 mt-4 md:mt-0">
+          {selectedClient ? (
+            <>
+              <div className="border-b mb-4">
+                <nav className="flex space-x-2 overflow-x-auto whitespace-nowrap">
+                  {["info", "invoices", "orders", "notes", "files"].map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-3 py-2 font-medium ${
+                        activeTab === tab
+                          ? 'border-b-2 border-blue-500 text-blue-600'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+              <div className="p-4">
+                {renderTabContent()}
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              Select a client to view details.
             </div>
-            <div className="p-4">
-              {renderTabContent()}
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            Select a client to view details.
+          )}
+        </div>
+        {notification && (
+          <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded">
+            {notification}
           </div>
         )}
+        
       </div>
-      {notification && (
-        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded">
-          {notification}
+      <button 
+        onClick={() => navigate('/admin/uploads')}
+        className="p-4 bg-white rounded-lg shadow hover:shadow-lg transition-all flex items-center space-x-3 mt-6"
+      >
+        <div className="p-3 bg-indigo-100 rounded-full">
+          <ImageIcon className="h-6 w-6 text-indigo-600" />
         </div>
-      )}
+        <div className="text-left">
+          <h4 className="font-medium">Clients' Uploaded Images</h4>
+          <p className="text-sm text-gray-500">Manage user & visitor uploads</p>
+        </div>
+      </button>
     </div>
   );
 };

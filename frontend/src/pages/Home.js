@@ -267,8 +267,7 @@ const Home = () => {
                             key={product._id}
                             className="rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105"
                           >
-                            <div className="relative pb-[100%]">
-                              <button
+                            <div className="relative pb-[100%] cursor-pointer"
                                 onClick={() => {
                                   window.location.href = `/customize/${product._id}`;
                                 }}
@@ -278,7 +277,6 @@ const Home = () => {
                                   alt={product.name}
                                   className="absolute inset-0 w-full h-full object-cover"
                                 />
-                              </button>
                             </div>
                             <div className="p-4 cursor-pointer" 
                                 onClick={() => {
@@ -414,18 +412,15 @@ const Home = () => {
                               key={product._id}
                               className="rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105"
                             >
-                              <div className="relative pb-[100%]">
-                                <button
-                                  onClick={() => {
-                                    window.location.href = `/customize/${product._id}`;
-                                  }}
-                                >
+                              <div className="relative pb-[100%] cursor-pointer" 
+                                onClick={() => {
+                                  window.location.href = `/customize/${product._id}`;
+                                }}>
                                   <LazyImage
                                     src={product.images?.[0]?.data}
                                     alt={product.name}
                                     className="absolute inset-0 w-full h-full object-cover"
                                   />
-                                </button>
                               </div>
                               <div className="p-4 cursor-pointer" 
                                 onClick={() => {
@@ -585,23 +580,15 @@ const Home = () => {
               key={product._id}
               className=" rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105"
             >
-              <div className="relative pb-[100%]">
-                <button
-                  onClick={() => {
-                    const token = localStorage.getItem('token');
-                    // if (!token) {
-                    //   window.location.href = '/login';
-                    //   return;
-                    // }                  
-                    window.location.href = `/customize/${product._id}`;
-                  }}
-                >
-                  <LazyImage
-                    src={product.images?.[0]?.data}
-                    alt={product.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                </button>
+              <div className="relative pb-[100%] cursor-pointer" 
+                onClick={() => {
+                  window.location.href = `/customize/${product._id}`;
+                }}>
+                <LazyImage
+                  src={product.images?.[0]?.data}
+                  alt={product.name}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
               </div>
               <div className="p-4 cursor-pointer" 
                 onClick={() => {

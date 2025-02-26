@@ -384,8 +384,8 @@ const OrderManagement = () => {
               order._id,
               `order-${order._id.slice(-6)}.pdf`
             )}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors duration-200"
-          >
+            className="bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors duration-200"
+            >
             Download Invoice
           </button>
         </div>
@@ -413,8 +413,9 @@ const OrderManagement = () => {
 
       {/* Coupon Information */}
       {order.coupon && (
+        <div><h4 className="text-md font-semibold mb-2">Coupon Applied</h4> 
+
         <div className="bg-blue-50 p-4 rounded-lg mb-6">
-          <h4 className="text-md font-semibold mb-2">Coupon Applied</h4>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-gray-600">Coupon Code:</p>
@@ -429,6 +430,7 @@ const OrderManagement = () => {
               </p>
             </div>
           </div>
+        </div>
         </div>
       )}
 
@@ -682,7 +684,15 @@ const OrderManagement = () => {
             <tbody>
               {topOrders.map(order => (
                 <tr key={order._id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3">#{order._id.slice(-6)}</td>
+                  <td className="px-4 py-3 cursor-pointer text-blue-800"
+                    onClick={(e) => {
+                      e.preventDefault(); // Prevent default to avoid any navigation
+                      downloadInvoice(
+                        order._id,
+                        `order-${order._id.slice(-6)}.pdf`
+                      );
+                    }}>           
+                    #{order._id.slice(-6)}</td>
                   <td className="px-4 py-3">{order.user.email}</td>
                   <td className="px-4 py-3">{new Date(order.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3 font-medium text-green-600">${order.totalAmount.toFixed(2)}</td>
@@ -690,6 +700,14 @@ const OrderManagement = () => {
                     <button
                       onClick={() => setSelectedOrder(order)}
                       className="text-blue-600 hover:text-blue-800"
+                      style={{ 
+                        boxShadow: 'none', 
+                        border: 'none', 
+                        background: 'transparent',
+                        transform: 'none',
+                        padding: 0,
+                        overflow: 'visible'
+                      }}
                     >
                       View
                     </button>
@@ -785,6 +803,9 @@ const OrderManagement = () => {
                         Customer
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -801,8 +822,18 @@ const OrderManagement = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {orders.map((order) => (
                       <tr key={order._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap cursor-pointer text-blue-800"
+                          onClick={(e) => {
+                            e.preventDefault(); // Prevent default to avoid any navigation
+                            downloadInvoice(
+                              order._id,
+                              `order-${order._id.slice(-6)}.pdf`
+                            );
+                          }}>
                           #{order._id.slice(-6)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {order.user.firstName} {order.user.lastName}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {order.user.email}
@@ -810,7 +841,7 @@ const OrderManagement = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           {new Date(order.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-green-600">
                           ${order.totalAmount.toFixed(2)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -820,11 +851,27 @@ const OrderManagement = () => {
                           <button
                             onClick={() => setSelectedOrder(order)}
                             className="text-blue-600 hover:text-blue-900"
+                            style={{ 
+                              boxShadow: 'none', 
+                              border: 'none', 
+                              background: 'transparent',
+                              transform: 'none',
+                              padding: 0,
+                              overflow: 'visible'
+                            }}
                           >
                             View Details
                           </button>
                           <span className="text-gray-300">|</span>
                           <button
+                            style={{ 
+                              boxShadow: 'none', 
+                              border: 'none', 
+                              background: 'transparent',
+                              transform: 'none',
+                              padding: 0,
+                              overflow: 'visible'
+                            }}
                             onClick={(e) => {
                               e.preventDefault(); // Prevent default to avoid any navigation
                               downloadInvoice(

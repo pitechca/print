@@ -150,7 +150,15 @@ const Register = () => {
       setError(errorMessage);
       
       if (errorMessage.toLowerCase().includes('email')) {
-        document.querySelector('input[type="email"]').focus();
+        setStep(1); // Move back to first step where email field is
+        
+        // Add a small delay to ensure the DOM updates before trying to focus
+        setTimeout(() => {
+          const emailInput = document.querySelector('input[type="email"]');
+          if (emailInput) {
+            emailInput.focus();
+          }
+        }, 100);
       }
     }
   };

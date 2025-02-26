@@ -1,4 +1,4 @@
-// src/components/ProductEditor.js
+// src/pages/ProductCustomization.js
 import React, { useEffect, useRef, useState } from "react";
 import { fabric } from "fabric";
 import axios from "axios";
@@ -8,7 +8,7 @@ import Lottie from "lottie-react";
 import cartAnimation from '../assets/cartAnimation.json';
 import ProductHeader from '../components/ProductHeader'; 
 
-const ProductEditor = () => {
+const ProductCustomization = () => {
   const [canvas, setCanvas] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -24,7 +24,7 @@ const ProductEditor = () => {
   const [fullImagePath,setFullImagePath] = useState(null);
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [selectedBackgroundColor, setSelectedBackgroundColor] = useState('#EEF2FF');
-const [selectedSecondaryColor, setSelectedSecondaryColor] = useState('#EDE9FE');
+  const [selectedSecondaryColor, setSelectedSecondaryColor] = useState('#EDE9FE');
   // holds the area of the product image on the canvas
   const [productImageArea, setProductImageArea] = useState(null);
 
@@ -1018,10 +1018,10 @@ const [selectedSecondaryColor, setSelectedSecondaryColor] = useState('#EDE9FE');
               Customize Your Product
             </button>
           </div> */}
-          <div className="w-full max-w-2xl mx-auto p-6">
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <div className="w-full max-w-2xl mx-auto m-0 p-0 ">
+            <div className="flex flex-col sm:flex-row justify-center gap-4 m-0 p-0">
                 <button
-                className="bg-indigo-600 hover:bg-blue-600 text-white font-medium px-6 py-3 rounded-md shadow-sm transition duration-200 ease-in-out flex items-center justify-center"
+                className=" w-full bg-indigo-600 hover:bg-blue-600 text-white font-medium px-6 py-3 rounded-md shadow-sm transition duration-200 ease-in-out flex items-center justify-center"
                 onClick={() => setDesignMode("upload")}
                 >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1031,7 +1031,7 @@ const [selectedSecondaryColor, setSelectedSecondaryColor] = useState('#EDE9FE');
                 </button>
                 
                 <button
-                className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-3 rounded-md shadow-sm transition duration-200 ease-in-out flex items-center justify-center"
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium px-6 py-3 rounded-md shadow-sm transition duration-200 ease-in-out flex items-center justify-center"
                 onClick={() => setDesignMode("customize")}
                 >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1317,7 +1317,7 @@ const [selectedSecondaryColor, setSelectedSecondaryColor] = useState('#EDE9FE');
   );
 };
 
-export default ProductEditor;
+export default ProductCustomization;
 
 
 

@@ -24,7 +24,7 @@ import Overview from "../components/admin/Overview";
 import TemplateManagement from "../components/admin/TemplateManagement";
 import { PaginatedList } from "../components/admin/PaginatedList";
 import TemplateDesigner from "../components/TemplateDesigner";
-import MediaManager from "./MediaManager";
+import MediaManager from "./admin/MediaManager";
 // import { Users as UsersIcon } from "lucide-react";
 import ClientsManagement from "../components/admin/ClientsManagement";
 import NotificationsManagement from "../components/admin/NotificationsManagement";
@@ -422,18 +422,29 @@ const AdminDashboard = () => {
   const renderSidebar = () => (
     <div
       className="w-full md:w-64 bg-white shadow-md overflow-y-auto md:sticky md:top-0"
-      style={{ height: "calc(100vh )" }}
+      style={{ height: "calc(100vh )",            
+        boxShadow: 'none', 
+        border: 'none', 
+      }}
     >
       <div className="p-4 border-b">
         <h2 className="text-xl font-bold">Admin Dashboard</h2>
       </div>
-      <nav className="flex flex-wrap gap-2 p-4 md:flex-col md:space-y-2 md:space-x-0">
+      <nav className="flex flex-wrap gap-2 p-4 md:flex-col md:space-y-2 md:space-x-0"
+                  style={{ 
+                    boxShadow: 'none', 
+                    border: 'none', 
+                  }}>
         {sidebarItems.map((item) => (
           <SidebarItem
             key={item.menu}
             label={item.label}
             menu={item.menu}
-            icon={<item.icon className="mr-2" />}
+            icon={<item.icon className="mr-2"/>}
+            style={{ 
+              boxShadow: 'none', 
+              border: 'none', 
+            }}
           />
         ))}
       </nav>

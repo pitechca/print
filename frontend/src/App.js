@@ -26,13 +26,14 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import Orders from "./pages/Orders";
 import Cart from "./pages/Cart";
-import AdminDashboard from "./pages/AdminDashboard";
-import UserManagement from "./pages/UserManagement";
-import SalesReport from "./pages/SalesReport";
-import AdminSecurity from "./pages/AdminSecurity";
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ProductCustomization from "./pages/ProductCustomization";
+import AdminDashboard from "./pages/AdminDashboard";
+import UserManagement from "./pages/admin/UserManagement";
+import SalesReport from "./pages/admin/SalesReport";
+import AdminSecurity from "./pages/admin/AdminSecurity";
+import ClientUploads from './pages/admin/ClientUploads';
 
 function App() {
   return (
@@ -63,11 +64,12 @@ function App() {
                 <Route path="/aboutUs" element={<AboutUs />} />
                 <Route path="/contactUs" element={<Contact />} />
                 <Route path="/products" element={<Product />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
                 <Route path="/admin/users" element={<UserManagement />} />
                 <Route path="/admin/sales" element={<SalesReport />} />
                 <Route path="/admin/security" element={<AdminSecurity />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password/:token" element={<ResetPassword />} />
+                <Route path="/admin/uploads" element={<ClientUploads />} />
               </Routes>
             </main>
             <Footer style={{}} />

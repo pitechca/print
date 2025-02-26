@@ -335,23 +335,16 @@ return (
                   key={product._id}
                   className="bg-white rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105"
                 >                 
-                  <div className="relative pb-[75%]">
-                  <button
-                        onClick={() => {
-                          const token = localStorage.getItem('token');
-                          if (!token) {
-                            window.location.href = '/login';
-                            return;
-                          }                  
-                          navigateToProduct(product._id)
-                        }}
-                      >
+                  <div className="relative pb-[75%] cursor-pointer"
+                    onClick={() => {
+                        navigateToProduct(product._id);
+                    }}
+                  >                           
                     <LazyImage
                       src={product.images?.[0]?.data}
                       alt={product.name}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
-                    </button>
                   </div>
                   <div className="p-6 cursor-pointer" 
                      onClick={() => {          
@@ -475,23 +468,16 @@ return (
                   key={product._id}
                   className="bg-white rounded-lg shadow-lg overflow-hidden transition-transform hover:scale-105"
                 >
-                  <div className="relative pb-[75%]">
-                  <button
-                        onClick={() => {
-                          const token = localStorage.getItem('token');
-                          if (!token) {
-                            window.location.href = '/login';
-                            return;
-                          }                  
-                          navigateToProduct(product._id)
-                        }}
-                      >
+                  <div className="relative pb-[75%] cursor-pointer"
+                    onClick={() => {
+                        navigateToProduct(product._id);
+                    }}
+                  >  
                     <LazyImage
                       src={product.images?.[0]?.data}
                       alt={product.name}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
-                    </button>
                   </div>
                   <div className="p-6 cursor-pointer" 
                      onClick={() => {          
