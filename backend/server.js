@@ -14,6 +14,10 @@ const { body, validationResult } = require('express-validator');
 const fs = require('fs');
 const crypto = require ("crypto");
 const twilio = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+const cron = require('node-cron');
+
+
+
 
 const twilioClient = require('twilio')(
   process.env.TWILIO_ACCOUNT_SID,
@@ -2143,7 +2147,47 @@ app.post('/api/upload-image', uploadLimiter, upload.single('image'), async (req,
 });
 
 
+// This could run on a schedule (e.g., every hour)
+async function updateImageUsageStatus() {
+  try {
+    // Get all uploads
+    const uploads = await Upload.find();
+    
+    for (const upload of uploads) {
+      // Extract filename from path
+      const filename = upload.path;
+      
+      // Check if this file is in any carts
+      const inCart = await Cart.findOne({
+        'items.customization.customFields.imageUrl': { $regex: filename }
+      });
+      
+      // Check if this file is in any orders
+      const inOrder = await Order.findOne({
+        'items.customization.customFields.imageUrl': { $regex: filename }
+      });
+      
+      // Update status if different from current
+      if ((!!inCart) !== upload.inCart || (!!inOrder) !== upload.inOrder) {
+        await Upload.updateOne(
+          { _id: upload._id },
+          { 
+            inCart: !!inCart,
+            inOrder: !!inOrder
+          }
+        );
+      }
+    }
+    
+    console.log('Image usage status updated successfully');
+  } catch (error) {
+    console.error('Error updating image usage status:', error);
+  }
+}
 
+// You can trigger this function with a scheduler like node-cron
+// Example: run every hour
+cron.schedule('10 * * * *', updateImageUsageStatus);
 
 
 
