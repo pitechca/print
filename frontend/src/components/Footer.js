@@ -7,7 +7,7 @@ const Footer = () => {
   const phoneNumber = "+1 (604) 834-8118";
 
   return (
-    <footer className="bg-gray-900 text-white py-12">
+    <footer className="bg-gray-900 text-white py-12 pb-0 mb-0">
       <div className="container mx-auto px-4 grid md:grid-cols-4 gap-8">
         <div>
           <h4 className="text-xl font-bold mb-4">Bag & Box</h4>
@@ -46,7 +46,7 @@ const Footer = () => {
           </div>
         </div>
       </div>
-      <div className="text-center mt-8 border-t border-gray-800 pt-4">
+      <div className="text-center mt-8 border-t border-gray-800 pt-4 pb-6">
         <p>&copy; 2025 Bag & Box. All Rights Reserved.<br/>
         Design & Development By <a href='https://pitech.ca' target='new'>PiTech.ca</a>
         </p>

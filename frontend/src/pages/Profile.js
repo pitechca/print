@@ -828,7 +828,12 @@ useEffect(() => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (window.innerWidth <= 768) {
+                    window.scrollBy({ top: 300, behavior: 'smooth' });
+                  }
+                }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                   activeTab === tab.id
                     ? 'bg-blue-50 text-blue-600'

@@ -17,6 +17,18 @@ const CouponManagement = () => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -95,10 +107,12 @@ const CouponManagement = () => {
     }
   };
 
-  return (
+  return (    
     <div className="space-y-6">
+     <h2 className="text-2xl font-bold">Coupon Management</h2>
+
       <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-xl font-bold mb-4">Create New Coupon</h3>
+        <h3 className="text-xl font-semibold mb-4">Create New Coupon</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-gray-700 mb-2">Coupon Code</label>
@@ -135,7 +149,7 @@ const CouponManagement = () => {
           </div>
           
           <div>
-            <label className="block text-gray-700 mb-2">Uses Per User</label>
+            <label className="block text-gray-700 mb-2">Max Uses Per User</label>
             <input
               type="number"
               placeholder="Maximum uses per user (0 for unlimited)"
@@ -241,51 +255,101 @@ const CouponManagement = () => {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow"
-      style={{overflowX: "scroll"}}>
-        <h3 className="text-xl font-bold mb-4">Existing Coupons</h3>
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border p-2">Code</th>
-              <th className="border p-2">Type</th>
-              <th className="border p-2">Value</th>
-              <th className="border p-2">Start Date</th>
-              <th className="border p-2">End Date</th>
-              <th className="border p-2">Uses Per User</th>
-              <th className="border p-2">Assigned Users</th>
-            </tr>
-          </thead>
-          <tbody>
+      <div className="bg-white p-6 rounded-lg shadow">
+      {isMobile ? (
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-xl font-semibold mb-4">Existing Coupons</h3>
+          <div className="space-y-4">
             {coupons.map(coupon => (
-              <tr key={coupon._id} className="text-center hover:bg-gray-50">
-                <td className="border p-2">{coupon.code}</td>
-                <td className="border p-2">{coupon.discountType}</td>
-                <td className="border p-2">
-                  {coupon.discountType === 'percentage' 
-                    ? `${coupon.discountValue}%` 
-                    : `$${coupon.discountValue}`}
-                </td>
-                <td className="border p-2">
-                  {new Date(coupon.startDate).toLocaleDateString()}
-                </td>
-                <td className="border p-2">
-                  {new Date(coupon.endDate).toLocaleDateString()}
-                </td>
-                <td className="border p-2">
-                  {coupon.maxUsesPerUser === 0 
-                    ? 'Unlimited' 
-                    : coupon.maxUsesPerUser}
-                </td>
-                <td className="border p-2">
-                  {coupon.assignedUsers.length > 0 
-                    ? `${coupon.assignedUsers.length} users` 
-                    : 'All users'}
-                </td>
-              </tr>
+              <div key={coupon._id} className="border rounded-md p-4 hover:bg-gray-50">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium text-lg">{coupon.code}</span>
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                    {coupon.discountType === 'percentage' 
+                      ? `${coupon.discountValue}%` 
+                      : `$${coupon.discountValue}`}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-gray-500">Type</p>
+                    <p>{coupon.discountType}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-gray-500">Max Uses Per User</p>
+                    <p>{coupon.maxUsesPerUser === 0 ? 'Unlimited' : coupon.maxUsesPerUser}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-gray-500">Start Date</p>
+                    <p>{new Date(coupon.startDate).toLocaleDateString()}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-gray-500">End Date</p>
+                    <p>{new Date(coupon.endDate).toLocaleDateString()}</p>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <p className="text-gray-500">Assigned Users</p>
+                    <p>{coupon.assignedUsers.length > 0 
+                      ? `${coupon.assignedUsers.length} users` 
+                      : 'All users'}</p>
+                  </div>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-semibold mb-4">Existing Coupons</h3>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border p-2">Code</th>
+                <th className="border p-2">Type</th>
+                <th className="border p-2">Value</th>
+                <th className="border p-2">Start Date</th>
+                <th className="border p-2">End Date</th>
+                <th className="border p-2">Uses Per User</th>
+                <th className="border p-2">Assigned Users</th>
+              </tr>
+            </thead>
+            <tbody>
+              {coupons.map(coupon => (
+                <tr key={coupon._id} className="text-center hover:bg-gray-50">
+                  <td className="border p-2">{coupon.code}</td>
+                  <td className="border p-2">{coupon.discountType}</td>
+                  <td className="border p-2">
+                    {coupon.discountType === 'percentage' 
+                      ? `${coupon.discountValue}%` 
+                      : `$${coupon.discountValue}`}
+                  </td>
+                  <td className="border p-2">
+                    {new Date(coupon.startDate).toLocaleDateString()}
+                  </td>
+                  <td className="border p-2">
+                    {new Date(coupon.endDate).toLocaleDateString()}
+                  </td>
+                  <td className="border p-2">
+                    {coupon.maxUsesPerUser === 0 
+                      ? 'Unlimited' 
+                      : coupon.maxUsesPerUser}
+                  </td>
+                  <td className="border p-2">
+                    {coupon.assignedUsers.length > 0 
+                      ? `${coupon.assignedUsers.length} users` 
+                      : 'All users'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       </div>
     </div>
   );
@@ -295,6 +359,12 @@ export default CouponManagement;
 
 
 
+
+
+
+
+
+// // work well before mibile view
 // // src/components/admin/CouponManagement.js
 // import React, { useState, useEffect } from 'react';
 // import axios from 'axios';
@@ -307,7 +377,7 @@ export default CouponManagement;
 //     discountValue: 0,
 //     startDate: '',
 //     endDate: '',
-//     maxUses: 0,
+//     maxUsesPerUser: 0,
 //     assignedUsers: []
 //   });
 //   const [searchUser, setSearchUser] = useState('');
@@ -380,7 +450,7 @@ export default CouponManagement;
 //         discountValue: 0,
 //         startDate: '',
 //         endDate: '',
-//         maxUses: 0,
+//         maxUsesPerUser: 0,
 //         assignedUsers: []
 //       });
 //       setSelectedUsers([]);
@@ -392,10 +462,12 @@ export default CouponManagement;
 //     }
 //   };
 
-//   return (
+//   return (    
 //     <div className="space-y-6">
+//      <h2 className="text-2xl font-bold">Coupon Management</h2>
+
 //       <div className="bg-white p-6 rounded-lg shadow">
-//         <h3 className="text-xl font-bold mb-4">Create New Coupon</h3>
+//         <h3 className="text-xl font-semibold mb-4">Create New Coupon</h3>
 //         <div className="grid grid-cols-2 gap-4">
 //           <div>
 //             <label className="block text-gray-700 mb-2">Coupon Code</label>
@@ -432,14 +504,21 @@ export default CouponManagement;
 //           </div>
           
 //           <div>
-//             <label className="block text-gray-700 mb-2">Max Uses</label>
+//             <label className="block text-gray-700 mb-2">Uses Per User</label>
 //             <input
 //               type="number"
-//               placeholder="Maximum coupon uses"
-//               value={newCoupon.maxUses}
-//               onChange={(e) => setNewCoupon({...newCoupon, maxUses: Number(e.target.value)})}
+//               placeholder="Maximum uses per user (0 for unlimited)"
+//               value={newCoupon.maxUsesPerUser}
+//               onChange={(e) => setNewCoupon({
+//                 ...newCoupon, 
+//                 maxUsesPerUser: Number(e.target.value)
+//               })}
 //               className="w-full border p-2 rounded"
+//               min="0"
 //             />
+//             <p className="text-sm text-gray-500 mt-1">
+//               Set to 0 for unlimited uses per user
+//             </p>
 //           </div>
           
 //           <div>
@@ -531,8 +610,8 @@ export default CouponManagement;
 //         </div>
 //       </div>
 
-//       <div className="bg-white p-6 rounded-lg shadow">
-//         <h3 className="text-xl font-bold mb-4">Existing Coupons</h3>
+//       <div className="bg-white p-6 rounded-lg shadow" style={{overflowX: "scroll"}}>
+//         <h3 className="text-xl font-semibold mb-4">Existing Coupons</h3>
 //         <table className="w-full border-collapse">
 //           <thead>
 //             <tr className="bg-gray-100">
@@ -541,7 +620,8 @@ export default CouponManagement;
 //               <th className="border p-2">Value</th>
 //               <th className="border p-2">Start Date</th>
 //               <th className="border p-2">End Date</th>
-//               <th className="border p-2">Max Uses</th>
+//               <th className="border p-2">Uses Per User</th>
+//               <th className="border p-2">Assigned Users</th>
 //             </tr>
 //           </thead>
 //           <tbody>
@@ -549,10 +629,27 @@ export default CouponManagement;
 //               <tr key={coupon._id} className="text-center hover:bg-gray-50">
 //                 <td className="border p-2">{coupon.code}</td>
 //                 <td className="border p-2">{coupon.discountType}</td>
-//                 <td className="border p-2">{coupon.discountValue}</td>
-//                 <td className="border p-2">{new Date(coupon.startDate).toLocaleDateString()}</td>
-//                 <td className="border p-2">{new Date(coupon.endDate).toLocaleDateString()}</td>
-//                 <td className="border p-2">{coupon.maxUses}</td>
+//                 <td className="border p-2">
+//                   {coupon.discountType === 'percentage' 
+//                     ? `${coupon.discountValue}%` 
+//                     : `$${coupon.discountValue}`}
+//                 </td>
+//                 <td className="border p-2">
+//                   {new Date(coupon.startDate).toLocaleDateString()}
+//                 </td>
+//                 <td className="border p-2">
+//                   {new Date(coupon.endDate).toLocaleDateString()}
+//                 </td>
+//                 <td className="border p-2">
+//                   {coupon.maxUsesPerUser === 0 
+//                     ? 'Unlimited' 
+//                     : coupon.maxUsesPerUser}
+//                 </td>
+//                 <td className="border p-2">
+//                   {coupon.assignedUsers.length > 0 
+//                     ? `${coupon.assignedUsers.length} users` 
+//                     : 'All users'}
+//                 </td>
 //               </tr>
 //             ))}
 //           </tbody>
@@ -563,3 +660,4 @@ export default CouponManagement;
 // };
 
 // export default CouponManagement;
+

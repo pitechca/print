@@ -1,7 +1,7 @@
 // src/components/admin/ProductManagement.js
 import React, { useState } from 'react';
 import { PaginatedList } from './PaginatedList';
-import { Trash2Icon } from 'lucide-react';
+import { Trash2Icon, PencilIcon, PackagePlusIcon, } from 'lucide-react';
 
 
 const ProductManagement = ({ 
@@ -12,10 +12,59 @@ const ProductManagement = ({
   products, 
   onEdit, 
   onDelete, 
-  isEdit 
+  isEdit,
+  setNotification,
+  setActiveMenu,  
 }) => {
+  const { useEffect } = React;
   const [showEditForm, setShowEditForm] = useState(false);
   const [pricingTier, setPricingTier] = useState({ minQuantity: '', maxQuantity: '', price: '' });
+
+  useEffect(() => {
+    setShowEditForm(false);
+    setFormData({
+      name: '',
+      category: '',
+      basePrice: '',
+      description: '',
+      images: [],
+      hasGST: false,
+      hasPST: false,
+      pricingTiers: [],
+      minimumOrder: 1,
+      sku: '',
+      dimensions: {},
+      metadata: {
+        searchTags: []
+      },
+      isFeatured: false,
+      inStock: true
+    });
+  }, [products.length]);
+
+  
+  // Function to switch to Add Product mode
+  const handleAddProductClick = () => {
+    setShowEditForm(true);
+    setFormData({
+      name: '',
+      category: '',
+      basePrice: '',
+      description: '',
+      images: [],
+      hasGST: false,
+      hasPST: false,
+      pricingTiers: [],
+      minimumOrder: 1,
+      sku: '',
+      dimensions: {},
+      metadata: {
+        searchTags: []
+      },
+      isFeatured: false,
+      inStock: true
+    });
+  };
 
   const addPricingTier = () => {
     if (!pricingTier.minQuantity || !pricingTier.price) {
@@ -131,10 +180,27 @@ const ProductManagement = ({
   };
 
   return (
+
     <div>
-      <h3 className="text-2xl font-bold mb-6">{isEdit ? 'Edit' : 'Add'} Product</h3>
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-2xl font-bold">Products</h3>
+        
+        {/* Add Product button */}
+        {!showEditForm && (
+          <button
+            onClick={handleAddProductClick}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center"
+          >
+            <PackagePlusIcon className="h-5 w-5 mr-2" />
+            Add Product
+          </button>
+        )}
+      </div>
       
-      {isEdit && !showEditForm && (
+     {/* <div>
+       <h3 className="text-2xl font-bold mb-6">{isEdit ? 'Edit' : 'Add'} Product</h3> */}
+      
+      {!showEditForm && (
         <PaginatedList 
           items={products} 
           renderItem={(product) => (
@@ -176,31 +242,36 @@ const ProductManagement = ({
                   Created: {new Date(product.createdAt).toLocaleDateString()}
                 </p>
               </div>
-              <div className="flex flex-col space-y-2">
+              <div className="flex space-x-2">
                 <button
                   onClick={() => handleEdit(product)}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
+                  title="Edit product"
                 >
-                  Edit
+                  <PencilIcon className="h-5 w-5" />
                 </button>
                 <button
                   onClick={() => onDelete('products', product._id)}
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors"
+                  title="Delete product"
                 >
-                  Delete
+                  <Trash2Icon className="h-5 w-5" />
                 </button>
               </div>
             </div>
           )}
         />
-      )}
+        )}
 
-      {(!isEdit || showEditForm) && (
+      {showEditForm && (
         <form onSubmit={e => { e.preventDefault(); onSubmit(); setShowEditForm(false); }} 
           className="space-y-4 bg-white p-6 rounded-lg shadow">
           
           {isEdit && showEditForm && (
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-medium">
+                {formData._id ? 'Edit' : 'Add'} Product
+              </h4>
               <button
                 type="button"
                 onClick={() => {
@@ -259,18 +330,6 @@ const ProductManagement = ({
             </select>
           </div>
 
-          {/* <div>
-            <label className="block text-gray-700 mb-2">Base Price</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.basePrice || ''}
-              onChange={e => setFormData({ ...formData, basePrice: parseFloat(e.target.value) })}
-              className="w-full px-3 py-2 border rounded"
-              required
-            />
-          </div> */}
           {/* Base Price Section - Required if no pricing tiers */}
           <div className="mb-4">
             <label className="block text-gray-700 mb-2">Base Price</label>
@@ -321,164 +380,160 @@ const ProductManagement = ({
             </div>
           </div>
 
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-gray-700 mb-2">SKU</label>
-          <input
-            type="text"
-            value={formData.sku || ''}
-            onChange={e => setFormData({ ...formData, sku: e.target.value })}
-            className="w-full px-3 py-2 border rounded"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-gray-700 mb-2">Minimum Order</label>
-          <input
-            type="number"
-            min="1"
-            value={formData.minimumOrder || '1'}
-            onChange={e => setFormData({ ...formData, minimumOrder: parseInt(e.target.value) })}
-            className="w-full px-3 py-2 border rounded"
-          />
-        </div>
-      </div>
+            <div>
+              <label className="block text-gray-700 mb-2">SKU</label>
+              <input
+                type="text"
+                value={formData.sku || ''}
+                onChange={e => setFormData({ ...formData, sku: e.target.value })}
+                className="w-full px-3 py-2 border rounded"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-gray-700 mb-2">Minimum Order</label>
+              <input
+                type="number"
+                min="1"
+                value={formData.minimumOrder || '1'}
+                onChange={e => setFormData({ ...formData, minimumOrder: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border rounded"
+              />
+            </div>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label className="block text-gray-700 mb-2">Length (cm)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formData.dimensions?.length || ''}
-            onChange={e => setFormData({
-              ...formData,
-              dimensions: { ...(formData.dimensions || {}), length: parseFloat(e.target.value) }
-            })}
-            className="w-full px-3 py-2 border rounded"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 mb-2">Width (cm)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formData.dimensions?.width || ''}
-            onChange={e => setFormData({
-              ...formData,
-              dimensions: { ...(formData.dimensions || {}), width: parseFloat(e.target.value) }
-            })}
-            className="w-full px-3 py-2 border rounded"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 mb-2">Height (cm)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formData.dimensions?.height || ''}
-            onChange={e => setFormData({
-              ...formData,
-              dimensions: { ...(formData.dimensions || {}), height: parseFloat(e.target.value) }
-            })}
-            className="w-full px-3 py-2 border rounded"
-          />
-        </div>
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-gray-700 mb-2">Length (cm)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={formData.dimensions?.length || ''}
+                onChange={e => setFormData({
+                  ...formData,
+                  dimensions: { ...(formData.dimensions || {}), length: parseFloat(e.target.value) }
+                })}
+                className="w-full px-3 py-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-2">Width (cm)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={formData.dimensions?.width || ''}
+                onChange={e => setFormData({
+                  ...formData,
+                  dimensions: { ...(formData.dimensions || {}), width: parseFloat(e.target.value) }
+                })}
+                className="w-full px-3 py-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-2">Height (cm)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={formData.dimensions?.height || ''}
+                onChange={e => setFormData({
+                  ...formData,
+                  dimensions: { ...(formData.dimensions || {}), height: parseFloat(e.target.value) }
+                })}
+                className="w-full px-3 py-2 border rounded"
+              />
+            </div>
+          </div>
 
-      <div className="flex space-x-4">
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            checked={formData.isFeatured || false}
-            onChange={e => setFormData({ ...formData, isFeatured: e.target.checked })}
-            className="mr-2"
-          />
-          <label>Featured Product</label>
-        </div>
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            checked={formData.inStock || false}
-            onChange={e => setFormData({ ...formData, inStock: e.target.checked })}
-            className="mr-2"
-          />
-          <label>In Stock</label>
-        </div>
-      </div>
+          <div className="flex space-x-4">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.isFeatured || false}
+                onChange={e => setFormData({ ...formData, isFeatured: e.target.checked })}
+                className="mr-2"
+              />
+              <label>Featured Product</label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.inStock || false}
+                onChange={e => setFormData({ ...formData, inStock: e.target.checked })}
+                className="mr-2"
+              />
+              <label>In Stock</label>
+            </div>
+          </div>
 
-      <div className="space-y-4">
-        <h4 className="font-bold">Price Tiers</h4>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <input
-            type="number"
-            placeholder="Min Quantity"
-            value={pricingTier.minQuantity}
-            onChange={e => setPricingTier({ ...pricingTier, minQuantity: e.target.value })}
-            className="px-3 py-2 border rounded"
-          />
-          <input
-            type="number"
-            placeholder="Max Quantity (optional)"
-            value={pricingTier.maxQuantity}
-            onChange={e => setPricingTier({ ...pricingTier, maxQuantity: e.target.value })}
-            className="px-3 py-2 border rounded"
-          />
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Price per unit"
-            value={pricingTier.price}
-            onChange={e => setPricingTier({ ...pricingTier, price: e.target.value })}
-            className="px-3 py-2 border rounded"
-          />
-          <button
-            type="button"
-            onClick={addPricingTier}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-          >
-            Add Tier
-          </button>
-        </div>
-
-        <div className="mt-4">
-          {formData.pricingTiers?.map((tier, index) => (
-            <div key={index} className="flex items-center space-x-2 mb-2 bg-gray-50 p-2 rounded">
-              <span>
-                {tier.minQuantity} - {tier.maxQuantity || '∞'} units: ${tier.price} each
-              </span>
+          <div className="space-y-4">
+            <h4 className="font-bold">Price Tiers</h4>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <input
+                type="number"
+                placeholder="Min Quantity"
+                value={pricingTier.minQuantity}
+                onChange={e => setPricingTier({ ...pricingTier, minQuantity: e.target.value })}
+                className="px-3 py-2 border rounded"
+              />
+              <input
+                type="number"
+                placeholder="Max Quantity (optional)"
+                value={pricingTier.maxQuantity}
+                onChange={e => setPricingTier({ ...pricingTier, maxQuantity: e.target.value })}
+                className="px-3 py-2 border rounded"
+              />
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Price per unit"
+                value={pricingTier.price}
+                onChange={e => setPricingTier({ ...pricingTier, price: e.target.value })}
+                className="px-3 py-2 border rounded"
+              />
               <button
                 type="button"
-                onClick={() => removePricingTier(index)}
-                className="text-red-500 hover:text-red-700"
+                onClick={addPricingTier}
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
               >
-                <Trash2Icon className="h-4 w-4" />
+                Add Tier
               </button>
             </div>
-          ))}
-        </div>
-      </div>
 
-      <div>
-        <label className="block text-gray-700 mb-2">Search Tags (comma-separated)</label>
-        <input
-          type="text"
-          value={formData.metadata?.searchTags?.join(', ') || ''}
-          onChange={e => setFormData({
-            ...formData,
-            metadata: {
-              ...(formData.metadata || {}),
-              searchTags: e.target.value.split(',').map(tag => tag.trim())
-            }
-          })}
-          className="w-full px-3 py-2 border rounded"
-          placeholder="tag1, tag2, tag3"
-        />
-      </div>
-    
+            <div className="mt-4">
+              {formData.pricingTiers?.map((tier, index) => (
+                <div key={index} className="flex items-center space-x-2 mb-2 bg-gray-50 p-2 rounded">
+                  <span>
+                    {tier.minQuantity} - {tier.maxQuantity || '∞'} units: ${tier.price} each
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removePricingTier(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2Icon className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
 
-
+          <div>
+            <label className="block text-gray-700 mb-2">Search Tags (comma-separated)</label>
+            <input
+              type="text"
+              value={formData.metadata?.searchTags?.join(', ') || ''}
+              onChange={e => setFormData({
+                ...formData,
+                metadata: {
+                  ...(formData.metadata || {}),
+                  searchTags: e.target.value.split(',').map(tag => tag.trim())
+                }
+              })}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="tag1, tag2, tag3"
+            />
+          </div>  
 
           <div className="space-y-4">
             <label className="block text-gray-700">
@@ -531,7 +586,7 @@ const ProductManagement = ({
             type="submit" 
             className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           >
-            {isEdit ? 'Update' : 'Add'} Product
+            {formData._id ? 'Update' : 'Add'} Product
           </button>
         </form>
       )}
@@ -544,9 +599,14 @@ export default ProductManagement;
 
 
 
+
+
+// // work well before mergind add & edit
 // // src/components/admin/ProductManagement.js
 // import React, { useState } from 'react';
 // import { PaginatedList } from './PaginatedList';
+// import { Trash2Icon } from 'lucide-react';
+
 
 // const ProductManagement = ({ 
 //   formData, 
@@ -559,6 +619,64 @@ export default ProductManagement;
 //   isEdit 
 // }) => {
 //   const [showEditForm, setShowEditForm] = useState(false);
+//   const [pricingTier, setPricingTier] = useState({ minQuantity: '', maxQuantity: '', price: '' });
+
+//   const addPricingTier = () => {
+//     if (!pricingTier.minQuantity || !pricingTier.price) {
+//       alert('Please enter both minimum quantity and price');
+//       return;
+//     }
+  
+//     const minQty = parseInt(pricingTier.minQuantity);
+//     const maxQty = pricingTier.maxQuantity ? parseInt(pricingTier.maxQuantity) : null;
+//     const price = parseFloat(pricingTier.price);
+  
+//     // Validate numbers
+//     if (isNaN(minQty) || isNaN(price) || (maxQty !== null && isNaN(maxQty))) {
+//       alert('Please enter valid numbers');
+//       return;
+//     }
+  
+//     if (minQty <= 0 || price <= 0 || (maxQty !== null && maxQty <= 0)) {
+//       alert('Please enter positive numbers');
+//       return;
+//     }
+  
+//     if (maxQty && minQty >= maxQty) {
+//       alert('Maximum quantity must be greater than minimum quantity');
+//       return;
+//     }
+  
+//     const newTiers = [...(formData.pricingTiers || [])];
+//     const hasOverlap = newTiers.some(tier => {
+//       const tierMax = tier.maxQuantity || Infinity;
+//       const newMax = maxQty || Infinity;
+//       return (minQty <= tierMax && tier.minQuantity <= newMax);
+//     });
+  
+//     if (hasOverlap) {
+//       alert('Price tiers cannot have overlapping quantities');
+//       return;
+//     }
+  
+//     newTiers.push({
+//       minQuantity: minQty,
+//       maxQuantity: maxQty,
+//       price: price
+//     });
+    
+//     newTiers.sort((a, b) => a.minQuantity - b.minQuantity);
+    
+//     setFormData({ ...formData, pricingTiers: newTiers });
+//     setPricingTier({ minQuantity: '', maxQuantity: '', price: '' });
+//   };
+
+//   const removePricingTier = (index) => {
+//     const newTiers = [...(formData.pricingTiers || [])];
+//     newTiers.splice(index, 1);
+//     setFormData({ ...formData, pricingTiers: newTiers });
+//   };
+
 
 //   const handleImagesChange = (e, index) => {
 //     const files = Array.from(e.target.files);
@@ -597,12 +715,22 @@ export default ProductManagement;
 //       _id: product._id,
 //       category: product.category?._id || product.category,
 //       images: product.images?.map(img => img.data || img),
+//       basePrice: product.basePrice || 0,
 //       hasGST: !!product.hasGST,
-//       hasPST: !!product.hasPST
+//       hasPST: !!product.hasPST,
+//       pricingTiers: product.pricingTiers || [],
+//       minimumOrder: product.minimumOrder || 1,
+//       sku: product.sku || '',
+//       dimensions: product.dimensions || {},
+//       metadata: product.metadata || {
+//         searchTags: []
+//       },
+//       isFeatured: !!product.isFeatured,
+//       inStock: product.inStock ?? true
 //     };
     
 //     console.log('Editing product in form:', editableProduct);
-//     onEdit(product);
+//     onEdit(editableProduct); 
 //     setShowEditForm(true);
 //   };
 
@@ -627,7 +755,21 @@ export default ProductManagement;
 //               <div className="flex-grow mx-4">
 //                 <h4 className="font-bold">{product.name}</h4>
 //                 <p className="text-gray-600">Category: {product.category?.name}</p>
-//                 <p className="text-gray-600">Price: ${product.basePrice}</p>
+//                 {/* <p className="text-gray-600">Price: ${product.basePrice}</p> */}
+
+//                 {product.pricingTiers && product.pricingTiers.length > 0 ? (
+//                   <div className="text-gray-600">
+//                     <p>Price Tiers:</p>
+//                     {product.pricingTiers.map((tier, idx) => (
+//                       <p key={idx} className="text-sm">
+//                         {tier.minQuantity} - {tier.maxQuantity || '∞'} units: ${tier.price} each
+//                       </p>
+//                     ))}
+//                   </div>
+//                 ) : (
+//                   <p className="text-gray-600">Base Price: ${product.basePrice}</p>
+//                 )}
+
 //                 <p className="text-gray-600">
 //                   Tax: {[
 //                     product.hasGST ? 'GST' : '',
@@ -674,7 +816,16 @@ export default ProductManagement;
 //                     description: '',
 //                     images: [],
 //                     hasGST: false,
-//                     hasPST: false
+//                     hasPST: false,
+//                     pricingTiers: [],
+//                     minimumOrder: 1,
+//                     sku: '',
+//                     dimensions: {},
+//                     metadata: {
+//                       searchTags: []
+//                     },
+//                     isFeatured: false,
+//                     inStock: true
 //                   });
 //                 }}
 //                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
@@ -712,7 +863,7 @@ export default ProductManagement;
 //             </select>
 //           </div>
 
-//           <div>
+//           {/* <div>
 //             <label className="block text-gray-700 mb-2">Base Price</label>
 //             <input
 //               type="number"
@@ -723,6 +874,24 @@ export default ProductManagement;
 //               className="w-full px-3 py-2 border rounded"
 //               required
 //             />
+//           </div> */}
+//           {/* Base Price Section - Required if no pricing tiers */}
+//           <div className="mb-4">
+//             <label className="block text-gray-700 mb-2">Base Price</label>
+//             <input
+//               type="number"
+//               step="0.01"
+//               min="0"
+//               value={formData.basePrice || ''}
+//               onChange={e => setFormData({ ...formData, basePrice: parseFloat(e.target.value) })}
+//               className="w-full px-3 py-2 border rounded"
+//               required={!formData.pricingTiers?.length} // Only required if no pricing tiers
+//             />
+//             <p className="text-sm text-gray-500 mt-1">
+//               {formData.pricingTiers?.length > 0 
+//                 ? 'Optional when using price tiers' 
+//                 : 'Required when not using price tiers'}
+//             </p>
 //           </div>
 
 //           <div>
@@ -755,6 +924,165 @@ export default ProductManagement;
 //               <label>PST</label>
 //             </div>
 //           </div>
+
+
+//           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//         <div>
+//           <label className="block text-gray-700 mb-2">SKU</label>
+//           <input
+//             type="text"
+//             value={formData.sku || ''}
+//             onChange={e => setFormData({ ...formData, sku: e.target.value })}
+//             className="w-full px-3 py-2 border rounded"
+//           />
+//         </div>
+        
+//         <div>
+//           <label className="block text-gray-700 mb-2">Minimum Order</label>
+//           <input
+//             type="number"
+//             min="1"
+//             value={formData.minimumOrder || '1'}
+//             onChange={e => setFormData({ ...formData, minimumOrder: parseInt(e.target.value) })}
+//             className="w-full px-3 py-2 border rounded"
+//           />
+//         </div>
+//       </div>
+
+//       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+//         <div>
+//           <label className="block text-gray-700 mb-2">Length (cm)</label>
+//           <input
+//             type="number"
+//             step="0.1"
+//             value={formData.dimensions?.length || ''}
+//             onChange={e => setFormData({
+//               ...formData,
+//               dimensions: { ...(formData.dimensions || {}), length: parseFloat(e.target.value) }
+//             })}
+//             className="w-full px-3 py-2 border rounded"
+//           />
+//         </div>
+//         <div>
+//           <label className="block text-gray-700 mb-2">Width (cm)</label>
+//           <input
+//             type="number"
+//             step="0.1"
+//             value={formData.dimensions?.width || ''}
+//             onChange={e => setFormData({
+//               ...formData,
+//               dimensions: { ...(formData.dimensions || {}), width: parseFloat(e.target.value) }
+//             })}
+//             className="w-full px-3 py-2 border rounded"
+//           />
+//         </div>
+//         <div>
+//           <label className="block text-gray-700 mb-2">Height (cm)</label>
+//           <input
+//             type="number"
+//             step="0.1"
+//             value={formData.dimensions?.height || ''}
+//             onChange={e => setFormData({
+//               ...formData,
+//               dimensions: { ...(formData.dimensions || {}), height: parseFloat(e.target.value) }
+//             })}
+//             className="w-full px-3 py-2 border rounded"
+//           />
+//         </div>
+//       </div>
+
+//       <div className="flex space-x-4">
+//         <div className="flex items-center">
+//           <input
+//             type="checkbox"
+//             checked={formData.isFeatured || false}
+//             onChange={e => setFormData({ ...formData, isFeatured: e.target.checked })}
+//             className="mr-2"
+//           />
+//           <label>Featured Product</label>
+//         </div>
+//         <div className="flex items-center">
+//           <input
+//             type="checkbox"
+//             checked={formData.inStock || false}
+//             onChange={e => setFormData({ ...formData, inStock: e.target.checked })}
+//             className="mr-2"
+//           />
+//           <label>In Stock</label>
+//         </div>
+//       </div>
+
+//       <div className="space-y-4">
+//         <h4 className="font-bold">Price Tiers</h4>
+//         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+//           <input
+//             type="number"
+//             placeholder="Min Quantity"
+//             value={pricingTier.minQuantity}
+//             onChange={e => setPricingTier({ ...pricingTier, minQuantity: e.target.value })}
+//             className="px-3 py-2 border rounded"
+//           />
+//           <input
+//             type="number"
+//             placeholder="Max Quantity (optional)"
+//             value={pricingTier.maxQuantity}
+//             onChange={e => setPricingTier({ ...pricingTier, maxQuantity: e.target.value })}
+//             className="px-3 py-2 border rounded"
+//           />
+//           <input
+//             type="number"
+//             step="0.01"
+//             placeholder="Price per unit"
+//             value={pricingTier.price}
+//             onChange={e => setPricingTier({ ...pricingTier, price: e.target.value })}
+//             className="px-3 py-2 border rounded"
+//           />
+//           <button
+//             type="button"
+//             onClick={addPricingTier}
+//             className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+//           >
+//             Add Tier
+//           </button>
+//         </div>
+
+//         <div className="mt-4">
+//           {formData.pricingTiers?.map((tier, index) => (
+//             <div key={index} className="flex items-center space-x-2 mb-2 bg-gray-50 p-2 rounded">
+//               <span>
+//                 {tier.minQuantity} - {tier.maxQuantity || '∞'} units: ${tier.price} each
+//               </span>
+//               <button
+//                 type="button"
+//                 onClick={() => removePricingTier(index)}
+//                 className="text-red-500 hover:text-red-700"
+//               >
+//                 <Trash2Icon className="h-4 w-4" />
+//               </button>
+//             </div>
+//           ))}
+//         </div>
+//       </div>
+
+//       <div>
+//         <label className="block text-gray-700 mb-2">Search Tags (comma-separated)</label>
+//         <input
+//           type="text"
+//           value={formData.metadata?.searchTags?.join(', ') || ''}
+//           onChange={e => setFormData({
+//             ...formData,
+//             metadata: {
+//               ...(formData.metadata || {}),
+//               searchTags: e.target.value.split(',').map(tag => tag.trim())
+//             }
+//           })}
+//           className="w-full px-3 py-2 border rounded"
+//           placeholder="tag1, tag2, tag3"
+//         />
+//       </div>
+    
+
+
 
 //           <div className="space-y-4">
 //             <label className="block text-gray-700">
@@ -816,3 +1144,5 @@ export default ProductManagement;
 // };
 
 // export default ProductManagement;
+
+

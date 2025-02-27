@@ -36,3 +36,12 @@
     transform: rotate(360deg);
   }
 }
+
+ body {
+   padding-top: 80px; /* Adjust based on your navbar height */
+   }
+  @media (max-width: 768px) {
+    body {
+       padding-top: 70px; /* Slightly smaller padding for mobile */
+     }
+    }

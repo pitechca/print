@@ -138,13 +138,15 @@ const Home = () => {
     category.name.toLowerCase().includes(categorySearchTerm.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-2xl text-gray-600">Loading...</div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="flex justify-center items-center h-screen">
+  //       <div className="text-2xl text-gray-600">
+  //         <img src='../images/loading.gif'/>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="flex flex-col min-h-screen">

@@ -1,6 +1,7 @@
 // src/pages/MediaManager.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Eye, Trash } from 'lucide-react';
 
 const MediaManager = () => {
   const [images, setImages] = useState([]);
@@ -50,8 +51,9 @@ const MediaManager = () => {
 
   if (loading && !images.length) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="fixed inset-0 flex flex-col items-center justify-center">
+        {/* <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" /> */}
+        <img src='../images/loading.gif'/>
       </div>
     );
   }
@@ -146,18 +148,20 @@ const MediaManager = () => {
                   <td className="px-6 py-4">
                     {new Date(image.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 space-x-2">
+                  <td className="px-6 py-4 space-x-3">
                     <button
                       onClick={() => setSelectedImage(image)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-100 transition-colors"
+                      title="View"
                     >
-                      View
+                      <Eye size={18} />
                     </button>
                     <button
                       onClick={() => handleDelete(image._id)}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100 transition-colors"
+                      title="Delete"
                     >
-                      Delete
+                      <Trash size={18} />
                     </button>
                   </td>
                 </tr>
