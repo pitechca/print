@@ -271,7 +271,7 @@ const Overview = () => {
 
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Dashboard Overview</h2>
+        <h2 className="text-2xl font-bold">Overview</h2>
         <div className="flex items-center space-x-4">
         <button 
           className="relative"
@@ -302,7 +302,7 @@ const Overview = () => {
         </div>
       </div>
 
-      <div className="p-6 space-y-6 bg-gray-50 order border-gray-200 rounded-2xl">   
+      <div className="p-1 space-y-6 bg-gray-50 order border-gray-200 rounded-2xl">   
         {/* Quick Actions Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <button 

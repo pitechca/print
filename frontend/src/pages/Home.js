@@ -154,10 +154,12 @@ const Home = () => {
       {/* Mobile Loading */}
       { showFullPageLoading && (
         <div className="fixed inset-0 bg-white bg-opacity-70 backdrop-blur-sm flex justify-center items-center z-50">
-          <svg className="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          {/* <svg className="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-          </svg>
+          </svg> */}
+                  <img src='../images/loading.gif'/>
+
         </div>
       )}
 
@@ -393,13 +395,14 @@ const Home = () => {
                   {selectedCategory === category._id && (
                     // <div className="mt-4">
                     isLoadingMore ? (
-                          <div className="flex justify-center items-center py-2">
-                             <svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                             </svg>
-                           </div>
-                       ) : (
+                      <div className="flex justify-center items-center py-2">
+                          <svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                          </svg>
+                        {/* <img src='../images/loading.gif'/> */}
+                      </div>
+                    ) : (
                     <div id={`category-products-${category._id}`} className="mt-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         {products
